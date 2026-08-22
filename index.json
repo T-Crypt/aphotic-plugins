@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "name": "openrgb",
+      "display_name": "OpenRGB Sync",
+      "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
+      "version": "1.0.0"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[plugin]
+name = "openrgb"
+display_name = "OpenRGB Sync"
+description = "Syncs the active theme's accent color to RGB PC lighting via OpenRGB."
+version = "1.0.0"
+author = "T-Crypt"
+capabilities = ["theme-hook"]
+
+[requires]
+binaries = ["openrgb"]
+
+[hooks]
+on_theme_change = "hooks/on_theme_change.sh"
