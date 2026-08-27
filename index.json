@@ -4,7 +4,22 @@
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
       "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
-      "version": "1.0.0"
+      "version": "1.0.0",
+      "category": "theming"
+    },
+    {
+      "name": "direnv",
+      "display_name": "direnv Notice",
+      "description": "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it.",
+      "version": "0.1.0",
+      "category": "dev"
+    },
+    {
+      "name": "workspace-session-log",
+      "display_name": "Workspace Session Log",
+      "description": "Keeps a local, timestamped log of when each Workspace Profile is launched.",
+      "version": "0.1.0",
+      "category": "productivity"
     }
   ]
 }

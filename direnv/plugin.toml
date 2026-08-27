@@ -1,0 +1,14 @@
+[plugin]
+name = "direnv"
+display_name = "direnv Notice"
+description = "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it."
+version = "0.1.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["project-hook"]
+
+[requires]
+binaries = ["notify-send"]
+
+[hooks]
+on_project_open = "hooks/on_project_open.sh"

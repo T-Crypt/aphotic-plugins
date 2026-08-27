@@ -1,0 +1,11 @@
+[plugin]
+name = "workspace-session-log"
+display_name = "Workspace Session Log"
+description = "Keeps a local, timestamped log of when each Workspace Profile is launched."
+version = "0.1.0"
+author = "T-Crypt"
+category = "productivity"
+capabilities = ["workspace-hook"]
+
+[hooks]
+on_workspace_launch = "hooks/on_workspace_launch.sh"
