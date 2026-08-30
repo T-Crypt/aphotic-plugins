@@ -1,0 +1,7 @@
+module qs.modules.plugins.agentGraph
+singleton AgentGraphService 1.0 AgentGraphService.qml
+AgentGraphTab 1.0 AgentGraphTab.qml
+GraphView 1.0 GraphView.qml
+GraphReplay 1.0 GraphReplay.qml
+GraphLayout 1.0 GraphLayout.qml
+ReplayBar 1.0 ReplayBar.qml

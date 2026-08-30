@@ -1,6 +1,13 @@
 {
   "plugins": [
     {
+      "name": "agent-graph",
+      "display_name": "Agent Graph",
+      "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
+      "version": "1.0.0",
+      "category": "ai"
+    },
+    {
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
       "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
