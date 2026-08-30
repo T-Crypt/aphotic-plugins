@@ -1,0 +1,15 @@
+[plugin]
+name = "claude-hooks"
+display_name = "Claude Code Agent Hooks"
+description = "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["harness-hook"]
+
+[owns]
+external_config = ["~/.claude/settings.json (SessionStart/PreToolUse/PostToolUse/PostToolUseFailure/Notification/Stop/SubagentStop/SessionEnd hook entries)"]
+
+[harness]
+wire = "hooks/wire.sh"
+unwire = "hooks/unwire.sh"

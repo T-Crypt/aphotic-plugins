@@ -1,0 +1,18 @@
+[plugin]
+name = "opencode-hooks"
+display_name = "OpenCode Agent Hooks"
+description = "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["harness-hook"]
+
+[requires]
+binaries = ["opencode"]
+
+[owns]
+external_config = ["~/.config/opencode/plugins/aphotic_opencode_hook.js (symlink)"]
+
+[harness]
+wire = "hooks/wire.sh"
+unwire = "hooks/unwire.sh"

@@ -1,0 +1,18 @@
+[plugin]
+name = "codex-hooks"
+display_name = "Codex Agent Hooks"
+description = "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["harness-hook"]
+
+[requires]
+binaries = ["codex"]
+
+[owns]
+external_config = ["~/.codex/hooks.json (SessionStart/PreToolUse/PostToolUse/SubagentStop/Stop/SessionEnd entries)"]
+
+[harness]
+wire = "hooks/wire.sh"
+unwire = "hooks/unwire.sh"

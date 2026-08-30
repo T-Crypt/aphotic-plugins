@@ -4,29 +4,65 @@
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.0.0",
-      "category": "ai"
+      "version": "1.1.0",
+      "category": "ai",
+      "capabilities": ["ui-surface"],
+      "ui": {
+        "dashboard_tab": {
+          "id": "agentGraph",
+          "icon": "account_tree",
+          "label": "Agent Graph",
+          "component": "qml/AgentGraphTab.qml"
+        }
+      }
     },
     {
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
       "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
       "version": "1.0.0",
-      "category": "theming"
+      "category": "theming",
+      "capabilities": ["theme-hook"]
     },
     {
       "name": "direnv",
       "display_name": "direnv Notice",
       "description": "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it.",
       "version": "0.1.0",
-      "category": "dev"
+      "category": "dev",
+      "capabilities": ["project-hook"]
     },
     {
       "name": "workspace-session-log",
       "display_name": "Workspace Session Log",
       "description": "Keeps a local, timestamped log of when each Workspace Profile is launched.",
       "version": "0.1.0",
-      "category": "productivity"
+      "category": "productivity",
+      "capabilities": ["workspace-hook"]
+    },
+    {
+      "name": "claude-hooks",
+      "display_name": "Claude Code Agent Hooks",
+      "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": ["harness-hook"]
+    },
+    {
+      "name": "codex-hooks",
+      "display_name": "Codex Agent Hooks",
+      "description": "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": ["harness-hook"]
+    },
+    {
+      "name": "opencode-hooks",
+      "display_name": "OpenCode Agent Hooks",
+      "description": "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": ["harness-hook"]
     }
   ]
 }

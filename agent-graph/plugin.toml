@@ -2,7 +2,7 @@
 name = "agent-graph"
 display_name = "Agent Graph"
 description = "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex)."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface"]
@@ -10,13 +10,12 @@ capabilities = ["ui-surface"]
 [owns]
 # Declares what this plugin's presence affects outside its own install
 # directory, so `aphotic plugin list --json` (and a future audit) can
-# show it -- not an automatic revert-on-remove list. agentGraphQuality
-# is inert once this plugin is gone (nothing else reads it), so leaving
-# a stale value in shell.json causes no dead UI or drift; it just means
-# a reinstall picks the same quality tier back up. See
-# docs/archive/PLUGIN_SYSTEM.md manifest v3, "config_keys is
-# informational."
-config_keys = ["agentGraphQuality"]
+# show it -- not an automatic revert-on-remove list. These are inert once
+# this plugin is gone (nothing else reads them), so leaving a stale value
+# in shell.json causes no dead UI or drift; it just means a reinstall
+# picks the same settings back up. See docs/archive/PLUGIN_SYSTEM.md
+# manifest v3, "config_keys is informational."
+config_keys = ["agentGraphQuality", "agentGraphAccent", "agentGraphEnabled", "agentGraphGroupByParent"]
 
 [ui.dashboard_tab]
 id = "agentGraph"
