@@ -67,9 +67,166 @@ ColumnLayout {
         return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
     }
 
+    function _span(ms: real): string {
+        const total = Math.max(0, Math.round(ms / 1000));
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        if (hours > 0)
+            return `${hours}h ${minutes}m ${seconds}s`;
+        return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    }
+
+    function _summaryMarkdown(): string {
+        const events = root.replay.events;
+        if (events.length === 0)
+            return "";
+
+        const origin = events[0].t ?? 0;
+        // Not AgentGraphService.replaySpan: that is a separate binding on the same
+        // event list and still reads its previous value while the list is settling,
+        // so a summary taken right after a run loads would report a 0s span.
+        const span = (events[events.length - 1].t ?? origin) - origin;
+        const sessions = AgentGraphService.foldEvents(events, events.length);
+
+        const open = ({});
+        const tools = ({});
+        const toolOrder = [];
+        const branches = ({});
+        const branchOrder = [];
+        const errors = [];
+        let calls = 0;
+
+        for (let i = 0; i < events.length; i++) {
+            const e = events[i];
+            if (!e.toolId)
+                continue;
+            if (e.event === "pre_tool_use") {
+                const tool = e.tool || qsTr("(unknown)");
+                if (!tools[tool]) {
+                    tools[tool] = { calls: 0, errored: 0 };
+                    toolOrder.push(tool);
+                }
+                tools[tool].calls++;
+                calls++;
+                open[e.toolId] = { tool: tool, at: (e.t ?? origin) - origin };
+
+                const branch = e.agentType ?? "";
+                if (branch) {
+                    if (branches[branch] === undefined) {
+                        branches[branch] = 0;
+                        branchOrder.push(branch);
+                    }
+                    branches[branch]++;
+                }
+            } else if (open[e.toolId]) {
+                if (e.event === "post_tool_use_failure") {
+                    tools[open[e.toolId].tool].errored++;
+                    errors.push(open[e.toolId]);
+                }
+                delete open[e.toolId];
+            }
+        }
+
+        const unfinished = Object.keys(open).length;
+        const models = sessions.map(s => s.modelInfo.raw ? (s.modelInfo.locality ? `${s.modelInfo.raw} (${s.modelInfo.locality})` : s.modelInfo.raw) : "").filter((m, i, all) => m && all.indexOf(m) === i);
+        const statuses = sessions.map(s => s.status).filter((s, i, all) => all.indexOf(s) === i);
+
+        toolOrder.sort((a, b) => tools[b].calls - tools[a].calls || a.localeCompare(b));
+        branchOrder.sort((a, b) => branches[b] - branches[a] || a.localeCompare(b));
+
+        const lines = [];
+        lines.push(`# Agent run \`${root.runId}\``);
+        lines.push("");
+        lines.push(`- **Model** — ${models.length > 0 ? models.join(", ") : qsTr("unreported")}`);
+        lines.push(`- **Wall clock** — ${root._span(span)}`);
+        lines.push(`- **Started** — ${events[0].timestamp ?? qsTr("unknown")}`);
+        lines.push(`- **Tool calls** — ${calls} across ${toolOrder.length} ${toolOrder.length === 1 ? qsTr("tool") : qsTr("tools")}`);
+        lines.push(`- **Errored** — ${errors.length}`);
+        if (unfinished > 0)
+            lines.push(`- **Still open at end** — ${unfinished}`);
+        lines.push(`- **Subagent branches** — ${branchOrder.length}`);
+        lines.push(`- **Status at end** — ${statuses.join(", ")}`);
+        lines.push("");
+
+        lines.push(`## ${qsTr("Tool calls")}`);
+        lines.push("");
+        if (toolOrder.length === 0) {
+            lines.push(`_${qsTr("No tool calls recorded.")}_`);
+        } else {
+            lines.push(`| ${qsTr("Tool")} | ${qsTr("Calls")} | ${qsTr("Errored")} |`);
+            lines.push("| --- | ---: | ---: |");
+            for (const tool of toolOrder)
+                lines.push(`| ${tool} | ${tools[tool].calls} | ${tools[tool].errored} |`);
+        }
+        lines.push("");
+
+        lines.push(`## ${qsTr("Errored calls")}`);
+        lines.push("");
+        if (errors.length === 0) {
+            lines.push(`_${qsTr("None.")}_`);
+        } else {
+            for (const failure of errors)
+                lines.push(`- \`+${root._time(failure.at)}\` ${failure.tool}`);
+        }
+        lines.push("");
+
+        lines.push(`## ${qsTr("Subagent branches")}`);
+        lines.push("");
+        if (branchOrder.length === 0) {
+            lines.push(`_${qsTr("No subagent calls in this run.")}_`);
+        } else {
+            for (const branch of branchOrder)
+                lines.push(`- **${branch}** — ${branches[branch]} ${branches[branch] === 1 ? qsTr("call") : qsTr("calls")}`);
+        }
+        lines.push("");
+
+        lines.push("---");
+        lines.push(`_${qsTr("Generated by Aphotic Agent Graph.")}_`);
+        lines.push("");
+
+        return lines.join("\n");
+    }
+
+    function exportRun(): void {
+        if (!root.runId)
+            return;
+        const home = Quickshell.env("HOME");
+        exporter.command = ["cp", `${home}/.local/state/aphotic/agent-runs/${root.runId}.jsonl`, `${home}/agent-run-${root.runId}.jsonl`];
+        exporter.running = true;
+    }
+
+    function exportSummary(): void {
+        if (!root.runId || !root.replay.loaded)
+            return;
+        const markdown = root._summaryMarkdown();
+        if (!markdown)
+            return;
+        const home = Quickshell.env("HOME");
+        summaryExporter.markdown = markdown;
+        summaryExporter.stdinEnabled = true;
+        summaryExporter.command = ["sh", "-c", 'cat > "$1"', "sh", `${home}/agent-run-${root.runId}-summary.md`];
+        summaryExporter.running = true;
+    }
+
     Process {
         id: exporter
         onExited: code => Toaster.toast(code === 0 ? qsTr("Run exported") : qsTr("Export failed"), code === 0 ? `~/agent-run-${root.runId}.jsonl` : qsTr("Could not copy the run archive"), code === 0 ? "download_done" : "error")
+    }
+
+    Process {
+        id: summaryExporter
+
+        property string markdown: ""
+
+        stdinEnabled: true
+        onStarted: {
+            summaryExporter.write(summaryExporter.markdown);
+            // Quickshell exposes no explicit stdin close -- clearing stdinEnabled
+            // is what sends EOF, and the `cat` on the other end never exits without it.
+            summaryExporter.stdinEnabled = false;
+        }
+        onExited: code => Toaster.toast(code === 0 ? qsTr("Summary exported") : qsTr("Export failed"), code === 0 ? `~/agent-run-${root.runId}-summary.md` : qsTr("Could not write the run summary"), code === 0 ? "download_done" : "error")
     }
 
     RowLayout {
@@ -227,13 +384,12 @@ ColumnLayout {
 
         TransportButton {
             glyph: "download"
-            onActivated: {
-                if (!root.runId)
-                    return;
-                const home = Quickshell.env("HOME");
-                exporter.command = ["cp", `${home}/.local/state/aphotic/agent-runs/${root.runId}.jsonl`, `${home}/agent-run-${root.runId}.jsonl`];
-                exporter.running = true;
-            }
+            onActivated: root.exportRun()
+        }
+
+        TransportButton {
+            glyph: "summarize"
+            onActivated: root.exportSummary()
         }
 
         TransportButton {

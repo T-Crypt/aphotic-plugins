@@ -37,6 +37,24 @@ Or for plugin development (edits take effect without reinstalling):
 aphotic plugin install agent-graph --link
 ```
 
+## Exporting a run
+
+The replay bar has two export buttons, both writing to your home
+directory:
+
+- **download** — `~/agent-run-<runId>.jsonl`, a byte-for-byte copy of the
+  raw event archive, for feeding back into tooling.
+- **summarize** — `~/agent-run-<runId>-summary.md`, a Markdown run report
+  meant to be pasted into a PR description or a handoff note: model and
+  locality, wall-clock duration, tool-call counts grouped by tool with
+  per-tool error counts, every errored call with its offset into the run,
+  subagent branches by agent type, and the session's status at the end.
+
+The summary counts the whole recorded run. The graph above it only draws
+up to `maxNodesPerSession` nodes per session (60–300 depending on the
+quality tier), so on a long run the summary will legitimately report more
+calls than the graph has room to show.
+
 ## What it does
 
 Extracted whole from the shell's previous built-in Agent Graph dashboard
