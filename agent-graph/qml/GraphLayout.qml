@@ -101,9 +101,22 @@ QtObject {
 
     property bool liveEnabled: Settings.agentGraphEnabled
 
+    // AgentGraphService reassigns `sessions` once per ingested event, and
+    // eventTail replays a backlog on start, so a synchronous rebuild here
+    // ran the whole node/edge build plus the recursive layout pass once
+    // per replayed line -- hundreds of times, on the main thread, over a
+    // graph that grew with every pass. Coalescing to a single rebuild once
+    // ingestion settles is the whole fix; the interval only has to outlast
+    // the gap between two events of one burst.
+    property Timer _rebuildDebounce: Timer {
+        interval: 64
+        repeat: false
+        onTriggered: root.rebuild()
+    }
+
     onSessionsChanged: {
         if (root.liveEnabled)
-            root.rebuild();
+            root._rebuildDebounce.restart();
     }
     onAreaWidthChanged: root.rebuild()
     onAreaHeightChanged: root.rebuild()

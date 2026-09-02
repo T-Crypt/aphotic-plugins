@@ -327,10 +327,34 @@ Singleton {
         }
     }
 
+    // `command` is read once at spawn, so a changed scope only takes
+    // effect on a fresh tail. The already-ingested backlog is dropped with
+    // it: the setting is meant to be observable, and leaving the old
+    // window's events on screen would make "live only" look broken. The
+    // log on disk is untouched -- this only discards what is being shown.
+    // Falls back to the old hardcoded window on a shell that predates the
+    // setting: undefined would coerce to 0 here, silently dropping all
+    // history on an install that never asked for that.
+    readonly property int historyLines: {
+        const configured = Settings.agentGraphHistoryLines;
+        return (typeof configured === "number" && isFinite(configured) && configured >= 0) ? configured : 400;
+    }
+
+    onHistoryLinesChanged: {
+        if (!eventTail.running)
+            return;
+        eventTail.running = false;
+        root._events = [];
+        root._sessions = [];
+        root._seen = ({});
+        root._seenCount = 0;
+        Qt.callLater(() => eventTail.running = Qt.binding(() => InstallProfile.aiEnabled));
+    }
+
     Process {
         id: eventTail
         running: InstallProfile.aiEnabled
-        command: ["sh", "-c", `mkdir -p '${root._stateDir}' && : >> '${root._stateDir}/agent-events.jsonl' && exec tail -n 400 -F '${root._stateDir}/agent-events.jsonl'`]
+        command: ["sh", "-c", `mkdir -p '${root._stateDir}' && : >> '${root._stateDir}/agent-events.jsonl' && exec tail -n ${root.historyLines} -F '${root._stateDir}/agent-events.jsonl'`]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => root._ingest(data)
