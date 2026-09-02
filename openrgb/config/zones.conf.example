@@ -1,0 +1,26 @@
+# OpenRGB Sync plugin: per-zone LED count overrides.
+#
+# Copied to $XDG_CONFIG_HOME/aphotic-plugins/openrgb/zones.conf on first
+# run (never overwritten again once it exists). Normally you don't hand
+# edit this -- run scripts/setup.sh, which walks you through it and
+# writes these lines for you. Safe to edit directly too.
+#
+# Format (colon-separated):
+#   <case-insensitive substring of device name>:<zone index>:<led count>
+#
+# Zone index is 0-based, in the order `scripts/rgb_sync.py devices` lists
+# a device's zones. This exists because controller-style hubs (Corsair
+# Commander/Lighting Node, Lian Li Uni Hub fan hubs, and similar) report
+# 0 LEDs until told how many are actually wired to each channel --
+# OpenRGB cannot autodetect this for non-addressable/hub-style channels,
+# and a zone at the wrong size silently ignores or misdistributes color.
+#
+# Sizes here are reasserted on every apply, not just at setup: an OpenRGB
+# restart can bring a zone back at a stale nonzero size, which is exactly
+# the case a "only fix zones reporting 0" check silently skips.
+#
+# Example, for a Corsair Commander Pro with a waterblock on channel 1
+# (4 LEDs) and 3 fans (16 LEDs each = 48) on channel 2:
+#
+# Corsair Commander:0:4
+# Corsair Commander:1:48

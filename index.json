@@ -19,10 +19,10 @@
     {
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
-      "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
-      "version": "1.0.0",
+      "description": "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions.",
+      "version": "2.0.0",
       "category": "theming",
-      "capabilities": ["theme-hook"]
+      "capabilities": ["theme-hook", "profile-hook", "agent-event-hook"]
     },
     {
       "name": "direnv",
