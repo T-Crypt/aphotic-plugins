@@ -2,7 +2,7 @@
 name = "agent-graph"
 display_name = "Agent Graph"
 description = "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex)."
-version = "1.2.0"
+version = "1.3.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface"]
@@ -15,7 +15,7 @@ capabilities = ["ui-surface"]
 # in shell.json causes no dead UI or drift; it just means a reinstall
 # picks the same settings back up. See docs/archive/PLUGIN_SYSTEM.md
 # manifest v3, "config_keys is informational."
-config_keys = ["agentGraphQuality", "agentGraphAccent", "agentGraphEnabled", "agentGraphGroupByParent"]
+config_keys = ["agentGraphQuality", "agentGraphAccent", "agentGraphEnabled", "agentGraphGroupByParent", "agentGraphHistoryLines"]
 
 [ui.dashboard_tab]
 id = "agentGraph"
