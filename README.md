@@ -8,7 +8,7 @@ for the plugin contract, manifest format, and how installation works.
 
 | Plugin | Category | What it does |
 |---|---|---|
-| [`openrgb`](openrgb/) | theming | Syncs the active theme's accent color to RGB PC lighting via OpenRGB |
+| [`openrgb`](openrgb/) | theming | Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, plus Gaming-profile and AI-agent states |
 | [`direnv`](direnv/) | dev | Notifies you when a project opened from the launcher has an `.envrc` |
 | [`workspace-session-log`](workspace-session-log/) | productivity | Keeps a local, timestamped log of Workspace Profile launches |
 | [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay for AI coding harnesses |

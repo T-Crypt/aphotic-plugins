@@ -6,23 +6,15 @@
 #   {"background":"#...","foreground":"#...","cursor":"#...",
 #    "colors":{"color0":"#...", ..., "color15":"#..."}}
 #
-# v1 scope: flat "every device the same color" sync via OpenRGB's own
-# CLI (`--mode Static --color RRGGBB`) -- no SDK client dependency, no
-# per-device zone mapping yet. See the plugin's README for the
-# color4-as-accent convention this relies on.
+# The work itself is in ../scripts/rgb_sync.py: this only exists to load
+# settings.conf and hand the palette over. Notably it does NOT end in
+# `|| true` the way the previous CLI-based version did -- swallowing the
+# exit status there is what hid a real "connection attempt failed" during
+# testing. rgb_sync.py owns its own failure posture instead: fail closed,
+# log the reason, and say something out loud for the one first-run cause
+# (missing udev rules) a user can't be expected to guess.
 set -euo pipefail
 
-command -v openrgb >/dev/null 2>&1 || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
-
-palette="$(cat)"
-
-# color4 is this project's established accent slot (see
-# Configs/wallust/templates/colors-quickshell-colours.qml's own
-# color4->m3primary mapping in aphotic-hypr) -- falls back to foreground
-# if a palette is ever missing it.
-accent="$(jq -r '.colors.color4 // .foreground // empty' <<<"$palette")"
-[[ -n "$accent" ]] || exit 0
-
-hex="${accent#\#}"
-openrgb --mode Static --color "$hex" >/dev/null 2>&1 || true
+# shellcheck source=../lib/common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/common.sh"
+openrgb_plugin_run theme
