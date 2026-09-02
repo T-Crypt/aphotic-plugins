@@ -1,7 +1,8 @@
 # aphotic-plugins
 
 Official plugins for [Aphotic-Hypr](https://github.com/T-Crypt/aphotic-hypr).
-See that repo's [`docs/PLUGIN_SYSTEM.md`](https://github.com/T-Crypt/aphotic-hypr/blob/test/docs/PLUGIN_SYSTEM.md)
+See that repo's [Plugin System](https://github.com/T-Crypt/aphotic-hypr#plugin-system)
+section and the [Plugin System wiki page](https://github.com/T-Crypt/aphotic-hypr/wiki/Plugin-System)
 for the plugin contract, manifest format, and how installation works.
 
 ## Available plugins
@@ -46,7 +47,26 @@ whichever `capabilities` your plugin actually implements:
   QML component, plus `[owns] config_keys` for any shell settings it
   reads.
 
-See `docs/PLUGIN_SYSTEM.md` in the main repo for the full contract. Add
+### Declaring dependencies
+
+`[requires] binaries = [...]` lists the binaries your plugin shells out
+to. Anything missing from `PATH` is installed with `yay`/`paru`, using the
+binary's own name as the package name — right for the common case
+(`openrgb` the binary really does come from a package called `openrgb`).
+Two escape hatches for when it isn't:
+
+- `[requires] packages = [...]` — the package name simply differs from
+  the binary name (a `foo` binary shipping in `foo-bin`).
+- `[requires] install_script = "hooks/install-deps.sh"` — no AUR package
+  is the right answer at all. Core runs your script instead of the
+  helper, same trust model as `[harness]` wire/unwire. `codex-hooks/` is
+  the worked example: no AUR package is named `codex`, and the fallback
+  resolves that name to an unrelated Electron app that drags in a
+  multi-GB chromium build, so the plugin installs the upstream CLI
+  itself. A script that runs something irreversible should confirm first
+  and no-op when stdin is not a terminal.
+
+Add
 an entry to `index.json` at the repo root (including `category`, and the
 `ui` block for a UI surface) so it shows up in `aphotic plugin list
 --remote` and in Settings → Plugins' "Browse available" list, filterable
