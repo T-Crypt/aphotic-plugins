@@ -1,0 +1,32 @@
+[plugin]
+name = "llm-fit"
+display_name = "Hardware Advisor"
+description = "Hardware-aware local model recommendations from llmfit, with a one-click Ollama pull for the tags it confirms are real."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface"]
+
+# The whole feature is a wrapper around a binary Aphotic does not bundle
+# and cannot install for you -- with `llmfit` absent there is nothing to
+# scan and nothing to recommend. Declared here so `aphotic plugin list`
+# reports it as a missing binary instead of the pane reporting it as its
+# own permanent error state.
+[requires]
+binaries = ["llmfit"]
+
+[owns]
+# Nothing. Scan results are per-session state in LlmFitService, and the
+# one action offered (a model pull) is Ollama's, written to Ollama's own
+# store by core's AiProviders. Removing this plugin leaves no key behind.
+config_keys = []
+
+[ui.settings_pane]
+id = "llmFit"
+icon = "memory"
+label = "Hardware Advisor"
+component = "qml/LlmFitPane.qml"
+# Docks into the AI category's pane as a collapsed section rather than
+# claiming a rail entry: the Settings rail is a fixed length by design.
+parent = "ai"
+requires_layer = "ai"

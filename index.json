@@ -4,7 +4,7 @@
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "category": "ai",
       "capabilities": [
         "ui-surface"
@@ -18,7 +18,18 @@
             "label": "Agent Graph",
             "component": "qml/AgentGraphTab.qml",
             "requires_layer": "ai",
-            "requires_data": "harness"
+            "requires_data": "harness",
+            "parent": ""
+          },
+          {
+            "surface": "settings",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphPane.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "ai"
           }
         ]
       }
@@ -41,7 +52,8 @@
             "label": "Agents",
             "component": "qml/AgentNotchTile.qml",
             "requires_layer": "ai",
-            "requires_data": "harness"
+            "requires_data": "harness",
+            "parent": ""
           }
         ]
       }
@@ -64,9 +76,54 @@
             "label": "Dev",
             "component": "qml/DevNotchTile.qml",
             "requires_layer": "dev",
-            "requires_data": ""
+            "requires_data": "",
+            "parent": ""
           }
         ]
+      }
+    },
+    {
+      "name": "llm-fit",
+      "display_name": "Hardware Advisor",
+      "description": "Recommends local models your GPU can actually run, from llmfit's hardware scan, with one-click pull into Ollama.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "settings",
+            "id": "llmFit",
+            "icon": "memory",
+            "label": "Hardware Advisor",
+            "component": "qml/LlmFitPane.qml",
+            "requires_layer": "ai",
+            "requires_data": "",
+            "parent": "ai"
+          }
+        ]
+      }
+    },
+    {
+      "name": "gaming",
+      "display_name": "Gaming Profile",
+      "description": "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, and a foreground GPU VRAM claim so a local model yields the memory.",
+      "version": "1.0.0",
+      "category": "gaming",
+      "capabilities": [
+        "profile"
+      ],
+      "profile": {
+        "id": "gaming",
+        "label": "Gaming",
+        "component": "qml/GamingProfile.qml",
+        "snapshot": [
+          "notifications"
+        ],
+        "requires_layer": "gaming",
+        "requires_data": ""
       }
     },
     {
