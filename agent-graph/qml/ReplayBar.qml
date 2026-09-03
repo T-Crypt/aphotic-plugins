@@ -246,8 +246,24 @@ ColumnLayout {
         }
 
         Item {
+            id: runStripArea
+
             Layout.fillWidth: true
-            Layout.preferredHeight: 28
+            Layout.preferredHeight: 36
+
+            // On the wrapper, not inside the Flickable: this also has to
+            // cover the scrollbar strip below the viewport, which reads as
+            // part of the same control. The mapping is needed because a
+            // HorizontalFlick has no vertical panning for Qt to route
+            // angleDelta.y into, so an ordinary wheel does nothing.
+            WheelHandler {
+                onWheel: event => {
+                    const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                    if (delta === 0 || runStrip.maxContentX <= 0)
+                        return;
+                    runStrip.contentX = Math.max(0, Math.min(runStrip.maxContentX, runStrip.contentX - delta));
+                }
+            }
 
             Flickable {
                 id: runStrip
@@ -257,25 +273,12 @@ ColumnLayout {
                 anchors.top: parent.top
                 anchors.left: parent.left
                 anchors.right: parent.right
-                height: 26
+                height: 24
                 contentWidth: runRow.implicitWidth
                 contentHeight: height
                 flickableDirection: Flickable.HorizontalFlick
                 boundsBehavior: Flickable.StopAtBounds
                 clip: true
-
-                // A horizontal Flickable ignores an ordinary mouse wheel: Qt
-                // routes angleDelta.y to vertical panning, which a
-                // HorizontalFlick has none of, so past roughly the ninth chip
-                // the rest of the runs were reachable only by touch-dragging.
-                // Same wheel-to-horizontal mapping WallpaperFilmstrip.qml uses
-                // in core for exactly this shape of strip.
-                WheelHandler {
-                    onWheel: event => {
-                        const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
-                        runStrip.contentX = Math.max(0, Math.min(runStrip.maxContentX, runStrip.contentX - delta));
-                    }
-                }
 
                 Row {
                     id: runRow
@@ -318,24 +321,71 @@ ColumnLayout {
                 }
             }
 
-            // Only drawn when the strip actually overflows -- without it
-            // there is nothing on screen to say the run list continues
-            // past the right edge.
-            Rectangle {
-                anchors.bottom: parent.bottom
+            // A real scrollbar rather than the 2px indicator this replaced:
+            // that was a bare Rectangle, so it could only be looked at, and
+            // at two pixels it was not a credible drag target anyway. The
+            // press zone is the full 12px band even though the bar itself
+            // draws thinner, since the drawn height is what a pointer has
+            // to hit otherwise.
+            Item {
+                id: runScrollBar
+
+                readonly property real thumbWidth: Math.max(28, runScrollBar.width * (runStrip.width / Math.max(1, runStrip.contentWidth)))
+                readonly property real travel: Math.max(0, runScrollBar.width - runScrollBar.thumbWidth)
+                readonly property bool engaged: runScrollDrag.pressed || runScrollDrag.containsMouse
+
                 anchors.left: parent.left
                 anchors.right: parent.right
-                height: 2
-                radius: height / 2
+                anchors.bottom: parent.bottom
+                height: 12
                 visible: runStrip.maxContentX > 0
-                color: Qt.alpha(Colours.palette.m3outlineVariant, 0.4)
 
                 Rectangle {
-                    height: parent.height
-                    radius: parent.radius
-                    color: Colours.palette.m3outlineVariant
-                    width: Math.max(16, parent.width * (runStrip.width / Math.max(1, runStrip.contentWidth)))
-                    x: (parent.width - width) * (runStrip.contentX / Math.max(1, runStrip.maxContentX))
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    height: 4
+                    radius: height / 2
+                    color: Qt.alpha(Colours.palette.m3outlineVariant, 0.3)
+                }
+
+                Rectangle {
+                    id: runScrollThumb
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: runScrollBar.thumbWidth
+                    height: runScrollBar.engaged ? 8 : 5
+                    radius: height / 2
+                    color: runScrollBar.engaged ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                    x: runScrollBar.travel * (runStrip.contentX / Math.max(1, runStrip.maxContentX))
+
+                    Behavior on height {
+                        Anim {}
+                    }
+
+                    Behavior on color {
+                        CAnim {}
+                    }
+                }
+
+                MouseArea {
+                    id: runScrollDrag
+
+                    function seek(mx: real): void {
+                        if (runScrollBar.travel <= 0)
+                            return;
+                        const f = Math.max(0, Math.min(1, (mx - runScrollBar.thumbWidth / 2) / runScrollBar.travel));
+                        runStrip.contentX = f * runStrip.maxContentX;
+                    }
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    preventStealing: true
+
+                    onPressed: mouse => runScrollDrag.seek(mouse.x)
+                    onPositionChanged: mouse => {
+                        if (runScrollDrag.pressed)
+                            runScrollDrag.seek(mouse.x);
+                    }
                 }
             }
         }
