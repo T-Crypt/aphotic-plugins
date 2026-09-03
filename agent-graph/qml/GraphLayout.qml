@@ -101,6 +101,34 @@ QtObject {
 
     property bool liveEnabled: Settings.agentGraphEnabled
 
+    // Distinct from `liveEnabled`, which is the user pausing the graph.
+    // This is something else on the desktop reclaiming the machine, and it
+    // drops no events -- ingestion keeps folding them into `sessions`
+    // regardless. Only the rebuild is withheld, and one queued rebuild
+    // fires through the normal debounce when the claim is released.
+    property bool paused: false
+
+    property bool _rebuildPending: false
+
+    function _queueRebuild(): void {
+        if (root.paused) {
+            root._rebuildPending = true;
+            return;
+        }
+        root._rebuildDebounce.restart();
+    }
+
+    onPausedChanged: {
+        if (root.paused) {
+            root._rebuildDebounce.stop();
+            return;
+        }
+        if (root._rebuildPending) {
+            root._rebuildPending = false;
+            root._rebuildDebounce.restart();
+        }
+    }
+
     // AgentGraphService reassigns `sessions` once per ingested event, and
     // eventTail replays a backlog on start, so a synchronous rebuild here
     // ran the whole node/edge build plus the recursive layout pass once
@@ -108,6 +136,13 @@ QtObject {
     // graph that grew with every pass. Coalescing to a single rebuild once
     // ingestion settles is the whole fix; the interval only has to outlast
     // the gap between two events of one burst.
+    //
+    // The area changes are the same storm from the other direction: they
+    // arrive once per frame for the whole of any animated size change --
+    // AgentGraphTab animates its own height on the replay toggle, and a
+    // monitor scale change resizes the dashboard the same way -- so an
+    // immediate rebuild there ran the full pass dozens of times across one
+    // transition, for a graph the user cannot read until it settles.
     property Timer _rebuildDebounce: Timer {
         interval: 64
         repeat: false
@@ -116,13 +151,15 @@ QtObject {
 
     onSessionsChanged: {
         if (root.liveEnabled)
-            root._rebuildDebounce.restart();
+            root._queueRebuild();
     }
-    onAreaWidthChanged: root.rebuild()
-    onAreaHeightChanged: root.rebuild()
+    // Not gated on `liveEnabled`: a graph the user paused still has to
+    // refit itself to a new area, it just stops following new events.
+    onAreaWidthChanged: root._queueRebuild()
+    onAreaHeightChanged: root._queueRebuild()
     onLiveEnabledChanged: {
         if (root.liveEnabled)
-            root.rebuild();
+            root._queueRebuild();
     }
 
     function rebuild(): void {

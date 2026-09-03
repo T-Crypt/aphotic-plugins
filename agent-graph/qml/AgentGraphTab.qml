@@ -15,10 +15,20 @@ StyledRect {
 
     property bool replayMode: false
 
+    readonly property bool gamingActive: AgentGraphService.gamingActive
+
     implicitWidth: 820
-    implicitHeight: root.replayMode ? 620 : 520
+    implicitHeight: root.gamingActive ? 176 : (root.replayMode ? 620 : 520)
     radius: Tokens.rounding.extraLarge
     color: Colours.tPalette.m3surfaceContainer
+
+    // Replay drives its own stepping timers off `playing`, and it lives
+    // outside the Loader below, so leaving it running would keep folding
+    // events for a scene that no longer exists.
+    onGamingActiveChanged: {
+        if (root.gamingActive)
+            replay.pause();
+    }
 
     Behavior on implicitHeight {
         Anim { type: Anim.EmphasizedSmall }
@@ -52,7 +62,9 @@ StyledRect {
 
             StyledText {
                 Layout.fillWidth: true
-                text: root.replayMode
+                text: root.gamingActive
+                    ? qsTr("suspended · %1 nodes recorded").arg(AgentGraphService.nodeCount)
+                    : root.replayMode
                     ? (replay.loaded ? qsTr("replaying %1 events").arg(replay.events.length) : qsTr("pick a run"))
                     : !Settings.agentGraphEnabled
                         ? qsTr("paused · %1 nodes").arg(AgentGraphService.nodeCount)
@@ -64,6 +76,7 @@ StyledRect {
             }
 
             StyledRect {
+                visible: !root.gamingActive
                 implicitWidth: replayLabel.implicitWidth + Tokens.padding.medium
                 implicitHeight: 24
                 radius: Tokens.rounding.full
@@ -120,16 +133,65 @@ StyledRect {
             }
         }
 
-        GraphView {
+        // Unmounted rather than hidden while a game is up: the scene is
+        // hundreds of Shapes and particle delegates plus a per-second clock
+        // and an infinite flow animation, none of which stop costing
+        // anything just because nothing is looking at them. The graph is
+        // rebuilt from AgentGraphService.sessions on the way back, so the
+        // only thing lost is zoom/pan and the held node positions.
+        Loader {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: root.visible
-            sessions: root.replayMode ? replay.sessions : AgentGraphService.sessions
+            Layout.fillHeight: !root.gamingActive
+            active: !root.gamingActive
+
+            sourceComponent: GraphView {
+                visible: root.visible
+                sessions: root.replayMode ? replay.sessions : AgentGraphService.sessions
+            }
         }
 
         Loader {
             Layout.fillWidth: true
-            active: root.replayMode
+            Layout.fillHeight: root.gamingActive
+            active: root.gamingActive
+            visible: active
+
+            sourceComponent: StyledRect {
+                implicitHeight: 104
+                radius: Tokens.rounding.large
+                color: Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.6)
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: Tokens.spacing.extraSmall
+
+                    MaterialIcon {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "sports_esports"
+                        fontStyle: Tokens.font.icon.extraLarge
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("Suspended for the gaming profile")
+                        font: Tokens.font.body.small
+                        color: Colours.palette.m3onSurface
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("Agent events are still being recorded")
+                        font: Tokens.font.label.small
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+                }
+            }
+        }
+
+        Loader {
+            Layout.fillWidth: true
+            active: root.replayMode && !root.gamingActive
             visible: active
 
             sourceComponent: ReplayBar {
