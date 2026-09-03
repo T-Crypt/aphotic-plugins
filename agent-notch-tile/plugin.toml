@@ -1,0 +1,25 @@
+[plugin]
+name = "agent-notch-tile"
+display_name = "Agent Notch Tile"
+description = "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, and the local provider's GPU VRAM claim."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface"]
+
+# A sibling of agent-graph, not a child of it. This tile reads the same
+# shared agent-event feed and works whether or not Agent Graph is
+# installed; Agent Graph works whether or not this is. Neither manifest
+# mentions the other, and neither ever should: plugins under the same
+# layer are siblings, never each other's dependency.
+[ui.notch_tile]
+id = "agents"
+icon = "smart_toy"
+label = "Agents"
+component = "qml/AgentNotchTile.qml"
+# The `ai` layer is what installs the AI pillar; a configured harness is
+# what gives this tile anything to read. Both are real gates: without the
+# first the feature is not on the machine, without the second the tile
+# would be an empty box saying nothing.
+requires_layer = "ai"
+requires_data = "harness"
