@@ -26,4 +26,7 @@ id = "llmFit"
 icon = "memory"
 label = "Hardware Advisor"
 component = "qml/LlmFitPane.qml"
+# Docks into the AI category's pane as a collapsed section rather than
+# claiming a rail entry: the Settings rail is a fixed length by design.
+parent = "ai"
 requires_layer = "ai"

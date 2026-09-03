@@ -18,7 +18,8 @@
             "label": "Agent Graph",
             "component": "qml/AgentGraphTab.qml",
             "requires_layer": "ai",
-            "requires_data": "harness"
+            "requires_data": "harness",
+            "parent": ""
           },
           {
             "surface": "settings",
@@ -27,7 +28,8 @@
             "label": "Agent Graph",
             "component": "qml/AgentGraphPane.qml",
             "requires_layer": "ai",
-            "requires_data": "harness"
+            "requires_data": "harness",
+            "parent": "ai"
           }
         ]
       }
@@ -50,7 +52,8 @@
             "label": "Agents",
             "component": "qml/AgentNotchTile.qml",
             "requires_layer": "ai",
-            "requires_data": "harness"
+            "requires_data": "harness",
+            "parent": ""
           }
         ]
       }
@@ -73,7 +76,8 @@
             "label": "Dev",
             "component": "qml/DevNotchTile.qml",
             "requires_layer": "dev",
-            "requires_data": ""
+            "requires_data": "",
+            "parent": ""
           }
         ]
       }
@@ -96,7 +100,8 @@
             "label": "Hardware Advisor",
             "component": "qml/LlmFitPane.qml",
             "requires_layer": "ai",
-            "requires_data": ""
+            "requires_data": "",
+            "parent": "ai"
           }
         ]
       }
