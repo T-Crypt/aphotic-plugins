@@ -245,50 +245,97 @@ ColumnLayout {
             color: Colours.palette.m3onSurfaceVariant
         }
 
-        Flickable {
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 26
-            contentWidth: runRow.implicitWidth
-            flickableDirection: Flickable.HorizontalFlick
-            clip: true
+            Layout.preferredHeight: 28
 
-            Row {
-                id: runRow
-                spacing: Tokens.spacing.extraSmall
+            Flickable {
+                id: runStrip
 
-                Repeater {
-                    model: AgentGraphService.runs
+                readonly property real maxContentX: Math.max(0, runStrip.contentWidth - runStrip.width)
 
-                    StyledRect {
-                        id: chip
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 26
+                contentWidth: runRow.implicitWidth
+                contentHeight: height
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                        required property var modelData
-                        readonly property bool active: chip.modelData.id === root.runId
+                // A horizontal Flickable ignores an ordinary mouse wheel: Qt
+                // routes angleDelta.y to vertical panning, which a
+                // HorizontalFlick has none of, so past roughly the ninth chip
+                // the rest of the runs were reachable only by touch-dragging.
+                // Same wheel-to-horizontal mapping WallpaperFilmstrip.qml uses
+                // in core for exactly this shape of strip.
+                WheelHandler {
+                    onWheel: event => {
+                        const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                        runStrip.contentX = Math.max(0, Math.min(runStrip.maxContentX, runStrip.contentX - delta));
+                    }
+                }
 
-                        implicitWidth: chipLabel.implicitWidth + Tokens.padding.medium
-                        implicitHeight: 24
-                        radius: Tokens.rounding.full
-                        color: chip.active ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.9)
-                        border.width: 1
-                        border.color: chip.active ? "transparent" : Colours.palette.m3outlineVariant
+                Row {
+                    id: runRow
+                    spacing: Tokens.spacing.extraSmall
 
-                        StyledText {
-                            id: chipLabel
-                            anchors.centerIn: parent
-                            text: chip.modelData.id.slice(0, 8)
-                            font: Tokens.font.label.small
-                            color: chip.active ? Colours.contrastOn(Colours.palette.m3primary) : Colours.palette.m3onSurfaceVariant
-                        }
+                    Repeater {
+                        model: AgentGraphService.runs
 
-                        StateLayer {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            onClicked: {
-                                root.runId = chip.modelData.id;
-                                AgentGraphService.loadRun(chip.modelData.id);
+                        StyledRect {
+                            id: chip
+
+                            required property var modelData
+                            readonly property bool active: chip.modelData.id === root.runId
+
+                            implicitWidth: chipLabel.implicitWidth + Tokens.padding.medium
+                            implicitHeight: 24
+                            radius: Tokens.rounding.full
+                            color: chip.active ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.9)
+                            border.width: 1
+                            border.color: chip.active ? "transparent" : Colours.palette.m3outlineVariant
+
+                            StyledText {
+                                id: chipLabel
+                                anchors.centerIn: parent
+                                text: chip.modelData.id.slice(0, 8)
+                                font: Tokens.font.label.small
+                                color: chip.active ? Colours.contrastOn(Colours.palette.m3primary) : Colours.palette.m3onSurfaceVariant
+                            }
+
+                            StateLayer {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                onClicked: {
+                                    root.runId = chip.modelData.id;
+                                    AgentGraphService.loadRun(chip.modelData.id);
+                                }
                             }
                         }
                     }
+                }
+            }
+
+            // Only drawn when the strip actually overflows -- without it
+            // there is nothing on screen to say the run list continues
+            // past the right edge.
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 2
+                radius: height / 2
+                visible: runStrip.maxContentX > 0
+                color: Qt.alpha(Colours.palette.m3outlineVariant, 0.4)
+
+                Rectangle {
+                    height: parent.height
+                    radius: parent.radius
+                    color: Colours.palette.m3outlineVariant
+                    width: Math.max(16, parent.width * (runStrip.width / Math.max(1, runStrip.contentWidth)))
+                    x: (parent.width - width) * (runStrip.contentX / Math.max(1, runStrip.maxContentX))
                 }
             }
         }
