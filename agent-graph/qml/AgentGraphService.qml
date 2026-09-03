@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Io
 import qs.services
 import qs.services.ai
+import qs.services.profile
 
 Singleton {
     id: root
@@ -19,9 +20,25 @@ Singleton {
     readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0)
 
     property bool surfaceVisible: false
-    readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0
+    readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0 && !root.gamingActive
 
+    // A gaming session is the desktop's foreground claimant, and this graph
+    // is a background observer of work the user is not looking at while a
+    // game is up. Reading ProfileEngine directly rather than registering a
+    // ResourceEngine claim is deliberate: there is nothing to negotiate
+    // here -- the graph always yields, it never asks Gaming to yield, and a
+    // claim would only add a negotiation whose answer is known.
+    readonly property bool gamingActive: ProfileEngine.activeIds.includes("gaming")
+
+    // An explicit quality choice still overrides hardware detection, but
+    // not this: the user asking for "full" is a standing preference, and a
+    // running game is a transient foreground state that outranks it for as
+    // long as it lasts. Every knob below is derived from `tier`, so pinning
+    // the tier is the whole reclaim -- node cap, event window, particle
+    // count and replay step all drop together.
     readonly property string tier: {
+        if (root.gamingActive)
+            return "lite";
         const requested = Settings.agentGraphQuality;
         if (requested === "lite" || requested === "standard" || requested === "full")
             return requested;
@@ -31,7 +48,7 @@ Singleton {
     readonly property int maxNodesPerSession: root.tier === "full" ? 300 : root.tier === "standard" ? 150 : 60
     readonly property int layoutHz: root.tier === "lite" ? 30 : 60
     readonly property int maxEvents: root.tier === "full" ? 2400 : root.tier === "standard" ? 1200 : 600
-    readonly property int edgeParticles: root.tier === "full" ? 6 : root.tier === "standard" ? 3 : 1
+    readonly property int edgeParticles: root.gamingActive ? 0 : (root.tier === "full" ? 6 : root.tier === "standard" ? 3 : 1)
     readonly property int replayStepEvents: root.tier === "full" ? 1 : root.tier === "standard" ? 2 : 6
     readonly property bool anyRunning: root._sessions.some(s => s.status === "running")
 

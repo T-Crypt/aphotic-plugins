@@ -135,6 +135,7 @@ Item {
         areaWidth: root.width
         areaHeight: root.height
         maxNodesPerSession: root.maxNodesPerSession
+        paused: AgentGraphService.gamingActive
     }
 
     function _iconFor(tool: string): string {
