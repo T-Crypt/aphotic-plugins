@@ -33,5 +33,8 @@ id = "agentGraph"
 icon = "account_tree"
 label = "Agent Graph"
 component = "qml/AgentGraphPane.qml"
+# Docks into the AI category's pane as a collapsed section rather than
+# claiming a rail entry: the Settings rail is a fixed length by design.
+parent = "ai"
 requires_layer = "ai"
 requires_data = "harness"
