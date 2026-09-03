@@ -108,6 +108,13 @@ QtObject {
     // graph that grew with every pass. Coalescing to a single rebuild once
     // ingestion settles is the whole fix; the interval only has to outlast
     // the gap between two events of one burst.
+    //
+    // The area changes are the same storm from the other direction: they
+    // arrive once per frame for the whole of any animated size change --
+    // AgentGraphTab animates its own height on the replay toggle, and a
+    // monitor scale change resizes the dashboard the same way -- so an
+    // immediate rebuild there ran the full pass dozens of times across one
+    // transition, for a graph the user cannot read until it settles.
     property Timer _rebuildDebounce: Timer {
         interval: 64
         repeat: false
@@ -118,8 +125,10 @@ QtObject {
         if (root.liveEnabled)
             root._rebuildDebounce.restart();
     }
-    onAreaWidthChanged: root.rebuild()
-    onAreaHeightChanged: root.rebuild()
+    // Not gated on `liveEnabled`: a paused graph still has to refit itself
+    // to a new area, it just stops following new events.
+    onAreaWidthChanged: root._rebuildDebounce.restart()
+    onAreaHeightChanged: root._rebuildDebounce.restart()
     onLiveEnabledChanged: {
         if (root.liveEnabled)
             root.rebuild();
