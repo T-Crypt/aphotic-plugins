@@ -22,6 +22,8 @@ Singleton {
     property bool surfaceVisible: false
     readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0 && !root.gamingActive
 
+    readonly property bool wantsFeed: root.surfaceVisible && !root.gamingActive
+
     // A gaming session is the desktop's foreground claimant, and this graph
     // is a background observer of work the user is not looking at while a
     // game is up. Reading ProfileEngine directly rather than registering a
@@ -47,7 +49,19 @@ Singleton {
 
     readonly property int maxNodesPerSession: root.tier === "full" ? 300 : root.tier === "standard" ? 150 : 60
     readonly property int layoutHz: root.tier === "lite" ? 30 : 60
-    readonly property int maxEvents: root.tier === "full" ? 2400 : root.tier === "standard" ? 1200 : 600
+    readonly property int _tierEvents: root.tier === "full" ? 2400 : root.tier === "standard" ? 1200 : 600
+
+    // Repurposed from the tail depth this plugin used to own: the feed's
+    // backlog is fixed and shared now, so the knob bounds what the graph
+    // itself retains instead. An ended session leaves the graph once none
+    // of its events are left in the window. 0 follows the tier.
+    readonly property int maxEvents: {
+        const configured = Settings.agentGraphHistoryLines;
+        if (typeof configured === "number" && isFinite(configured) && configured > 0)
+            return Math.min(configured, root._tierEvents);
+        return root._tierEvents;
+    }
+
     readonly property int edgeParticles: root.gamingActive ? 0 : (root.tier === "full" ? 6 : root.tier === "standard" ? 3 : 1)
     readonly property int replayStepEvents: root.tier === "full" ? 1 : root.tier === "standard" ? 2 : 6
     readonly property bool anyRunning: root._sessions.some(s => s.status === "running")
@@ -81,8 +95,6 @@ Singleton {
     property string _replayRunId: ""
     property var _replayEvents: []
     property var _events: []
-    property var _seen: ({})
-    property int _seenCount: 0
 
     readonly property string _stateDir: `${Quickshell.env("HOME")}/.local/state/aphotic`
 
@@ -90,37 +102,38 @@ Singleton {
         return root._sessions.find(s => s.id === id) ?? null;
     }
 
-    function _key(record): string {
-        return `${record.sessionId}|${record.event}|${record.toolId ?? ""}|${record.t ?? record.timestamp}`;
-    }
-
-    function _ingest(line: string): void {
-        let record;
-        try {
-            record = JSON.parse(line);
-        } catch (e) {
-            return;
-        }
-        if (!record || !record.sessionId || !record.event)
-            return;
-
-        const key = root._key(record);
-        if (root._seen[key])
-            return;
-        if (root._seenCount > root.maxEvents * 4) {
-            root._seen = ({});
-            root._seenCount = 0;
-        }
-        root._seen[key] = true;
-        root._seenCount++;
-
+    function _ingest(record): void {
         const events = root._events.slice();
         events.push(record);
-        while (events.length > root.maxEvents)
+        let evicted = false;
+        while (events.length > root.maxEvents) {
             events.shift();
+            evicted = true;
+        }
         root._events = events;
 
-        root._apply(record);
+        root._sessions = root.applyTo(root._sessions, record);
+
+        if (evicted)
+            root._evictAged();
+    }
+
+    function _evictAged(): void {
+        const retained = ({});
+        for (const record of root._events)
+            retained[record.sessionId] = true;
+        const kept = root._sessions.filter(s => s.status !== "ended" || retained[s.id]);
+        if (kept.length !== root._sessions.length)
+            root._sessions = kept;
+    }
+
+    // Matching the feed's own contract: it drops its state when the last
+    // holder lets go, so the next open rebuilds from the log's backlog
+    // rather than from a snapshot frozen at whatever moment this graph
+    // stopped being watched.
+    function _reset(): void {
+        root._events = [];
+        root._sessions = [];
     }
 
     function _hueForSession(id: string): int {
@@ -186,10 +199,9 @@ Singleton {
         };
     }
 
-    function _apply(record): void {
-        root._sessions = root.applyTo(root._sessions, record);
-    }
-
+    // The one node reducer. Live folding and run replay both go through
+    // it, so a recorded run is rebuilt by exactly the code that built the
+    // live graph -- and it stays pure, taking no live state of its own.
     function applyTo(existing, record): var {
         const sessions = existing.slice();
         let index = sessions.findIndex(s => s.id === record.sessionId);
@@ -344,43 +356,28 @@ Singleton {
         }
     }
 
-    // `command` is read once at spawn, so a changed scope only takes
-    // effect on a fresh tail. The already-ingested backlog is dropped with
-    // it: the setting is meant to be observable, and leaving the old
-    // window's events on screen would make "live only" look broken. The
-    // log on disk is untouched -- this only discards what is being shown.
-    // Falls back to the old hardcoded window on a shell that predates the
-    // setting: undefined would coerce to 0 here, silently dropping all
-    // history on an install that never asked for that.
-    readonly property int historyLines: {
-        const configured = Settings.agentGraphHistoryLines;
-        return (typeof configured === "number" && isFinite(configured) && configured >= 0) ? configured : 400;
-    }
+    // Live records come off AgentEvents, the single shared reader of
+    // `agent-events.jsonl` -- this plugin used to run a `tail -F` of its
+    // own beside the bar's. The hold follows the graph surface, not the
+    // install: a plugin nobody has opened is not a reason to keep a tail
+    // alive, and neither is a graph whose scene has been unmounted for a
+    // game.
+    Connections {
+        target: AgentEvents
 
-    onHistoryLinesChanged: {
-        if (!eventTail.running)
-            return;
-        eventTail.running = false;
-        root._events = [];
-        root._sessions = [];
-        root._seen = ({});
-        root._seenCount = 0;
-        Qt.callLater(() => eventTail.running = Qt.binding(() => InstallProfile.aiEnabled));
-    }
+        function onRecord(event): void {
+            root._ingest(event);
+        }
 
-    Process {
-        id: eventTail
-        running: InstallProfile.aiEnabled
-        command: ["sh", "-c", `mkdir -p '${root._stateDir}' && : >> '${root._stateDir}/agent-events.jsonl' && exec tail -n ${root.historyLines} -F '${root._stateDir}/agent-events.jsonl'`]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => root._ingest(data)
+        function onTailingChanged(): void {
+            if (!AgentEvents.tailing)
+                root._reset();
         }
     }
 
     Timer {
         interval: 30000
-        running: true
+        running: root._sessions.length > 0
         repeat: true
         onTriggered: {
             const cutoff = Date.now() - 300000;
@@ -389,4 +386,7 @@ Singleton {
                 root._sessions = kept;
         }
     }
+
+    onWantsFeedChanged: AgentEvents.hold("agent-graph", root.wantsFeed)
+    Component.onCompleted: AgentEvents.hold("agent-graph", root.wantsFeed)
 }

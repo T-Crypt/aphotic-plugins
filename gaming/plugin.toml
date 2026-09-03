@@ -1,0 +1,31 @@
+[plugin]
+name = "gaming"
+display_name = "Gaming Profile"
+description = "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, and a foreground GPU VRAM claim so a local model yields the memory."
+version = "1.0.0"
+author = "T-Crypt"
+category = "gaming"
+capabilities = ["profile"]
+
+# Registers the "gaming" ProfileEngine profile. Claims are deliberately
+# not declared here -- ProfileEngine.register() and the GpuVramSource
+# adoption seam already take them from the component, and a second
+# declaration would be a second source of truth. `snapshot` mirrors what
+# the component registers so `aphotic plugin list --json` can report it;
+# it must stay in step with the descriptor's own list.
+[profile]
+id = "gaming"
+label = "Gaming"
+component = "qml/GamingProfile.qml"
+snapshot = ["notifications"]
+# The `gaming` layer is what puts gamemode on the machine. It is also the
+# only gate: this component is not loaded at all without it, so nothing
+# inside re-checks the same fact.
+requires_layer = "gaming"
+
+# Both ship in the base profiles already (glib2 / dbus), declared here
+# because this plugin is what spawns them: dbus-monitor takes a bare
+# match rule so subscribing never auto-activates gamemoded, and gdbus is
+# the one-shot ListGames catch-up call.
+[requires]
+binaries = ["gdbus", "dbus-monitor"]

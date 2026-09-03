@@ -12,9 +12,11 @@ for the plugin contract, manifest format, and how installation works.
 | [`openrgb`](openrgb/) | theming | Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, plus Gaming-profile and AI-agent states |
 | [`direnv`](direnv/) | dev | Notifies you when a project opened from the launcher has an `.envrc` |
 | [`workspace-session-log`](workspace-session-log/) | productivity | Keeps a local, timestamped log of Workspace Profile launches |
-| [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay for AI coding harnesses |
+| [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay, plus its own Settings pane |
 | [`agent-notch-tile`](agent-notch-tile/) | ai | Adds a notch tile: waiting-for-input badge, active harness and phase, local provider VRAM |
 | [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
+| [`llm-fit`](llm-fit/) | ai | Adds a Settings pane recommending local models your GPU can run, with one-click pull |
+| [`gaming`](gaming/) | gaming | Registers the Gaming profile: gamemode detection, DND while you play, foreground GPU VRAM claim |
 | [`claude-hooks`](claude-hooks/) | ai | Wires Claude Code into the agent-hook contract for live per-session tracking |
 | [`codex-hooks`](codex-hooks/) | ai | Wires Codex into the agent-hook contract, same contract as Claude Code |
 | [`opencode-hooks`](opencode-hooks/) | ai | Wires OpenCode into the agent-hook contract, same contract as Claude Code |
@@ -46,8 +48,8 @@ whichever `capabilities` your plugin actually implements:
 - `harness-hook` — paired with `[harness]` `wire`/`unwire` scripts, plus
   an `[owns] external_config` list naming the files outside the install
   directory that wiring touches.
-- `ui-surface` — paired with a `[ui.dashboard_tab]` and/or
-  `[ui.notch_tile]` block pointing at a QML component, plus
+- `ui-surface` — paired with a `[ui.dashboard_tab]`, `[ui.notch_tile]`
+  and/or `[ui.settings_pane]` block pointing at a QML component, plus
   `[owns] config_keys` for any shell settings it reads. Either block may
   carry `requires_layer` (`ai`/`dev`/`gaming`/`security`) and
   `requires_data` (`harness`), the surface's activation gate — the shell
@@ -55,6 +57,11 @@ whichever `capabilities` your plugin actually implements:
   never name another plugin; plugins under the same layer are siblings
   and every install permutation has to stand on its own — someone can
   run any one of them with all the others absent.
+- `profile` — paired with a `[profile]` block naming a headless QML
+  component that registers a profile with the shell's Profile Engine
+  (detection, lifecycle, resource claims). `gaming/` is the worked
+  example. Resource claims and snapshot parts are declared by the
+  component itself, never a second time in the manifest.
 
 ### Declaring dependencies
 
