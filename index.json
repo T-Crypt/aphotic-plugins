@@ -4,16 +4,69 @@
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.5.1",
+      "version": "1.6.0",
       "category": "ai",
-      "capabilities": ["ui-surface"],
+      "capabilities": [
+        "ui-surface"
+      ],
       "ui": {
-        "dashboard_tab": {
-          "id": "agentGraph",
-          "icon": "account_tree",
-          "label": "Agent Graph",
-          "component": "qml/AgentGraphTab.qml"
-        }
+        "surfaces": [
+          {
+            "surface": "dashboard",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphTab.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agent-notch-tile",
+      "display_name": "Agent Notch Tile",
+      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, and the local provider's GPU VRAM claim.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "agents",
+            "icon": "smart_toy",
+            "label": "Agents",
+            "component": "qml/AgentNotchTile.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness"
+          }
+        ]
+      }
+    },
+    {
+      "name": "dev-notch-tile",
+      "display_name": "Dev Notch Tile",
+      "description": "Notch tile for the Dev profile: the open project, its lifecycle phase, and any resource claims it holds.",
+      "version": "1.0.0",
+      "category": "dev",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "dev",
+            "icon": "code",
+            "label": "Dev",
+            "component": "qml/DevNotchTile.qml",
+            "requires_layer": "dev",
+            "requires_data": ""
+          }
+        ]
       }
     },
     {
@@ -22,7 +75,11 @@
       "description": "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions.",
       "version": "2.0.0",
       "category": "theming",
-      "capabilities": ["theme-hook", "profile-hook", "agent-event-hook"]
+      "capabilities": [
+        "theme-hook",
+        "profile-hook",
+        "agent-event-hook"
+      ]
     },
     {
       "name": "direnv",
@@ -30,7 +87,9 @@
       "description": "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it.",
       "version": "0.1.0",
       "category": "dev",
-      "capabilities": ["project-hook"]
+      "capabilities": [
+        "project-hook"
+      ]
     },
     {
       "name": "workspace-session-log",
@@ -38,7 +97,9 @@
       "description": "Keeps a local, timestamped log of when each Workspace Profile is launched.",
       "version": "0.1.0",
       "category": "productivity",
-      "capabilities": ["workspace-hook"]
+      "capabilities": [
+        "workspace-hook"
+      ]
     },
     {
       "name": "claude-hooks",
@@ -46,7 +107,9 @@
       "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard.",
       "version": "1.0.0",
       "category": "ai",
-      "capabilities": ["harness-hook"]
+      "capabilities": [
+        "harness-hook"
+      ]
     },
     {
       "name": "codex-hooks",
@@ -54,7 +117,9 @@
       "description": "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
       "version": "1.1.0",
       "category": "ai",
-      "capabilities": ["harness-hook"]
+      "capabilities": [
+        "harness-hook"
+      ]
     },
     {
       "name": "opencode-hooks",
@@ -62,7 +127,9 @@
       "description": "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
       "version": "1.1.0",
       "category": "ai",
-      "capabilities": ["harness-hook"]
+      "capabilities": [
+        "harness-hook"
+      ]
     }
   ]
 }

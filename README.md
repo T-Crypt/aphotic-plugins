@@ -13,6 +13,8 @@ for the plugin contract, manifest format, and how installation works.
 | [`direnv`](direnv/) | dev | Notifies you when a project opened from the launcher has an `.envrc` |
 | [`workspace-session-log`](workspace-session-log/) | productivity | Keeps a local, timestamped log of Workspace Profile launches |
 | [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay for AI coding harnesses |
+| [`agent-notch-tile`](agent-notch-tile/) | ai | Adds a notch tile: waiting-for-input badge, active harness and phase, local provider VRAM |
+| [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
 | [`claude-hooks`](claude-hooks/) | ai | Wires Claude Code into the agent-hook contract for live per-session tracking |
 | [`codex-hooks`](codex-hooks/) | ai | Wires Codex into the agent-hook contract, same contract as Claude Code |
 | [`opencode-hooks`](opencode-hooks/) | ai | Wires OpenCode into the agent-hook contract, same contract as Claude Code |
@@ -33,7 +35,8 @@ A plugin is a directory with a `plugin.toml` manifest — copy the
 example closest to what you're building: `openrgb/` (a theme hook),
 `direnv/` (a project hook), `workspace-session-log/` (a workspace hook),
 `claude-hooks/` (a harness hook that wires an external tool's config),
-or `agent-graph/` (a UI surface that adds a dashboard tab). Set
+`agent-graph/` (a UI surface that adds a dashboard tab), or
+`agent-notch-tile/` (a UI surface that adds a notch tile). Set
 `category` (dev/security/mobile/ai/theming/productivity) and declare
 whichever `capabilities` your plugin actually implements:
 
@@ -43,9 +46,15 @@ whichever `capabilities` your plugin actually implements:
 - `harness-hook` — paired with `[harness]` `wire`/`unwire` scripts, plus
   an `[owns] external_config` list naming the files outside the install
   directory that wiring touches.
-- `ui-surface` — paired with a `[ui.dashboard_tab]` block pointing at a
-  QML component, plus `[owns] config_keys` for any shell settings it
-  reads.
+- `ui-surface` — paired with a `[ui.dashboard_tab]` and/or
+  `[ui.notch_tile]` block pointing at a QML component, plus
+  `[owns] config_keys` for any shell settings it reads. Either block may
+  carry `requires_layer` (`ai`/`dev`/`gaming`/`security`) and
+  `requires_data` (`harness`), the surface's activation gate — the shell
+  evaluates those without knowing which plugin declared them. A gate may
+  never name another plugin; plugins under the same layer are siblings
+  and every install permutation has to stand on its own — someone can
+  run any one of them with all the others absent.
 
 ### Declaring dependencies
 

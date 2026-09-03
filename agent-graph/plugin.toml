@@ -2,7 +2,7 @@
 name = "agent-graph"
 display_name = "Agent Graph"
 description = "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex)."
-version = "1.5.1"
+version = "1.6.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface"]
@@ -22,3 +22,8 @@ id = "agentGraph"
 icon = "account_tree"
 label = "Agent Graph"
 component = "qml/AgentGraphTab.qml"
+# Was hardcoded in the shell's DashboardContent.qml as a per-plugin
+# special case. It belongs here: the plugin states its own activation
+# rule, and the shell evaluates it without knowing which plugin asked.
+requires_layer = "ai"
+requires_data = "harness"
