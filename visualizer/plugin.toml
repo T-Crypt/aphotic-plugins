@@ -1,0 +1,39 @@
+[plugin]
+name = "visualizer"
+display_name = "Spectrum"
+description = "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing."
+version = "1.0.0"
+author = "T-Crypt"
+category = "core"
+capabilities = ["ui-surface"]
+
+# cava does the FFT. Aphotic ships it in the base profile, so this is
+# here to make an install that somehow lacks it report a missing binary
+# through `aphotic plugin list` rather than through an overlay that
+# silently never draws.
+[requires]
+binaries = ["cava"]
+
+[owns]
+# Nothing. The spectrum is per-session state in CavaSpectrum and the
+# cava settings live in this plugin's own config/cava.conf, so removing
+# the plugin leaves no key behind in shell.json.
+config_keys = []
+
+# No requires_layer and no requires_data: an audio visualiser answers to
+# no install layer and needs no data source that might be absent, so it
+# is available on every install. PluginRegistry reads an empty gate as
+# no gate.
+#
+# width/height are the surface budget: core sizes the window from them
+# once and never renegotiates it. Visualizer.qml exposes a `maskItem`
+# that is deliberately zero-sized, so the strip along the bottom of the
+# screen takes no clicks at all and the desktop under it keeps every one.
+[ui.overlay]
+id = "visualizer"
+component = "qml/Visualizer.qml"
+icon = "graphic_eq"
+label = "Spectrum"
+anchor = "bottom"
+width = 1920
+height = 120

@@ -16,6 +16,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`claude-hooks`](claude-hooks/) | ai | Wires Claude Code into the agent-hook contract for live per-session tracking |
 | [`codex-hooks`](codex-hooks/) | ai | Wires Codex into the agent-hook contract, same contract as Claude Code |
 | [`opencode-hooks`](opencode-hooks/) | ai | Wires OpenCode into the agent-hook contract, same contract as Claude Code |
+| [`visualizer`](visualizer/) | core | Draws an audio spectrum on the wallpaper, in the live theme accent, asleep when nothing is playing |
 
 ## Installing a plugin
 

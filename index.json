@@ -63,6 +63,25 @@
       "version": "1.1.0",
       "category": "ai",
       "capabilities": ["harness-hook"]
+    },
+    {
+      "name": "visualizer",
+      "display_name": "Spectrum",
+      "description": "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing.",
+      "version": "1.0.0",
+      "category": "core",
+      "capabilities": ["ui-surface"],
+      "ui": {
+        "overlay": {
+          "id": "visualizer",
+          "icon": "graphic_eq",
+          "label": "Spectrum",
+          "component": "qml/Visualizer.qml",
+          "anchor": "bottom",
+          "width": 1920,
+          "height": 120
+        }
+      }
     }
   ]
 }
