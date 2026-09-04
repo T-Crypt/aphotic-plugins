@@ -16,13 +16,18 @@ harness hooks already write regardless of this plugin (see
 ## Activation
 
 This is the first `ui-surface`-capability plugin (manifest v3, see
-`docs/archive/PLUGIN_SYSTEM.md` in the Aphotic-Hypr repo). Its Dashboard
-tab only appears when **all** of:
+`docs/archive/PLUGIN_SYSTEM.md` in the Aphotic-Hypr repo). It declares
+two surfaces — a Dashboard tab and its own Settings pane — and both
+appear only when **all** of:
 
 1. the installer's `ai` layer is on,
 2. this plugin is installed and enabled, **and**
 3. at least one harness (Claude Code or Codex) is actually configured
    — a bare Ollama install gives the graph nothing to render.
+
+The graph reads the shell's shared agent event feed (`AgentEvents`) and
+only asks it to run while the graph is actually on screen, so an
+installed-but-unopened plugin costs nothing.
 
 ## Install
 

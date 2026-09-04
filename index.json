@@ -4,16 +4,160 @@
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.5.0",
+      "version": "1.7.0",
       "category": "ai",
-      "capabilities": ["ui-surface"],
+      "capabilities": [
+        "ui-surface"
+      ],
       "ui": {
-        "dashboard_tab": {
-          "id": "agentGraph",
-          "icon": "account_tree",
-          "label": "Agent Graph",
-          "component": "qml/AgentGraphTab.qml"
-        }
+        "surfaces": [
+          {
+            "surface": "dashboard",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphTab.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": ""
+          },
+          {
+            "surface": "settings",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphPane.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "ai"
+          }
+        ]
+      }
+    },
+    {
+      "name": "agent-notch-tile",
+      "display_name": "Agent Notch Tile",
+      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, and the local provider's GPU VRAM claim.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "agents",
+            "icon": "smart_toy",
+            "label": "Agents",
+            "component": "qml/AgentNotchTile.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "dev-notch-tile",
+      "display_name": "Dev Notch Tile",
+      "description": "Notch tile for the Dev profile: the open project, its lifecycle phase, any resource claims it holds, and a badge when a lockfile has fallen behind its manifest.",
+      "version": "1.1.0",
+      "category": "dev",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "dev",
+            "icon": "code",
+            "label": "Dev",
+            "component": "qml/DevNotchTile.qml",
+            "requires_layer": "dev",
+            "requires_data": "",
+            "parent": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "llm-fit",
+      "display_name": "Hardware Advisor",
+      "description": "Recommends local models your GPU can actually run, from llmfit's hardware scan, with one-click pull into Ollama.",
+      "version": "1.1.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface",
+        "cli"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "settings",
+            "id": "llmFit",
+            "icon": "memory",
+            "label": "Hardware Advisor",
+            "component": "qml/LlmFitPane.qml",
+            "requires_layer": "ai",
+            "requires_data": "",
+            "parent": "ai"
+          }
+        ]
+      },
+      "cli": {
+        "command": "ai",
+        "subcommand": "fit",
+        "script": "cli/ai_fit.sh",
+        "summary": "Hardware-aware model recommendations via llmfit (default top 3)"
+      }
+    },
+    {
+      "name": "gaming",
+      "display_name": "Gaming Profile",
+      "description": "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, and a foreground GPU VRAM claim so a local model yields the memory.",
+      "version": "1.0.0",
+      "category": "gaming",
+      "capabilities": [
+        "profile"
+      ],
+      "profile": {
+        "id": "gaming",
+        "label": "Gaming",
+        "component": "qml/GamingProfile.qml",
+        "snapshot": [
+          "notifications"
+        ],
+        "requires_layer": "gaming",
+        "requires_data": ""
+      }
+    },
+    {
+      "name": "pet",
+      "display_name": "Desktop Pet",
+      "description": "A small creature that lives at the bottom of the desktop, wanders its own patch of it, and reacts when you click it.",
+      "version": "1.0.0",
+      "category": "theming",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "overlay",
+            "id": "pet",
+            "icon": "extension",
+            "label": "pet",
+            "component": "qml/Pet.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "bottom",
+            "width": 240,
+            "height": 160
+          }
+        ]
       }
     },
     {
@@ -22,7 +166,11 @@
       "description": "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions.",
       "version": "2.0.0",
       "category": "theming",
-      "capabilities": ["theme-hook", "profile-hook", "agent-event-hook"]
+      "capabilities": [
+        "theme-hook",
+        "profile-hook",
+        "agent-event-hook"
+      ]
     },
     {
       "name": "direnv",
@@ -30,7 +178,9 @@
       "description": "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it.",
       "version": "0.1.0",
       "category": "dev",
-      "capabilities": ["project-hook"]
+      "capabilities": [
+        "project-hook"
+      ]
     },
     {
       "name": "workspace-session-log",
@@ -38,7 +188,9 @@
       "description": "Keeps a local, timestamped log of when each Workspace Profile is launched.",
       "version": "0.1.0",
       "category": "productivity",
-      "capabilities": ["workspace-hook"]
+      "capabilities": [
+        "workspace-hook"
+      ]
     },
     {
       "name": "claude-hooks",
@@ -46,7 +198,9 @@
       "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard.",
       "version": "1.0.0",
       "category": "ai",
-      "capabilities": ["harness-hook"]
+      "capabilities": [
+        "harness-hook"
+      ]
     },
     {
       "name": "codex-hooks",
@@ -54,7 +208,9 @@
       "description": "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
       "version": "1.1.0",
       "category": "ai",
-      "capabilities": ["harness-hook"]
+      "capabilities": [
+        "harness-hook"
+      ]
     },
     {
       "name": "opencode-hooks",

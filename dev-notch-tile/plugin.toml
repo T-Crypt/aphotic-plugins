@@ -1,0 +1,15 @@
+[plugin]
+name = "dev-notch-tile"
+display_name = "Dev Notch Tile"
+description = "Notch tile for the Dev profile: the open project, its lifecycle phase, any resource claims it holds, and a badge when a lockfile has fallen behind its manifest."
+version = "1.1.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["ui-surface"]
+
+[ui.notch_tile]
+id = "dev"
+icon = "code"
+label = "Dev"
+component = "qml/DevNotchTile.qml"
+requires_layer = "dev"
