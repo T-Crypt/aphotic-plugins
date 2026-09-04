@@ -1,0 +1,5 @@
+module qs.modules.plugins.visualizer
+singleton CavaSpectrum 1.0 CavaSpectrum.qml
+SpectrumBars 1.0 SpectrumBars.qml
+SpectrumWatch 1.0 SpectrumWatch.qml
+Visualizer 1.0 Visualizer.qml
