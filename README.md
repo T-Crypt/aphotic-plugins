@@ -82,6 +82,34 @@ Two escape hatches for when it isn't:
   itself. A script that runs something irreversible should confirm first
   and no-op when stdin is not a terminal.
 
+### `[cli]` — the `cli` capability
+
+A plugin can contribute a command to the `aphotic` CLI, either top-level
+(`aphotic foo`) or as a subcommand of an existing core one
+(`aphotic ai fit`):
+
+```toml
+capabilities = ["cli"]
+
+[cli]
+command = "ai"
+subcommand = "fit"        # omit for a top-level command
+script = "cli/ai_fit.sh"
+summary = "one line, shown in that command's --help"
+```
+
+Core resolves this by declaration — it asks which plugin provides
+`ai fit`, never whether your plugin is installed — so the command appears
+and disappears with the plugin and no core file names it. Core commands
+are tried first, so a plugin cannot shadow a built-in.
+
+The script is **sourced, not executed**, in a subshell: `aphotic_err`,
+`aphotic_warn`, `aphotic_log`, `aphotic_require` and the XDG paths are
+already in scope exactly as they are for a core command, and `$@` is the
+command's arguments. Use `return`, not `exit`. `llm-fit/cli/ai_fit.sh` is
+the worked example — it was core's `aphotic ai fit` until this capability
+existed.
+
 Add
 an entry to `index.json` at the repo root (including `category`, and the
 `ui` block for a UI surface) so it shows up in `aphotic plugin list

@@ -2,10 +2,10 @@
 name = "llm-fit"
 display_name = "Hardware Advisor"
 description = "Hardware-aware local model recommendations from llmfit, with a one-click Ollama pull for the tags it confirms are real."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
-capabilities = ["ui-surface"]
+capabilities = ["ui-surface", "cli"]
 
 # The whole feature is a wrapper around a binary Aphotic does not bundle
 # and cannot install for you -- with `llmfit` absent there is nothing to
@@ -20,6 +20,17 @@ binaries = ["llmfit"]
 # one action offered (a model pull) is Ollama's, written to Ollama's own
 # store by core's AiProviders. Removing this plugin leaves no key behind.
 config_keys = []
+
+# `aphotic ai fit`, which lived in core's cmd_ai.sh because there was no
+# way for a plugin to contribute one. Core resolves this by declaration --
+# it asks who provides `ai fit`, never whether this plugin is installed --
+# so the command appears and disappears with the plugin, and cmd_ai.sh
+# names nothing.
+[cli]
+command = "ai"
+subcommand = "fit"
+script = "cli/ai_fit.sh"
+summary = "Hardware-aware model recommendations via llmfit (default top 3)"
 
 [ui.settings_pane]
 id = "llmFit"

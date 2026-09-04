@@ -86,10 +86,11 @@
       "name": "llm-fit",
       "display_name": "Hardware Advisor",
       "description": "Recommends local models your GPU can actually run, from llmfit's hardware scan, with one-click pull into Ollama.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "ai",
       "capabilities": [
-        "ui-surface"
+        "ui-surface",
+        "cli"
       ],
       "ui": {
         "surfaces": [
@@ -104,6 +105,12 @@
             "parent": "ai"
           }
         ]
+      },
+      "cli": {
+        "command": "ai",
+        "subcommand": "fit",
+        "script": "cli/ai_fit.sh",
+        "summary": "Hardware-aware model recommendations via llmfit (default top 3)"
       }
     },
     {
