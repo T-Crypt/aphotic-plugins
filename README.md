@@ -17,6 +17,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
 | [`llm-fit`](llm-fit/) | ai | Adds a Settings pane recommending local models your GPU can run, with one-click pull |
 | [`gaming`](gaming/) | gaming | Registers the Gaming profile: gamemode detection, DND while you play, foreground GPU VRAM claim |
+| [`pet`](pet/) | theming | Adds a desktop pet at the bottom of the screen, with sprite-sheet imports for your own |
 | [`claude-hooks`](claude-hooks/) | ai | Wires Claude Code into the agent-hook contract for live per-session tracking |
 | [`codex-hooks`](codex-hooks/) | ai | Wires Codex into the agent-hook contract, same contract as Claude Code |
 | [`opencode-hooks`](opencode-hooks/) | ai | Wires OpenCode into the agent-hook contract, same contract as Claude Code |
@@ -48,15 +49,23 @@ whichever `capabilities` your plugin actually implements:
 - `harness-hook` — paired with `[harness]` `wire`/`unwire` scripts, plus
   an `[owns] external_config` list naming the files outside the install
   directory that wiring touches.
-- `ui-surface` — paired with a `[ui.dashboard_tab]`, `[ui.notch_tile]`
-  and/or `[ui.settings_pane]` block pointing at a QML component, plus
-  `[owns] config_keys` for any shell settings it reads. Either block may
-  carry `requires_layer` (`ai`/`dev`/`gaming`/`security`) and
-  `requires_data` (`harness`), the surface's activation gate — the shell
-  evaluates those without knowing which plugin declared them. A gate may
+- `ui-surface` — paired with a `[ui.dashboard_tab]`, `[ui.notch_tile]`,
+  `[ui.settings_pane]` and/or `[ui.overlay]` block pointing at a QML
+  component, plus `[owns] config_keys` for any shell settings it reads.
+  Any block may carry `requires_layer` (`ai`/`dev`/`gaming`/`security`)
+  and `requires_data` (`harness`), the surface's activation gate — the
+  shell evaluates those without knowing which plugin declared them. Omit
+  both and the surface is available on every install. A gate may
   never name another plugin; plugins under the same layer are siblings
   and every install permutation has to stand on its own — someone can
   run any one of them with all the others absent.
+- `[ui.overlay]` is the one surface that gets a window rather than a
+  slot inside one core already owns. It also takes `anchor`
+  (`top`/`bottom`/`left`/`right`) and `width`/`height`, the surface
+  budget core sizes that window from once and never renegotiates. The
+  window is masked to your item, so the declared box is also the region
+  that stops taking the desktop's clicks: ask for what you draw in.
+  `pet/` is the worked example.
 - `profile` — paired with a `[profile]` block naming a headless QML
   component that registers a profile with the shell's Profile Engine
   (detection, lifecycle, resource claims). `gaming/` is the worked

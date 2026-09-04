@@ -1,0 +1,6 @@
+module qs.modules.plugins.pet
+singleton PetClock 1.0 PetClock.qml
+singleton PetLibrary 1.0 PetLibrary.qml
+Pet 1.0 Pet.qml
+PetView 1.0 PetView.qml
+DefaultPet 1.0 DefaultPet.qml
