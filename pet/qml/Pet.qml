@@ -24,6 +24,10 @@ Item {
     readonly property real speed: 34
     readonly property int sleepAfterMs: 6 * 60 * 1000
 
+    // The host masks its window to this rather than to the whole surface,
+    // so the desktop keeps its clicks everywhere the pet is not.
+    readonly property Item maskItem: creature
+
     readonly property real roamMax: Math.max(0, root.width - creature.width)
     readonly property bool animating: root.mood === "walk" || root.mood === "react" || root.mood === "fidget"
     readonly property real fidgetDuration: root.durationOf("fidget", 0.62)
@@ -172,10 +176,8 @@ Item {
         y: root.height - creature.height - root.floorMargin - root.lift
     }
 
-    // Sized to the pet, not the surface. The host masks its window to
-    // this whole item, so the surface already costs the desktop under it
-    // its clicks -- there is no reason for the handler to be any bigger
-    // than the thing you are meant to click.
+    // Sized to the pet, matching the maskItem above so the clickable area
+    // and the input region are the same rectangle.
     MouseArea {
         x: creature.x
         y: creature.y

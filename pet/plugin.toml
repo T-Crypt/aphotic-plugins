@@ -12,11 +12,11 @@ capabilities = ["ui-surface"]
 # gate on -- and PluginRegistry's _layerEnabled/_dataAvailable both return
 # true for an empty token, which is how a surface says "every install".
 #
-# width/height are the surface budget. Core sizes the window from them
-# once and never resizes it, and masks the window to the loaded item, so
-# the declared box is also the region that stops taking the desktop's
-# clicks. Kept close to the pet for that reason: the roaming room is the
-# 240 of width minus the ~86 the pet occupies.
+# width/height are the surface budget: core sizes the window from them
+# once and never resizes it. Pet.qml exposes a `maskItem` naming the
+# creature, so only the pet itself takes clicks and the rest of the box
+# stays desktop. The roaming room is the 240 of width minus the ~86 the
+# pet occupies.
 [ui.overlay]
 id = "pet"
 component = "qml/Pet.qml"
