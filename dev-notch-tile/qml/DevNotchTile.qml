@@ -14,18 +14,18 @@ ColumnLayout {
     id: root
 
     // The notch reads this off whichever tiles are loaded to badge the
-    // collapsed pill. Bound to the real condition, which is false until
-    // Phase 2 has drift detection to report.
+    // collapsed pill.
     readonly property bool attention: root.driftDetected
 
     readonly property var claims: ResourceEngine.claimsOf(DevProfile.profileId)
     readonly property string phase: ProfileEngine.phaseOf(DevProfile.profileId)
 
-    // Phase 2 owns drift detection. Until it exists there is nothing to
-    // report, and an "all clear" line would be a claim this branch cannot
-    // make -- so the row is bound to the real condition and simply absent,
-    // rather than deleted and re-added later.
-    readonly property bool driftDetected: false
+    // Read from core rather than from a drift-detector plugin: two `dev`
+    // plugins are siblings, and this tile depending on one of them is the
+    // dependency the layer model forbids. Drift is the `dev` layer's own
+    // baseline in DevDrift.qml, so the tile and any later Dev surface get
+    // one answer.
+    readonly property bool driftDetected: DevDrift.detected
 
     spacing: Tokens.spacing.small
 
@@ -140,7 +140,7 @@ ColumnLayout {
 
             StyledText {
                 Layout.fillWidth: true
-                text: qsTr("Environment drift detected")
+                text: DevDrift.summary
                 color: Colours.palette.m3error
                 font: Tokens.font.label.medium
                 elide: Text.ElideRight
