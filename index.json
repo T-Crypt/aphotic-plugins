@@ -134,6 +134,33 @@
       }
     },
     {
+      "name": "pet",
+      "display_name": "Desktop Pet",
+      "description": "A small creature that lives at the bottom of the desktop, wanders its own patch of it, and reacts when you click it.",
+      "version": "1.0.0",
+      "category": "theming",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "overlay",
+            "id": "pet",
+            "icon": "extension",
+            "label": "pet",
+            "component": "qml/Pet.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "bottom",
+            "width": 240,
+            "height": 160
+          }
+        ]
+      }
+    },
+    {
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
       "description": "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions.",

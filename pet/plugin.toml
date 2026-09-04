@@ -1,0 +1,32 @@
+[plugin]
+name = "pet"
+display_name = "Desktop Pet"
+description = "A small creature that lives at the bottom of the desktop, wanders its own patch of it, and reacts when you click it."
+version = "1.0.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["ui-surface"]
+
+# No requires_layer and no requires_data, on purpose. Nothing here reads a
+# harness, a profile or anything a layer installs, so there is no fact to
+# gate on -- and PluginRegistry's _layerEnabled/_dataAvailable both return
+# true for an empty token, which is how a surface says "every install".
+#
+# width/height are the surface budget: core sizes the window from them
+# once and never resizes it. Pet.qml exposes a `maskItem` naming the
+# creature, so only the pet itself takes clicks and the rest of the box
+# stays desktop. The roaming room is the 240 of width minus the ~86 the
+# pet occupies.
+[ui.overlay]
+id = "pet"
+component = "qml/Pet.qml"
+anchor = "bottom"
+width = 240
+height = 160
+
+[owns]
+# Nothing in the shell's own settings. Which pet is active lives in
+# ~/.config/aphotic/plugins/pet/pet.json, and imported pets live in
+# ~/.config/aphotic/pets/, both the plugin's own to write and neither a
+# shell setting.
+config_keys = []
