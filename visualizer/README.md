@@ -14,9 +14,19 @@ Registers one `overlay` surface (manifest v3.4): a 1920x120 layer-shell
 window anchored to the bottom of each screen, on `WlrLayer.Bottom`, so
 it can never cover the bar, the notch or a popout. 96 frequency bands
 run left to right, low to high, with the bar colour crossfading from the
-theme's primary accent to its tertiary. Nothing here is configurable
-from Settings, and nothing here is gated: no `requires_layer`, no
-`requires_data`, so it is available on every install.
+theme's primary accent to its tertiary. Nothing here is gated: no
+`requires_layer`, no `requires_data`, so it is available on every
+install.
+
+A second `[ui.settings_pane]` surface docks a small "Spectrum" section
+into the Appearance category with two sliders -- **Spectrum intensity**
+(gain on how tall the bars swing for the same audio level) and **Wave
+smoothing** (how sharply the bars fall between beats vs. a slower,
+flowing motion). Both write straight to `CavaSpectrum.sensitivity`/
+`waveSmoothing` and persist to this plugin's own
+`config/settings.json`, the same directory `cava.conf` already lives
+in -- still nothing in core's `shell.json` (`owns.config_keys` stays
+empty).
 
 The host masks its window to whatever the plugin names in `maskItem`,
 and that region is the part that stops taking desktop clicks. This one
@@ -140,4 +150,5 @@ aphotic plugin remove visualizer
 ```
 
 It owns no config keys and writes nothing outside its own install
-directory, so removing it leaves nothing behind.
+directory (including the settings sliders' `config/settings.json`), so
+removing it leaves nothing behind.

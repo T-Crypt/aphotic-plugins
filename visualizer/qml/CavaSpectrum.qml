@@ -41,6 +41,23 @@ Singleton {
     // there is sound to show.
     property var levels: []
 
+    // User-adjustable via VisualizerPane's Settings section. Defaults
+    // match the values this plugin shipped with before either was
+    // adjustable, so an existing install's look doesn't change until the
+    // user actually moves a slider.
+    property real sensitivity: 1.0
+    property real waveSmoothing: 0.26
+
+    function setSensitivity(value: real): void {
+        root.sensitivity = Math.max(0.4, Math.min(2.5, value));
+        root._saveSettings();
+    }
+
+    function setWaveSmoothing(value: real): void {
+        root.waveSmoothing = Math.max(0.08, Math.min(0.6, value));
+        root._saveSettings();
+    }
+
     // True whenever nothing has been above the noise floor recently. The
     // renderer stops drawing on this, which is what takes the idle cost
     // to zero rather than to "one cheap animation".
@@ -78,6 +95,24 @@ Singleton {
     // files live, so the config path is built from it rather than from a
     // second copy of that layout.
     readonly property string _configPath: `${PluginRegistry.pluginsDir}/visualizer/config/cava.conf`
+
+    // Same directory as cava.conf, so removing the plugin still leaves
+    // nothing outside its own install tree (owns.config_keys stays empty
+    // in plugin.toml -- this never touches core's shell.json). Two
+    // FileViews on the same path, not one: `_writePending` on the
+    // read/watch side is what stops this singleton's own write from
+    // being re-read as an external change and undoing itself, the exact
+    // pattern core's Settings.qml uses for statePath.
+    readonly property string _settingsPath: `${PluginRegistry.pluginsDir}/visualizer/config/settings.json`
+    property bool _settingsWritePending: false
+
+    function _saveSettings(): void {
+        root._settingsWritePending = true;
+        settingsWriter.setText(JSON.stringify({
+            sensitivity: root.sensitivity,
+            waveSmoothing: root.waveSmoothing
+        }));
+    }
 
     function subscribe(): void {
         root._failures = 0;
@@ -126,12 +161,12 @@ Singleton {
         let peak = 0;
 
         for (let i = 0; i < root.barCount; i++) {
-            const scaled = +raw[i] / 1000;
+            const scaled = (+raw[i] / 1000) * root.sensitivity;
             const value = scaled > 0 ? (scaled > 1 ? 1 : scaled) : 0;
             if (value > peak)
                 peak = value;
             const settled = prev[i] ?? 0;
-            next[i] = value >= settled ? value : settled * 0.74 + value * 0.26;
+            next[i] = value >= settled ? value : settled * (1 - root.waveSmoothing) + value * root.waveSmoothing;
         }
 
         root._failures = 0;
@@ -171,6 +206,36 @@ Singleton {
     }
 
     Component.onCompleted: root._hush()
+
+    FileView {
+        id: settingsFile
+
+        path: root._settingsPath
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            if (root._settingsWritePending) {
+                root._settingsWritePending = false;
+                return;
+            }
+            try {
+                const data = JSON.parse(text());
+                if (typeof data.sensitivity === "number")
+                    root.sensitivity = data.sensitivity;
+                if (typeof data.waveSmoothing === "number")
+                    root.waveSmoothing = data.waveSmoothing;
+            } catch (e) {
+                // No settings.json yet (fresh install) or unparseable --
+                // the defaults above already stand.
+            }
+        }
+    }
+
+    FileView {
+        id: settingsWriter
+
+        path: root._settingsPath
+    }
 
     // The one clock, deliberately far below the frame rate and running
     // only while something is asking for a spectrum. It decides when to
