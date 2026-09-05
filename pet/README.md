@@ -140,7 +140,10 @@ surface is never blank.
 
 ## The built-in pet
 
-A lantern fish, drawn as vector paths off the live palette rather than
+An anglerfish, drawn as vector paths off the live palette rather than
 shipped as an image, so it retints with the theme. Its body takes the
-primary accent, its fins the tertiary, and its lure glows brighter for a
-moment when you click it.
+primary accent, its fins the tertiary, and its illicium glows brighter
+for a moment when you click it. Front-heavy silhouette, a toothed
+mouth and a few spiny dorsal rays are what read as anglerfish rather
+than a generic fish at this size -- the previous version had the lure
+and still looked like a regular fish.
