@@ -3,3 +3,4 @@ singleton CavaSpectrum 1.0 CavaSpectrum.qml
 SpectrumBars 1.0 SpectrumBars.qml
 SpectrumWatch 1.0 SpectrumWatch.qml
 Visualizer 1.0 Visualizer.qml
+VisualizerPane 1.0 VisualizerPane.qml

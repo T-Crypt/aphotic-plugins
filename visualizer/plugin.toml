@@ -2,7 +2,7 @@
 name = "visualizer"
 display_name = "Spectrum"
 description = "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "core"
 capabilities = ["ui-surface"]
@@ -37,3 +37,15 @@ label = "Spectrum"
 anchor = "bottom"
 width = 1920
 height = 120
+
+# Docks into the Appearance category's pane as a collapsed section
+# rather than claiming its own rail entry, same reasoning llm-fit's
+# settings_pane gives for the AI category: the Settings rail is a fixed
+# length by design. No requires_layer, matching the overlay above -- an
+# audio visualiser answers to no install layer.
+[ui.settings_pane]
+id = "visualizerSettings"
+icon = "graphic_eq"
+label = "Spectrum"
+component = "qml/VisualizerPane.qml"
+parent = "appearance"
