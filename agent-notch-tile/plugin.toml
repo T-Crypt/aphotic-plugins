@@ -1,8 +1,8 @@
 [plugin]
 name = "agent-notch-tile"
 display_name = "Agent Notch Tile"
-description = "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, and the local provider's GPU VRAM claim."
-version = "1.0.0"
+description = "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, live subagent count, today's token usage, and the local provider's GPU VRAM claim."
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface"]

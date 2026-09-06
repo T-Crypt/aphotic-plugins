@@ -5,6 +5,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -12,10 +13,14 @@ import qs.services.ai
 import qs.services.profile
 
 // A notch tile, and nothing more: is a harness waiting on you, which one
-// is working, and what the local provider is holding on the GPU. No node
-// list, no topology, no replay -- that is Agent Graph's surface, folded
-// from the same feed. The two are siblings under the `ai` layer and
-// neither checks whether the other is installed.
+// is working, how much it has spent today, and what the local provider is
+// holding on the GPU. No node list, no topology, no replay -- that is
+// Agent Graph's surface, folded from the same feed. The two are siblings
+// under the `ai` layer and neither checks whether the other is installed.
+//
+// The subagent chip is a count, not a roster, for the same reason: how
+// many are live is status, which belongs here; who spawned whom is a
+// graph, which does not.
 ColumnLayout {
     id: root
 
@@ -26,12 +31,13 @@ ColumnLayout {
     readonly property var session: AgentEvents.activeSession
     readonly property int waitingCount: AgentEvents.waitingSessions.length
 
-    readonly property string harnessLabel: {
-        const id = AgentEvents.activeHarness;
-        if (!id)
+    function labelFor(harnessId: string): string {
+        if (!harnessId)
             return "";
-        return AgentRoles.entries.find(e => e.id === id)?.label ?? id;
+        return AgentRoles.entries.find(e => e.id === harnessId)?.label ?? harnessId;
     }
+
+    readonly property string harnessLabel: root.labelFor(AgentEvents.activeHarness)
 
     readonly property string phaseLabel: {
         if (root.waitingCount > 0)
@@ -46,8 +52,51 @@ ColumnLayout {
         }
     }
 
+    readonly property var subagents: AgentEvents.activeSubagents
+
+    // Usage for whichever harness is actually running, not a fixed
+    // provider id: `usageOf` answers for any of them and returns zeros
+    // for one with no transcripts on disk, which hides the row below
+    // rather than showing a false zero.
+    readonly property var usage: AgentProviders.usageOf(AgentEvents.activeHarness || "claude")
+    readonly property bool hasUsage: root.usage.availability === "available" && root.usage.todayTokens > 0
+    readonly property string topModel: root.usage.tokensByModel?.[0]?.model ?? ""
+
     readonly property var providerClaims: ResourceEngine.claimsOf("ollama")
     readonly property int providerVramMib: root.providerClaims.reduce((total, claim) => total + (claim.amount ?? 0), 0)
+
+    function formatTokens(count: int): string {
+        if (count >= 1000000)
+            return qsTr("%1M").arg((count / 1000000).toFixed(1));
+        if (count >= 1000)
+            return qsTr("%1k").arg(Math.round(count / 1000));
+        return String(count);
+    }
+
+    // What the shell knows about a session that the session cannot know
+    // about itself, as plain text on the clipboard. Focus brings the
+    // terminal forward; the paste is the user's, deliberately -- nothing
+    // here types into a window, because a cwd match can be ambiguous and
+    // synthetic keystrokes into the wrong window are unrecoverable.
+    function focusAndCopy(session: var): void {
+        if (!session)
+            return;
+        const lines = [qsTr("Aphotic session context")];
+        const harness = root.labelFor(session.harness ?? "");
+        if (harness)
+            lines.push(qsTr("harness: %1").arg(harness));
+        lines.push(qsTr("session: %1").arg(session.id));
+        if (session.cwd)
+            lines.push(qsTr("cwd: %1").arg(session.cwd));
+        if (session.model)
+            lines.push(qsTr("model: %1").arg(session.model));
+        if (session.tool)
+            lines.push(qsTr("last tool: %1").arg(session.tool));
+        if (session.subagents?.length > 0)
+            lines.push(qsTr("subagents: %1").arg(session.subagents.map(a => a.type || a.id).join(", ")));
+        Quickshell.execDetached(["sh", "-c", "printf '%s' \"$1\" | wl-copy", "_", lines.join("\n")]);
+        AgentWindowFocus.focusByCwd(session.cwd ?? "");
+    }
 
     // The hold, not a tail: AgentEvents owns the single reader of
     // agent-events.jsonl and runs it only while something is watching.
@@ -92,6 +141,23 @@ ColumnLayout {
         }
 
         StyledRect {
+            implicitWidth: subagentLabel.implicitWidth + Tokens.padding.small * 2
+            implicitHeight: 20
+            radius: Tokens.rounding.full
+            color: Colours.palette.m3surfaceContainerHigh
+            visible: root.subagents.length > 0
+
+            StyledText {
+                id: subagentLabel
+
+                anchors.centerIn: parent
+                text: root.subagents.length > 1 ? qsTr("%1 subagents").arg(root.subagents.length) : qsTr("1 subagent")
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.builders.small.weight(Font.Medium).build()
+            }
+        }
+
+        StyledRect {
             implicitWidth: waitingLabel.implicitWidth + Tokens.padding.small * 2
             implicitHeight: 20
             radius: Tokens.rounding.full
@@ -106,6 +172,85 @@ ColumnLayout {
                 color: Colours.palette.m3onSecondaryContainer
                 font: Tokens.font.label.builders.small.weight(Font.Medium).build()
             }
+        }
+    }
+
+    // One row per session that stopped for input, and the tile's only
+    // action: bring that session's terminal forward and put the shell's
+    // own context on the clipboard for it. Not a session list -- it is
+    // empty whenever nothing is waiting, which is most of the time.
+    Repeater {
+        model: AgentEvents.waitingSessions
+
+        StyledRect {
+            id: waitingRow
+
+            required property var modelData
+
+            Layout.fillWidth: true
+            implicitHeight: 28
+            radius: Tokens.rounding.small
+            color: Colours.palette.m3secondaryContainer
+
+            StateLayer {
+                anchors.fill: parent
+                onClicked: root.focusAndCopy(waitingRow.modelData)
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Tokens.padding.small
+                anchors.rightMargin: Tokens.padding.small
+                spacing: Tokens.spacing.small
+
+                MaterialIcon {
+                    text: "keyboard_return"
+                    color: Colours.palette.m3onSecondaryContainer
+                    fontStyle: Tokens.font.icon.small
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: waitingRow.modelData.cwd || waitingRow.modelData.id
+                    color: Colours.palette.m3onSecondaryContainer
+                    font: Tokens.font.label.medium
+                    elide: Text.ElideMiddle
+                }
+
+                MaterialIcon {
+                    text: "content_paste_go"
+                    color: Colours.palette.m3onSecondaryContainer
+                    fontStyle: Tokens.font.icon.small
+                }
+            }
+        }
+    }
+
+    StyledRect {
+        Layout.fillWidth: true
+        Layout.topMargin: Tokens.spacing.extraSmall
+        implicitHeight: 1
+        color: Colours.palette.m3outlineVariant
+        visible: root.hasUsage
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        visible: root.hasUsage
+        spacing: Tokens.spacing.small
+
+        StyledText {
+            Layout.fillWidth: true
+            text: root.topModel ? qsTr("Today — %1").arg(root.topModel) : qsTr("Today")
+            color: Colours.palette.m3onSurfaceVariant
+            font: Tokens.font.label.medium
+            elide: Text.ElideRight
+        }
+
+        StyledText {
+            text: qsTr("%1 tokens").arg(root.formatTokens(root.usage.todayTokens))
+            color: Colours.palette.m3onSurface
+            font: Tokens.font.mono.small
         }
     }
 
