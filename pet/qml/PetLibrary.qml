@@ -26,16 +26,26 @@ import Quickshell.Io
 // pet directory, and everything else is bounds-checked into a usable
 // value or the pet is rejected outright and a built-in draws instead.
 //
-// This is also the only writer of pet.json. Dragging the pet and every
-// control in the settings pane lands here, which is why the reader and
-// the writer are two FileViews on one path with a pending flag between
-// them: the same shape core's Settings.qml uses for its own state file,
-// so this singleton's write is not re-read as somebody else's edit.
+// This is also the only writer of the plugin's own settings. Dragging the
+// pet and every control in the settings pane lands here, which is why the
+// reader and the writer are two FileViews on one path with a pending flag
+// between them: the same shape core's Settings.qml uses for its own state
+// file, so this singleton's write is not re-read as somebody else's edit.
 Singleton {
     id: root
 
     readonly property string petsDir: `${Quickshell.env("HOME")}/.config/aphotic/pets`
-    readonly property string configPath: `${Quickshell.env("HOME")}/.config/aphotic/plugins/pet/pet.json`
+    readonly property string configDir: `${Quickshell.env("HOME")}/.config/aphotic/plugins/pet`
+    readonly property string configPath: `${root.configDir}/settings.json`
+
+    // Where these settings lived until 1.2.1. Calling them pet.json put
+    // two files of that name one directory apart, holding different
+    // things: this one says which pet and where it sits, the one in
+    // pets/<name>/ is a pet's own manifest. People opened the wrong one.
+    // Read once, on the first start after the rename, then written back
+    // under the new name and left alone. Deleting it is the user's call,
+    // not this plugin's.
+    readonly property string legacyPath: `${root.configDir}/pet.json`
 
     // Order is the order the settings pane offers them in, so the default
     // comes first.
@@ -112,6 +122,13 @@ Singleton {
     property var _config: ({})
     property var _manifest: null
     property bool _writePending: false
+    property bool _wantLegacy: false
+
+    // True once a config has come from a file, new name or old. A failed
+    // read must not clear what a successful one already put here: the
+    // watcher fires on a path that did not exist and then does exist, and
+    // one spurious failure in that window would throw the migration away.
+    property bool _adopted: false
 
     // A FileView pointed at an empty path never reports a failure, so
     // switching from an imported pet to a built-in one has to drop the
@@ -191,6 +208,7 @@ Singleton {
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {
+            root._adopted = true;
             if (root._writePending) {
                 root._writePending = false;
                 return;
@@ -201,7 +219,12 @@ Singleton {
                 root._config = ({});
             }
         }
-        onLoadFailed: root._config = ({})
+        onLoadFailed: {
+            if (root._adopted)
+                return;
+            root._config = ({});
+            root._wantLegacy = true;
+        }
     }
 
     FileView {
@@ -209,6 +232,22 @@ Singleton {
 
         path: root.configPath
         printErrors: false
+    }
+
+    // Held at an empty path until the read above says there is nothing to
+    // read, so an install that has both files never reads the stale one.
+    FileView {
+        path: root._wantLegacy ? root.legacyPath : ""
+        printErrors: false
+        onLoaded: {
+            if (root._adopted)
+                return;
+            root._adopted = true;
+            try {
+                root._write(JSON.parse(text()));
+            } catch (e) {
+            }
+        }
     }
 
     FileView {

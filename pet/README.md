@@ -95,14 +95,7 @@ A pet is data, never code. There is no way to import QML here, on
 purpose: third-party QML would run inside the shell's own process with
 the shell's own reach, and that trust question is open.
 
-So a pet is exactly two files: one PNG sprite sheet and one JSON
-manifest describing how to cut it up.
-
-### 1. Make the folder
-
-Put your pet in `~/.config/aphotic/pets/<name>/`. The folder name is what
-you select it by, so keep it lowercase and free of spaces, slashes and
-dots:
+Everything you need is one image and one small JSON file:
 
 ```
 ~/.config/aphotic/pets/nautilus/
@@ -110,29 +103,244 @@ dots:
   sheet.png
 ```
 
-The folder shows up in the settings picker as soon as it exists. You can
-also name it directly in `~/.config/aphotic/plugins/pet/pet.json`:
+The picker in **Settings → Appearance → Desktop Pet** lists that folder
+whenever the pane opens, so a pet you add while Settings is already up
+wants one trip out of the pane and back. Both files are watched, so
+editing a pet you have already selected takes effect without restarting
+the shell. A folder sharing a name with a built-in never wins; rename
+it.
 
-```json
-{ "pet": "nautilus" }
+That `pet.json` is a pet's own manifest. It is not the same file as
+`~/.config/aphotic/plugins/pet/settings.json`, which is this plugin's own
+config and says which pet is selected and where you dragged it. Two
+different files, one directory apart.
+
+Five ways to get that image, fastest first.
+
+### The sheet has to be a PNG
+
+Or a JPEG, GIF or SVG. Qt here does not decode WebP, and both sources
+below export WebP by default, so this is the first thing that goes wrong.
+The image fails with `Unsupported image format`, the pet falls back to a
+built-in, and nothing else is logged.
+
+Convert it once:
+
+```sh
+ffmpeg -i spritesheet.webp -pix_fmt rgba spritesheet.png
 ```
 
-Both files are watched, so an edit takes effect without restarting the
-shell. A folder sharing a name with a built-in never wins; rename it.
+Keep `-pix_fmt rgba` or you lose the transparent background and your pet
+arrives in a white box. Then point `sheet` at the PNG.
+
+Or install the decoder and keep the WebP:
+
+```sh
+sudo pacman -S qt6-imageformats
+```
+
+### 1. Take one from Petdex
+
+[Petdex](https://petdex.dev/) is a public gallery of a few thousand
+animated pets people have drawn for coding agents. Pulling one down needs
+Node's `npx`, which Aphotic does not install:
+
+```sh
+npx petdex install boba
+```
+
+It lands in `~/.codex/pets/boba/`. Copy the folder across and rename it:
+
+```sh
+cp -r ~/.codex/pets/boba ~/.config/aphotic/pets/boba
+```
+
+**Then overwrite its `pet.json`.** Petdex writes its own, with `id`,
+`displayName` and `spritesheetPath` in it, and this plugin rejects that
+file because it has no `format: 1`. A pet copied across untouched shows
+you a built-in and no error. Write the manifest in the next section
+instead.
+
+The sheets there are a fixed shape, so the manifest is the same every
+time. Cells are 192 by 208 in an 8 by 9 grid, and the nine rows run:
+
+| Row | State | Frames |
+|---|---|---|
+| 0 | idle | 6 |
+| 1 | running-right | 8 |
+| 2 | running-left | 8 |
+| 3 | waving | 4 |
+| 4 | jumping | 5 |
+| 5 | failed | 8 |
+| 6 | waiting | 6 |
+| 7 | running | 6 |
+| 8 | review | 6 |
+
+Four of those nine map onto what this plugin plays:
+
+```json
+{
+  "format": 1,
+  "name": "Boba",
+  "sheet": "spritesheet.png",
+  "frame": { "width": 192, "height": 208 },
+  "scale": 0.4,
+  "fps": 8,
+  "smooth": true,
+  "states": {
+    "idle":  { "row": 0, "frames": 6 },
+    "walk":  { "row": 1, "frames": 8 },
+    "react": { "row": 3, "frames": 4 },
+    "sleep": { "row": 5, "frames": 1 }
+  }
+}
+```
+
+Row 2 goes unused, because this plugin mirrors row 1 when the pet walks
+left. Row 4 is a hop if you would rather a click made your pet jump than
+wave. Nothing in that format is a sleeping pose, so `sleep` borrows one:
+row 5 is the pet's failure pose, which on every sheet checked so far
+droops with its eyes half shut and reads as asleep. Row 6 is the
+alternative if yours does not.
+
+`scale` matters. A 192 by 208 cell drawn at full size is a small window,
+not a pet. `0.4` puts it at 77 by 83, about the size of the built-ins.
+Painted art wants `smooth: true`; leave it `false` only for pixel art.
+
+Petdex sheets are usually `spritesheet.webp`, so convert it or install
+the decoder before any of this draws. See above.
+
+### 2. Generate one in ChatGPT
+
+Petdex's own pets come from the **Hatch Pet** skill in the ChatGPT
+desktop app. Install it from the Skills menu, type `/pet`, and describe
+what you want. It draws all nine states and writes them to
+`~/.codex/pets/<name>/`, at which point you are back at step 1: copy the
+folder, replace the `pet.json`, convert the WebP if you have not
+installed the decoder.
+
+Be specific in the description. A silhouette, a colour, a material and a
+mood get you much further than a noun.
+
+### 3. Ask any image model for a sheet
+
+You do not need either of those. Any model that draws will do it if you
+tell it the grid, and asking for this plugin's own four rows saves you
+the mapping:
+
+> A sprite sheet for a desktop pet, PNG with a fully transparent
+> background. Grid: 8 columns by 4 rows, every cell exactly 96 by 96
+> pixels, final image 768 by 384. One frame per cell, no padding, no
+> gutters, no grid lines, no captions, nothing drawn outside a cell.
+>
+> Row 0, 6 frames: standing still, breathing, blinking on the last two.
+> Row 1, 8 frames: a walk cycle travelling right that loops cleanly.
+> Row 2, 5 frames: a happy hop, played once and returning to standing.
+> Row 3, 1 frame: asleep, eyes closed, the rest of the row empty.
+>
+> The character faces right in every frame, keeps the same size, and
+> stands on the same baseline throughout. Subject: a small brass
+> deep-sea diving helmet with stubby legs.
+
+Then:
+
+```json
+{
+  "format": 1,
+  "name": "Helmet",
+  "sheet": "sheet.png",
+  "frame": { "width": 96, "height": 96 },
+  "scale": 1,
+  "fps": 8,
+  "smooth": true,
+  "states": {
+    "idle":  { "row": 0, "frames": 6 },
+    "walk":  { "row": 1, "frames": 8 },
+    "react": { "row": 2, "frames": 5 },
+    "sleep": { "row": 3, "frames": 1 }
+  }
+}
+```
+
+Image models are bad at exact grids. Open the result, measure one cell,
+and set `frame` to what you actually got rather than what you asked for.
+If the character drifts in size between frames it will bounce as it
+walks, which is worth one more attempt at the prompt.
+
+Most models will not give you a transparent background on the first try.
+Ask again, or key the background out afterwards.
+
+### 4. Start from a ripped game sheet
+
+[The Spriters Resource](https://www.spriters-resource.com/) archives
+sprite sheets ripped from thousands of games, already PNG with
+transparent backgrounds, so nothing needs converting. Search for a
+character, open its sheet, save the PNG.
+
+What you will not get is a grid. Rips are packed however the game packed
+them: mixed cell sizes, irregular gutters, animations running down a
+column instead of across a row. So there is a step between download and
+`pet.json`, in whatever editor you have:
+
+1. Find one animation you want as `idle` and one as `walk`. Four to eight
+   frames each is plenty.
+2. Decide one cell size big enough for the largest frame in either.
+3. Paste each frame into a fresh transparent image on that grid, one
+   state per row, packed from column 0, no gutters.
+4. Add a `react` row and a single `sleep` frame if the rip has anything
+   that suits. Both fall back to `idle` if you skip them.
+
+Keep every frame of a row on the same baseline while you paste, or the
+pet bobs as it walks. The layout rules below are the same ones a
+hand-drawn sheet follows.
+
+These are ripped game assets. Keep them to your own desktop.
+
+### 5. Draw it yourself
+
+The layout is the same whether you draw it, paste it or prompt for it.
+One image laid out as a strict grid: every cell the same size, the grid
+starting at the top-left pixel, no padding, margin or gutter anywhere.
+The plugin finds a frame by multiplying, so a one-pixel border shifts
+every frame after the first.
+
+Each state owns a row. Each frame of that state is a cell across it,
+starting at column 0. Rows may be shorter than each other, and two states
+may share a row.
+
+```
+        col 0     col 1     col 2     col 3     col 4     col 5
+row 0  [ idle 0 ][ idle 1 ][ idle 2 ][ idle 3 ]
+row 1  [ walk 0 ][ walk 1 ][ walk 2 ][ walk 3 ][ walk 4 ][ walk 5 ]
+row 2  [ react0 ][ react1 ][ react2 ][ react3 ][ react4 ]
+row 3  [ sleep0 ]
+```
+
+Four rules the drawing itself has to follow:
 
 - **Face right.** The pet is mirrored about the cell's centre when it
   walks left, so draw one direction only.
-- **Stand on the bottom edge of the cell.** The pet is placed 8 px above
-  the bottom of the surface by the cell's bottom edge, not by its
-  pixels. Empty rows at the bottom of a cell make the pet hover over the
-  wallpaper.
+- **Stand on the same line in every frame**, measured from the cell's
+  bottom edge rather than from your pixels. A frame that sits two pixels
+  higher than its neighbours makes the pet bob as it walks.
 - **Keep the cell tight.** The cell is also the click target and the
   window's input mask, so transparent padding around the pet is desktop
   you can no longer click through.
-- **Keep the pet horizontally centred in the cell**, or it will appear to
+- **Keep the pet horizontally centred in the cell**, or it appears to
   jump sideways when it turns around.
 
-### 3. Write `pet.json`
+Aseprite, Libresprite and Piskel all export a sheet like this directly.
+
+Sizing: this plugin draws one cell at a time and the surface is the whole
+screen, so nothing clips a big pet. A creature much over 200 pixels tall
+stops reading as a pet and starts reading as a window.
+
+Pixel art wants an integer `scale` and `smooth: false`, or the shell
+blurs it back into mush. A sheet you are scaling *down*, like the 192 by
+208 cells the two routes above produce, wants `smooth: true` instead;
+nearest-neighbour on a downscale eats whole pixel rows.
+
+### `pet.json`
 
 ```json
 {
@@ -154,30 +362,25 @@ shell. A folder sharing a name with a built-in never wins; rename it.
 
 | Key | Meaning |
 |---|---|
-| `format` | Must be the number `1`. Anything else, `"1"` included, is rejected. |
-| `name` | The pet's name. Read but not yet displayed anywhere. |
-| `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. |
+| `format` | Must be `1`. Anything else is rejected. |
+| `name` | Shown as the pet's name. |
+| `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. PNG, JPEG, GIF or SVG; not WebP. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
-| `scale` | Draw scale. Use a whole number for pixel art. Defaults to `1`. |
-| `fps` | Default playback rate for every state. Clamped to 1-12, the clock's own rate. Defaults to `8`. |
+| `scale` | Draw scale. Use an integer for pixel art. Defaults to `1`. |
+| `fps` | Default playback rate for every state. Capped at 12, the clock's own rate. Defaults to `8`. |
 | `smooth` | Filter the image when scaling. Leave it `false` for pixel art. |
-| `states` | One entry per state. `idle` is required; the other three fall back to it. |
+| `states` | One entry per state. `idle` is required; the rest fall back to it. |
 
 Each state takes `row` (which row of the sheet, counting from 0),
 `frames` (how many cells across, starting at column 0), and an optional
 `fps` of its own.
 
-The sheet is one image laid out as a grid: each state owns a row, each
-frame of that state is a cell across it. The plugin draws one cell at a
-time by offsetting the image behind a clipping viewport, so switching
-frames costs two coordinate writes and no decode.
+The plugin draws one cell at a time by offsetting the image behind a
+clipping viewport, so switching frames costs two coordinate writes and no
+decode.
 
 The pet faces right in the sheet. It is mirrored when it walks left, so
 draw one direction only.
-
-Nothing clips a big pet any more now that the surface is the whole
-screen, but a creature much over 200 pixels tall stops reading as a pet
-and starts reading as a window.
 
 ### How the states are used
 
@@ -188,14 +391,31 @@ and starts reading as a window.
 - `react` plays once when you click.
 - `sleep` frame 0 is the still picture while the pet naps.
 
-Anything the manifest gets wrong falls back to a built-in: a missing
-folder, a rejected manifest, an image that will not decode. The surface
-is never blank.
+### When your pet does not show up
+
+A built-in draws instead. That fallback is unconditional and silent, so
+work down this list:
+
+| Symptom | Cause |
+|---|---|
+| A built-in, not your pet | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
+| A built-in, manifest looks fine | The image did not decode. WebP needs `qt6-imageformats`. Check `sheet` names the file exactly, with no path in front of it. |
+| The folder is missing from the picker | It is not directly under `~/.config/aphotic/pets/`, or its name starts with a dot. |
+| Right pet, wrong frames | `frame.width` or `frame.height` does not match the real cell. Measure the sheet and divide by the column and row count. |
+| Bits of the next frame at the edges | The sheet has padding or gutters between cells. This plugin assumes none. Re-export without them. |
+| A blurry pet | `smooth: true` on pixel art, or a fractional `scale`. |
+| A pet that jitters as it walks | The character is not on the same baseline in every frame of `walk`. |
+| Nothing at all, anywhere | The plugin is disabled, or safe mode is on. |
 
 ## Configuration
 
-`~/.config/aphotic/plugins/pet/pet.json`. The settings pane writes it;
-you can too.
+`~/.config/aphotic/plugins/pet/settings.json`, which is this plugin's own
+config and nothing to do with the `pet.json` inside a pet's folder. The
+settings pane writes it; you can too.
+
+It was called `pet.json` until 1.2.1, which put two files of that name
+one directory apart. An old one is read once, written back under the new
+name, and then ignored. Delete it when you see the new file appear.
 
 | Key | Meaning |
 |---|---|
