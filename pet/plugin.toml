@@ -2,10 +2,10 @@
 name = "pet"
 display_name = "Desktop Pet"
 description = "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it."
-version = "1.6.0"
+version = "1.7.0"
 author = "T-Crypt"
 category = "theming"
-capabilities = ["ui-surface"]
+capabilities = ["ui-surface", "action"]
 
 # No requires_layer and no requires_data, on purpose. Nothing here reads a
 # harness, a profile or anything a layer installs, so there is no fact to
@@ -57,6 +57,19 @@ id = "openVSCode"
 icon = "code"
 label = "VS Code"
 component = "qml/actions/LaunchVSCode.qml"
+
+# An `[action]` (manifest v3.7, ACT-01) is not a surface: it is a named
+# thing a user can ask for, and it turns up wherever the shell offers
+# actions -- the notch's command palette today, and `aphotic` IPC, so a
+# keybind reaches it too. Same headless component shape as the pet_action
+# entries above; the difference is who offers it. A plugin gets five
+# numbered sections ([action] through [action_5]) before the shared TOML
+# reader has to grow arrays-of-tables.
+[action]
+id = "switchPet"
+icon = "pets"
+label = "Switch pet"
+component = "qml/actions/SwitchPet.qml"
 
 [owns]
 # Nothing in the shell's own settings. Which pet is active, where the user
