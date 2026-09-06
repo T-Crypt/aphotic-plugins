@@ -95,7 +95,14 @@ A pet is data, never code. There is no way to import QML here, on
 purpose: third-party QML would run inside the shell's own process with
 the shell's own reach, and that trust question is open.
 
-Put your pet in `~/.config/aphotic/pets/<name>/`:
+So a pet is exactly two files: one PNG sprite sheet and one JSON
+manifest describing how to cut it up.
+
+### 1. Make the folder
+
+Put your pet in `~/.config/aphotic/pets/<name>/`. The folder name is what
+you select it by, so keep it lowercase and free of spaces, slashes and
+dots:
 
 ```
 ~/.config/aphotic/pets/nautilus/
@@ -113,7 +120,19 @@ also name it directly in `~/.config/aphotic/plugins/pet/pet.json`:
 Both files are watched, so an edit takes effect without restarting the
 shell. A folder sharing a name with a built-in never wins; rename it.
 
-### `pet.json`
+- **Face right.** The pet is mirrored about the cell's centre when it
+  walks left, so draw one direction only.
+- **Stand on the bottom edge of the cell.** The pet is placed 8 px above
+  the bottom of the surface by the cell's bottom edge, not by its
+  pixels. Empty rows at the bottom of a cell make the pet hover over the
+  wallpaper.
+- **Keep the cell tight.** The cell is also the click target and the
+  window's input mask, so transparent padding around the pet is desktop
+  you can no longer click through.
+- **Keep the pet horizontally centred in the cell**, or it will appear to
+  jump sideways when it turns around.
+
+### 3. Write `pet.json`
 
 ```json
 {
@@ -135,14 +154,14 @@ shell. A folder sharing a name with a built-in never wins; rename it.
 
 | Key | Meaning |
 |---|---|
-| `format` | Must be `1`. Anything else is rejected. |
-| `name` | Shown as the pet's name. |
+| `format` | Must be the number `1`. Anything else, `"1"` included, is rejected. |
+| `name` | The pet's name. Read but not yet displayed anywhere. |
 | `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
-| `scale` | Draw scale. Use an integer for pixel art. Defaults to `1`. |
-| `fps` | Default playback rate for every state. Capped at 12, the clock's own rate. Defaults to `8`. |
+| `scale` | Draw scale. Use a whole number for pixel art. Defaults to `1`. |
+| `fps` | Default playback rate for every state. Clamped to 1-12, the clock's own rate. Defaults to `8`. |
 | `smooth` | Filter the image when scaling. Leave it `false` for pixel art. |
-| `states` | One entry per state. `idle` is required; the rest fall back to it. |
+| `states` | One entry per state. `idle` is required; the other three fall back to it. |
 
 Each state takes `row` (which row of the sheet, counting from 0),
 `frames` (how many cells across, starting at column 0), and an optional

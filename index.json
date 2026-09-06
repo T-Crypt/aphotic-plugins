@@ -242,15 +242,41 @@
         "ui-surface"
       ],
       "ui": {
-        "overlay": {
-          "id": "visualizer",
-          "icon": "graphic_eq",
-          "label": "Spectrum",
-          "component": "qml/Visualizer.qml",
-          "anchor": "bottom",
-          "width": 1920,
-          "height": 120
-        }
+        "surfaces": [
+          {
+            "surface": "overlay",
+            "id": "visualizer",
+            "icon": "graphic_eq",
+            "label": "Spectrum",
+            "component": "qml/Visualizer.qml",
+            "anchor": "bottom",
+            "width": 1920,
+            "height": 120
+          }
+        ]
+      }
+    },
+    {
+      "name": "deep-signal",
+      "display_name": "Deep Signal Screensaver",
+      "description": "An idle screensaver: the wordmark resolves out of noise like a signal surfacing from deep water, over a sparse drift of bioluminescent particles. Takes its colours from whatever theme is active.",
+      "version": "1.0.0",
+      "category": "theming",
+      "capabilities": [
+        "ui-surface",
+        "cli"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "fullscreen-overlay",
+            "id": "deepSignal",
+            "icon": "screenshot_monitor",
+            "label": "Deep Signal",
+            "component": "qml/Screensaver.qml",
+            "trigger": "idle"
+          }
+        ]
       }
     }
   ]
