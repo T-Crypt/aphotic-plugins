@@ -5,6 +5,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.services
+import qs.services.ai
 import qs.modules.plugins.pet
 
 // A pet inside one plugin-hosted `overlay` surface declaring
@@ -42,11 +43,16 @@ Item {
     readonly property int dragThreshold: 6
 
     // The host masks its window to this rather than to the whole surface,
-    // so the desktop keeps its clicks everywhere the pet is not. It is a
-    // bare Item rather than the creature because it also has to be able to
-    // mask to nothing: on every screen the pet is not on, it parks outside
-    // the surface and the mask comes out empty.
-    readonly property Item maskItem: hitbox
+    // so the desktop keeps its clicks everywhere the pet is not. Ordinarily
+    // just the creature's own hitbox -- but the host's `Region` only ever
+    // covers one item's bounds (`PluginOverlayWindow.qml`'s `mask: Region {
+    // item: content.item?.maskItem }`), so while the action menu is open
+    // this points at `menuRegion` instead: the bounding box around both the
+    // menu and the hitbox, computed below. Anything in that box that is
+    // neither the pet nor the menu (there is very little, since the menu
+    // sits flush against the hitbox with no gap) is desktop the user
+    // briefly can't click through -- a small, deliberate cost, not a bug.
+    readonly property Item maskItem: root.menuOpen ? menuRegion : hitbox
 
     // Which output this instance is drawing on. The only thing the host
     // tells a plugin about its screen is what QtQuick's attached Screen
@@ -80,7 +86,17 @@ Item {
     // more worth showing than a pet that happens to be mid-fidget, and
     // being carried outranks both.
     readonly property string agentMood: PetAgentState.mood
+    readonly property string agentCwd: PetAgentState.cwd
     readonly property string drawMood: root.carried ? "held" : (root.agentMood.length > 0 ? root.agentMood : root.mood)
+
+    // The pet's own action list (PETS.md §7.1/§8) -- terminal + VS Code
+    // today, any domain sibling's entries appended after, all from the
+    // one registry every other surface kind already normalizes into.
+    readonly property var petActions: PluginRegistry.surfacesFor("pet_action")
+
+    // Whether the menu is open. A plain click toggles this instead of
+    // poking once something is registered here -- see `onReleased` below.
+    property bool menuOpen: false
 
     // Where the user put the pet, in this surface's pixels. Stored
     // normalised, so the same spot lands in the same place on a different
@@ -223,6 +239,7 @@ Item {
     // Seeds a drag from where the pet actually is on this surface, and
     // hands the shared singleton the first position.
     function beginDrag(): void {
+        root.menuOpen = false;
         root.dragScreenName = root.screenName;
         root.dragCx = root.petX + creature.width / 2;
         root.dragCy = root.petY + creature.height / 2;
@@ -413,6 +430,34 @@ Item {
         height: creature.height
     }
 
+    PetActionMenu {
+        id: menu
+
+        visible: root.menuOpen
+        actions: root.petActions
+        // Flush against the hitbox's top edge, zero gap -- same reasoning
+        // BarWindow.qml's own popout gives for its zero-gap flyout: a real
+        // gap here is a dead zone neither this rect nor the hitbox covers,
+        // and this window has no bridge-region trick to paper over it with.
+        x: Math.max(0, Math.min(root.width - menu.width, hitbox.x + hitbox.width / 2 - menu.width / 2))
+        y: hitbox.y - menu.height
+
+        onTriggered: root.menuOpen = false
+    }
+
+    // Only consulted while `menuOpen`, see `maskItem` above -- the bounding
+    // box around both the menu and the hitbox, since the host can mask to
+    // exactly one item's rectangle and the menu sits above the pet rather
+    // than inside it.
+    Item {
+        id: menuRegion
+
+        x: Math.min(hitbox.x, menu.x)
+        y: menu.y
+        width: Math.max(hitbox.x + hitbox.width, menu.x + menu.width) - menuRegion.x
+        height: hitbox.y + hitbox.height - menuRegion.y
+    }
+
     // Sized to the pet, matching the maskItem above so the clickable area
     // and the input region are the same rectangle.
     //
@@ -469,11 +514,24 @@ Item {
             grip.lastY = scene.y;
         }
 
+        // Priority, in order: a drag release always settles the drag.
+        // Otherwise, a session waiting on the user outranks the action
+        // menu -- clicking through to whatever it's waiting on is more
+        // useful than a menu in the way of it -- which outranks the menu,
+        // which outranks the plain poke reaction an install with nothing
+        // registered still gets. Clicking the pet again while the menu is
+        // already open closes it; there is no other way to dismiss it
+        // (see `menuRegion`'s comment on why an outside click can't).
         onReleased: {
-            if (grip.dragged)
+            if (grip.dragged) {
                 root.endHold();
-            else
+            } else if (root.agentMood === "attentionRequired" && root.agentCwd.length > 0) {
+                AgentWindowFocus.focusByCwd(root.agentCwd);
+            } else if (root.petActions.length > 0) {
+                root.menuOpen = !root.menuOpen;
+            } else {
                 root.poke();
+            }
             grip.dragged = false;
         }
     }

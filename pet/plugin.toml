@@ -2,7 +2,7 @@
 name = "pet"
 display_name = "Desktop Pet"
 description = "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it."
-version = "1.5.0"
+version = "1.6.0"
 author = "T-Crypt"
 category = "theming"
 capabilities = ["ui-surface"]
@@ -35,6 +35,28 @@ icon = "pets"
 label = "Desktop Pet"
 component = "qml/PetPane.qml"
 parent = "appearance"
+
+# The pet's own MVP action list (PETS.md §7.1): a plain click opens this
+# menu once anything is registered here, replacing the poke reaction.
+# `ui.pet_action_2` rather than a second `[ui.pet_action]` -- the shared
+# TOML reader (globalcontrol.sh's `aphotic_toml_get`) matches one section
+# per literal name and has no arrays-of-tables, so a plugin contributing
+# more than one entry of the same surface kind uses the next numbered
+# section instead (cmd_plugin.sh's `_aphotic_plugin_ui_json`, capped at
+# three for now). Each component is headless: it fires its launch in
+# `Component.onCompleted` and the menu tears it down immediately after,
+# same as any other surface's dynamic file:// load.
+[ui.pet_action]
+id = "openTerminal"
+icon = "terminal"
+label = "Terminal"
+component = "qml/actions/LaunchTerminal.qml"
+
+[ui.pet_action_2]
+id = "openVSCode"
+icon = "code"
+label = "VS Code"
+component = "qml/actions/LaunchVSCode.qml"
 
 [owns]
 # Nothing in the shell's own settings. Which pet is active, where the user
