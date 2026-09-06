@@ -13,8 +13,8 @@ import qs.modules.plugins.pet
 
 // Docked into the Appearance category (see plugin.toml's
 // [ui.settings_pane], parent = "appearance"). Every control here writes
-// through PetLibrary, which owns pet.json; nothing in this file touches a
-// file of its own.
+// through PetLibrary, which owns settings.json; nothing in this file
+// touches a file of its own.
 //
 // The tiles draw the real pet rather than an icon of one, because the
 // whole point of a built-in is that it wears the current theme, and a
@@ -59,6 +59,16 @@ ColumnLayout {
     }
 
     spacing: Tokens.spacing.largeIncreased
+
+    // A folder the model refused (see `choices`) is not retried on its own,
+    // because the refusal arrives without a change signal for a binding to
+    // hang off. Someone who creates their first pet folder and comes back
+    // to Settings is the case that matters, and reopening the pane is what
+    // they will do, so the ask is made again here.
+    onVisibleChanged: {
+        if (root.visible)
+            imported.folder = root.petsUrl;
+    }
 
     // Read once when the pane is built, and again only when the directory
     // itself changes. A pet folder appearing while the pane is open is
