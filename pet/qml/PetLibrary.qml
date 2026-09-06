@@ -20,7 +20,10 @@ import Quickshell.Io
 // trust question that raises is open (D-05), so an imported pet reads a
 // fixed schema and nothing else.
 //
-// _validate is the whole of that boundary. `sheet` has to be a bare
+// normalise() is the whole of that boundary, and it reads two formats:
+// this plugin's own, and the one the pet generators write, which is
+// accepted directly so that installing one of those pets does not mean
+// editing its manifest first. Either way `sheet` has to be a bare
 // filename living beside the manifest -- no slash, no leading dot, no
 // traversal -- so a manifest can only ever name an image inside its own
 // pet directory, and everything else is bounds-checked into a usable
@@ -98,11 +101,23 @@ Singleton {
     readonly property string spriteName: root.selectionIsBuiltin ? "" : root.selected
 
     readonly property bool spriteReady: root._manifest !== null
-    readonly property string displayName: root.spriteReady ? (root._manifest.name ?? root.selected) : (root.builtins.find(b => b.id === root.builtin)?.name ?? root.builtin)
-    readonly property string sheetUrl: root.spriteReady ? `file://${root.petsDir}/${root.spriteName}/${root._manifest.sheet}` : ""
+    readonly property string displayName: root.spriteReady ? (root._manifest.name.length > 0 ? root._manifest.name : root.selected) : (root.builtins.find(b => b.id === root.builtin)?.name ?? root.builtin)
+    readonly property string sheetUrl: root.spriteReady ? root.sheetUrlFor(root.spriteName, root._manifest) : ""
+
+    // Zero when the manifest does not state a cell size, which is a
+    // manifest whose format fixes the grid instead. PetView divides the
+    // loaded image by `columns` and `rows` in that case, so one sheet
+    // exported at a different resolution needs no edit anywhere.
     readonly property int frameWidth: root._manifest?.frame?.width ?? 0
     readonly property int frameHeight: root._manifest?.frame?.height ?? 0
+    readonly property int columns: root._manifest?.columns ?? 0
+    readonly property int rows: root._manifest?.rows ?? 0
+
+    // Same again for draw scale. A format that fixes its cell size in
+    // source pixels cannot also fix a sensible drawn size, so it asks for
+    // a height instead and PetView works back to the scale.
     readonly property real scale: root._manifest?.scale ?? 1
+    readonly property int targetHeight: root._manifest?.targetHeight ?? 0
     readonly property bool smooth: root._manifest?.smooth ?? false
 
     // Where the user put the pet, as the centre of the creature over the
@@ -184,19 +199,113 @@ Singleton {
         writer.setText(JSON.stringify(root._config, null, 2) + "\n");
     }
 
-    function _validate(data: var): var {
-        if (!data || data.format !== 1)
+    // Where a pet's sheet lives, for a manifest this has already accepted.
+    // Public because the settings pane draws the same sheets in its
+    // picker and must not build that path a second way.
+    function sheetUrlFor(name: string, manifest: var): string {
+        return `file://${root.petsDir}/${name}/${manifest.sheet}`;
+    }
+
+    // Turn whatever is in a pet.json into the one shape the rest of this
+    // plugin reads, or null. Two formats are understood.
+    //
+    // `format: 1` is this plugin's own: the manifest states its cell size
+    // and its rows, so any layout works.
+    //
+    // A manifest with a `spritesheetPath` and no format is the one the
+    // pet generators write, and its layout is fixed rather than declared:
+    // eight columns by nine rows, the nine rows being idle, running-right,
+    // running-left, waving, jumping, failed, waiting, running and review.
+    // Reading it directly is the difference between installing one of
+    // those pets and editing its manifest by hand first, and the cell size
+    // is divided out of the image rather than assumed, so a sheet exported
+    // at another resolution still works.
+    //
+    // Sheet names are checked the same way in both. A manifest can only
+    // ever name an image inside its own pet directory: no slash, no
+    // backslash, no leading dot.
+    function normalise(data: var): var {
+        if (!data)
             return null;
-        const sheet = data.sheet;
-        if (typeof sheet !== "string" || sheet.length === 0)
-            return null;
-        if (sheet.includes("/") || sheet.includes("\\") || sheet.startsWith("."))
+        if (data.format === 1)
+            return root._normaliseNative(data);
+        if (typeof data.spritesheetPath === "string")
+            return root._normaliseGenerated(data);
+        return null;
+    }
+
+    function _sheetName(value: var): string {
+        if (typeof value !== "string" || value.length === 0)
+            return "";
+        if (value.includes("/") || value.includes("\\") || value.startsWith("."))
+            return "";
+        return value;
+    }
+
+    function _normaliseNative(data: var): var {
+        const sheet = root._sheetName(data.sheet);
+        if (sheet.length === 0)
             return null;
         if (!((data.frame?.width ?? 0) > 0 && (data.frame?.height ?? 0) > 0))
             return null;
         if (!data.states?.idle)
             return null;
-        return data;
+        return {
+            name: typeof data.name === "string" ? data.name : "",
+            sheet: sheet,
+            frame: data.frame,
+            columns: 0,
+            rows: 0,
+            scale: data.scale ?? 1,
+            targetHeight: 0,
+            fps: data.fps,
+            smooth: data.smooth ?? false,
+            states: data.states
+        };
+    }
+
+    function _normaliseGenerated(data: var): var {
+        const sheet = root._sheetName(data.spritesheetPath);
+        if (sheet.length === 0)
+            return null;
+        return {
+            name: typeof data.displayName === "string" ? data.displayName : (typeof data.id === "string" ? data.id : ""),
+            sheet: sheet,
+            frame: null,
+            columns: 8,
+            rows: 9,
+            // No scale: a fixed grid says nothing about how big the art
+            // wants to be on screen, so ask for a height near the built-in
+            // pets and let PetView divide.
+            scale: 0,
+            targetHeight: 96,
+            fps: 8,
+            // Painted rather than pixel art, and always drawn smaller than
+            // its cell, where nearest-neighbour eats whole rows of pixels.
+            smooth: true,
+            // Four of the nine rows. Row 2 is the mirror of row 1, which
+            // this plugin does itself. `sleep` borrows the failure pose,
+            // which droops with its eyes half shut where the waiting pose
+            // is alert.
+            states: {
+                idle: {
+                    row: 0,
+                    frames: 6
+                },
+                walk: {
+                    row: 1,
+                    frames: 8
+                },
+                react: {
+                    row: 3,
+                    frames: 4
+                },
+                sleep: {
+                    row: 5,
+                    frames: 1
+                }
+            }
+        };
     }
 
     // Both files are optional on purpose -- a fresh install has neither --
@@ -257,7 +366,7 @@ Singleton {
         onFileChanged: reload()
         onLoaded: {
             try {
-                root._manifest = root._validate(JSON.parse(text()));
+                root._manifest = root.normalise(JSON.parse(text()));
             } catch (e) {
                 root._manifest = null;
             }

@@ -157,11 +157,25 @@ ColumnLayout {
                         transformOrigin: Item.Top
                     }
 
+                    PetTilePreview {
+                        id: preview
+
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 8
+                        width: 68
+                        height: 72
+                        visible: tile.modelData.imported
+                        petName: tile.modelData.id
+                    }
+
+                    // Only while its sheet is missing or its manifest was
+                    // rejected. A tile that shows this is a pet that will
+                    // not draw on the desktop either.
                     MaterialIcon {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 30
-                        visible: tile.modelData.imported
-                        text: "photo_library"
+                        visible: tile.modelData.imported && !preview.ready
+                        text: "broken_image"
                         color: Colours.palette.m3onSurfaceVariant
                         fontStyle: Tokens.font.icon.large
                     }
@@ -275,7 +289,7 @@ ColumnLayout {
     StyledText {
         Layout.fillWidth: true
         wrapMode: Text.Wrap
-        text: qsTr("Pets of your own go in ~/.config/aphotic/pets/ as a sprite sheet and a small manifest. They show up here as soon as the folder exists.")
+        text: qsTr("Pets of your own go in ~/.config/aphotic/pets/ as a sprite sheet and a small manifest. A folder drawn as a broken image has a manifest this cannot read.")
         color: Colours.palette.m3onSurfaceVariant
         font: Tokens.font.label.small
     }

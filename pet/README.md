@@ -151,20 +151,23 @@ Node's `npx`, which Aphotic does not install:
 npx petdex install boba
 ```
 
-It lands in `~/.codex/pets/boba/`. Copy the folder across and rename it:
+It lands in `~/.codex/pets/boba/`. Copy the folder across, and that is
+the whole job:
 
 ```sh
 cp -r ~/.codex/pets/boba ~/.config/aphotic/pets/boba
 ```
 
-**Then overwrite its `pet.json`.** Petdex writes its own, with `id`,
-`displayName` and `spritesheetPath` in it, and this plugin rejects that
-file because it has no `format: 1`. A pet copied across untouched shows
-you a built-in and no error. Write the manifest in the next section
-instead.
+Nothing to edit. Petdex writes its own manifest, with `id`,
+`displayName` and `spritesheetPath` in it rather than the keys below, and
+this plugin reads that shape directly. The cell size is divided out of
+the image rather than assumed, so a sheet exported at another resolution
+works too, and the drawn height is set near the built-in pets.
 
-The sheets there are a fixed shape, so the manifest is the same every
-time. Cells are 192 by 208 in an 8 by 9 grid, and the nine rows run:
+You only need a manifest of your own to override that, which is worth
+doing when a pet's own poses suit the four states better than the
+defaults. The sheets are a fixed shape: cells in an 8 by 9 grid, and the
+nine rows run:
 
 | Row | State | Frames |
 |---|---|---|
@@ -178,7 +181,8 @@ time. Cells are 192 by 208 in an 8 by 9 grid, and the nine rows run:
 | 7 | running | 6 |
 | 8 | review | 6 |
 
-Four of those nine map onto what this plugin plays:
+Four of those nine are what this plugin plays. Writing them out by hand
+gets you the same result as leaving the folder alone:
 
 ```json
 {
@@ -201,13 +205,15 @@ Four of those nine map onto what this plugin plays:
 Row 2 goes unused, because this plugin mirrors row 1 when the pet walks
 left. Row 4 is a hop if you would rather a click made your pet jump than
 wave. Nothing in that format is a sleeping pose, so `sleep` borrows one:
-row 5 is the pet's failure pose, which on every sheet checked so far
-droops with its eyes half shut and reads as asleep. Row 6 is the
-alternative if yours does not.
+row 5 is the pet's failure pose, which usually droops with its eyes half
+shut and reads as asleep. Row 6 is the alternative where it does not, and
+some pets have neither, which is the main reason to write the manifest
+out yourself.
 
-`scale` matters. A 192 by 208 cell drawn at full size is a small window,
-not a pet. `0.4` puts it at 77 by 83, about the size of the built-ins.
-Painted art wants `smooth: true`; leave it `false` only for pixel art.
+`scale` is the other reason. A 192 by 208 cell drawn at full size is a
+small window, not a pet, so left alone this plugin scales the art to
+about 96 pixels tall. Set `scale` to pick your own size. Painted art
+wants `smooth: true`; leave it `false` only for pixel art.
 
 Petdex sheets are usually `spritesheet.webp`, which a current Aphotic
 decodes. See the WebP note above if yours does not.
@@ -297,6 +303,13 @@ hand-drawn sheet follows.
 
 These are ripped game assets. Keep them to your own desktop.
 
+The same goes for packs that ship one sheet per animation, like the CC0
+AutoSprite library: a folder of `<name>-idle.png`, `<name>-walk.png` and
+a JSON of frame rectangles beside each. This plugin reads one sheet per
+pet, with a state on each row, so those need combining into a single
+image before any of it applies. The picker draws a folder it cannot read
+as a broken image rather than leaving you to find out on the desktop.
+
 ### 5. Draw it yourself
 
 The layout is the same whether you draw it, paste it or prompt for it.
@@ -363,7 +376,7 @@ nearest-neighbour on a downscale eats whole pixel rows.
 
 | Key | Meaning |
 |---|---|
-| `format` | Must be `1`. Anything else is rejected. |
+| `format` | Must be `1`. A manifest without it is read as a generator's if it has a `spritesheetPath`, and rejected otherwise. |
 | `name` | Shown as the pet's name. |
 | `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. PNG, JPEG, GIF, SVG, and WebP where the decoder is installed. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
@@ -401,6 +414,7 @@ work down this list:
 |---|---|
 | A built-in, not your pet | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
 | A built-in, manifest looks fine | The image did not decode. Check `sheet` names the file exactly, with no path in front of it. A WebP on an install older than `qt6-imageformats` lands here. |
+| A broken-image tile in the picker | The manifest is neither this plugin's shape nor a generator's. A pack with one sheet per animation lands here; it needs combining into one image first. |
 | The folder is missing from the picker | It is not directly under `~/.config/aphotic/pets/`, or its name starts with a dot. |
 | Right pet, wrong frames | `frame.width` or `frame.height` does not match the real cell. Measure the sheet and divide by the column and row count. |
 | Bits of the next frame at the edges | The sheet has padding or gutters between cells. This plugin assumes none. Re-export without them. |

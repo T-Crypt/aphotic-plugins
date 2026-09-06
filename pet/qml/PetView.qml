@@ -7,14 +7,19 @@ import QtQuick
 import qs.modules.plugins.pet
 
 // Draws whichever pet is configured: an imported sprite sheet when one
-// loads, the built-in vector pet otherwise. The fallback is unconditional
-// -- a missing directory, a rejected manifest and a PNG that fails to
+// loads, a built-in vector pet otherwise. The fallback is unconditional
+// -- a missing directory, a rejected manifest and an image that fails to
 // decode all land in the same place, so the surface is never blank.
 //
 // The sheet is one Image behind a clipping viewport, offset to the wanted
 // cell, rather than a re-clipped or re-decoded source per frame. Changing
 // a frame then costs two coordinate writes on a node the GPU already
 // holds.
+//
+// Cell size and draw scale are worked out here rather than read straight
+// off the manifest, because a manifest whose format fixes the grid states
+// neither. Dividing the loaded image by the grid is also what lets one of
+// those sheets be exported at any resolution and still land right.
 Item {
     id: root
 
@@ -24,10 +29,14 @@ Item {
     required property int facing
     required property int frame
 
-    readonly property bool usingSheet: PetLibrary.spriteReady && sheet.status === Image.Ready
+    readonly property real cellWidth: PetLibrary.frameWidth > 0 ? PetLibrary.frameWidth : (PetLibrary.columns > 0 ? sheet.implicitWidth / PetLibrary.columns : 0)
+    readonly property real cellHeight: PetLibrary.frameHeight > 0 ? PetLibrary.frameHeight : (PetLibrary.rows > 0 ? sheet.implicitHeight / PetLibrary.rows : 0)
+    readonly property real drawScale: PetLibrary.scale > 0 ? PetLibrary.scale : (root.cellHeight > 0 ? PetLibrary.targetHeight / root.cellHeight : 1)
 
-    implicitWidth: root.usingSheet ? PetLibrary.frameWidth * PetLibrary.scale : fallback.implicitWidth
-    implicitHeight: root.usingSheet ? PetLibrary.frameHeight * PetLibrary.scale : fallback.implicitHeight
+    readonly property bool usingSheet: PetLibrary.spriteReady && sheet.status === Image.Ready && root.cellWidth > 0 && root.cellHeight > 0
+
+    implicitWidth: root.usingSheet ? root.cellWidth * root.drawScale : fallback.implicitWidth
+    implicitHeight: root.usingSheet ? root.cellHeight * root.drawScale : fallback.implicitHeight
 
     DefaultPet {
         id: fallback
@@ -43,8 +52,8 @@ Item {
         id: viewport
 
         visible: root.usingSheet
-        width: PetLibrary.frameWidth * PetLibrary.scale
-        height: PetLibrary.frameHeight * PetLibrary.scale
+        width: root.cellWidth * root.drawScale
+        height: root.cellHeight * root.drawScale
         clip: true
         transform: Scale {
             origin.x: viewport.width / 2
@@ -58,10 +67,10 @@ Item {
             asynchronous: true
             cache: true
             smooth: PetLibrary.smooth
-            width: sheet.implicitWidth * PetLibrary.scale
-            height: sheet.implicitHeight * PetLibrary.scale
-            x: -root.frame * PetLibrary.frameWidth * PetLibrary.scale
-            y: -PetLibrary.stateFor(root.mood).row * PetLibrary.frameHeight * PetLibrary.scale
+            width: sheet.implicitWidth * root.drawScale
+            height: sheet.implicitHeight * root.drawScale
+            x: -root.frame * root.cellWidth * root.drawScale
+            y: -PetLibrary.stateFor(root.mood).row * root.cellHeight * root.drawScale
         }
     }
 }

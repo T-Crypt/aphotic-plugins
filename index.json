@@ -137,7 +137,7 @@
       "name": "pet",
       "display_name": "Desktop Pet",
       "description": "A small creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, and reacts when you click it.",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "category": "theming",
       "capabilities": [
         "ui-surface"
