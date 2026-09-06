@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
+//
+// Aphotic desktop pet, accent shader
+// Copyright (C) 2023-2026 Trevin Tindall. Licensed GPL-3.0-or-later.
 //
 // Retints a pet's accent regions onto the live palette, so a pet wears
 // the theme instead of sitting on the desktop as a foreign sprite. Every

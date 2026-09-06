@@ -1,0 +1,34 @@
+Aphotic plugins
+Copyright (C) 2023-2026 Trevin Tindall
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Third-party components retain their own licenses and copyright.
+
+The desktop pet runtime (pet/qml/) is an original design and
+implementation. The behaviour model, the binding from harness events to
+poses, and the hue-window retint that makes a sprite wear the live
+palette are the work being claimed here. Published as prior art: it
+exists so the design stays available to everyone, including its authors.
+
+Pet artwork is separate from the runtime above and carries its own terms.
+A sheet contributed by someone else stays theirs.
+
+---
+
+"Aphotic" and the Aphotic mark are reserved. The GPL covers the code, not
+the name. You may modify and redistribute this software under the GPL,
+but not under this name or mark without written permission.

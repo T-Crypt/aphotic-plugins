@@ -1,5 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
+//
+// Aphotic desktop pet, accent retint
+// Copyright (C) 2023-2026 Trevin Tindall. Licensed GPL-3.0-or-later.
+//
+// Cuts one cell out of a sprite sheet and retints its accent regions to the
+// live palette, so a pet wears the theme instead of sitting on the desktop
+// as a foreign sprite.
 
 pragma ComponentBehavior: Bound
 

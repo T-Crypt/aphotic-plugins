@@ -1,5 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
+//
+// Aphotic desktop pet, library and manifests
+// Copyright (C) 2023-2026 Trevin Tindall. Licensed GPL-3.0-or-later.
+//
+// Which pets exist, what each sheet's grid and state rows look like, and
+// the settings the pet owns. Bundled and imported pets come down the same
+// data path, so a pet someone else authors is a first-class one.
 
 pragma Singleton
 pragma ComponentBehavior: Bound
