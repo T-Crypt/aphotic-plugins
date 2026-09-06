@@ -120,12 +120,21 @@ command's arguments. Use `return`, not `exit`. `llm-fit/cli/ai_fit.sh` is
 the worked example — it was core's `aphotic ai fit` until this capability
 existed.
 
-Add
-an entry to `index.json` at the repo root (including `category`, and the
-`ui` block for a UI surface) so it shows up in `aphotic plugin list
---remote` and in Settings → Plugins' "Browse available" list, filterable
-by category there. Open a PR — this repo follows the same contribution
-conventions as the main `aphotic-hypr` repo.
+Then rebuild the catalogue:
+
+```sh
+python3 tools/build_index.py
+```
+
+`index.json` at the repo root is what `aphotic plugin list --remote` and
+Settings → Plugins' "Browse available" list read before anything is
+installed. It is derived from every `plugin.toml`, so write the manifest
+and let the script write the entry. `--check` says whether the checked-in
+file still matches, which is what to run before tagging a release.
+
+Commit the regenerated file with your change and open a PR. This repo
+follows the same contribution conventions as the main `aphotic-hypr`
+repo.
 
 ## License
 
