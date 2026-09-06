@@ -9,6 +9,7 @@ set -euo pipefail
 
 lib_dir="$1"
 hook_script="${lib_dir}/agent_hook.sh"
+statusline_script="${lib_dir}/agent_statusline.sh"
 settings_file="$HOME/.claude/settings.json"
 
 command -v jq >/dev/null 2>&1 || { echo "jq not found; cannot unwire Claude Code hooks" >&2; exit 1; }
@@ -29,3 +30,10 @@ jq \
         | with_entries(select((.value | length) > 0)))
     ' \
     "$settings_file" > "$tmp" && mv "$tmp" "$settings_file"
+
+# Only our own statusLine command goes; one the user pointed somewhere
+# else was never ours to remove.
+if [[ "$(jq -r '.statusLine.command // ""' "$settings_file")" == "$statusline_script" ]]; then
+    tmp="$(mktemp)"
+    jq 'del(.statusLine)' "$settings_file" > "$tmp" && mv "$tmp" "$settings_file"
+fi
