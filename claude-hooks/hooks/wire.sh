@@ -43,10 +43,13 @@ jq \
     def upsert($event; $timeout):
       .hooks[$event] = ((.hooks[$event] // []) | map(select((.hooks // []) | any(.command == $cmd) | not)) + [entry($timeout)]);
     upsert("SessionStart"; 10)
+    | upsert("UserPromptSubmit"; 10)
     | upsert("PreToolUse"; 30)
     | upsert("PostToolUse"; 30)
     | upsert("PostToolUseFailure"; 30)
     | upsert("Notification"; 10)
+    | upsert("PreCompact"; 10)
+    | upsert("PostCompact"; 10)
     | upsert("Stop"; 0)
     | upsert("SubagentStop"; 0)
     | upsert("SessionEnd"; 10)
