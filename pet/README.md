@@ -117,27 +117,29 @@ different files, one directory apart.
 
 Five ways to get that image, fastest first.
 
-### The sheet has to be a PNG
+### A note on WebP
 
-Or a JPEG, GIF or SVG. Qt here does not decode WebP, and both sources
-below export WebP by default, so this is the first thing that goes wrong.
-The image fails with `Unsupported image format`, the pet falls back to a
-built-in, and nothing else is logged.
+PNG, JPEG, GIF and SVG are all Qt reads on its own, and the two sources
+below both export WebP. Aphotic installs `qt6-imageformats` for exactly
+that reason, so on a current install a WebP sheet works with nothing to
+do.
 
-Convert it once:
+On an install predating that package, WebP fails with `Unsupported image
+format`, the pet falls back to a built-in, and nothing else is logged.
+Two ways out. Add the decoder:
+
+```sh
+sudo pacman -S qt6-imageformats
+```
+
+Or convert the sheet once and point `sheet` at the result:
 
 ```sh
 ffmpeg -i spritesheet.webp -pix_fmt rgba spritesheet.png
 ```
 
-Keep `-pix_fmt rgba` or you lose the transparent background and your pet
-arrives in a white box. Then point `sheet` at the PNG.
-
-Or install the decoder and keep the WebP:
-
-```sh
-sudo pacman -S qt6-imageformats
-```
+Keep `-pix_fmt rgba` there, or you lose the transparent background and
+your pet arrives in a white box.
 
 ### 1. Take one from Petdex
 
@@ -207,8 +209,8 @@ alternative if yours does not.
 not a pet. `0.4` puts it at 77 by 83, about the size of the built-ins.
 Painted art wants `smooth: true`; leave it `false` only for pixel art.
 
-Petdex sheets are usually `spritesheet.webp`, so convert it or install
-the decoder before any of this draws. See above.
+Petdex sheets are usually `spritesheet.webp`, which a current Aphotic
+decodes. See the WebP note above if yours does not.
 
 ### 2. Generate one in ChatGPT
 
@@ -216,8 +218,7 @@ Petdex's own pets come from the **Hatch Pet** skill in the ChatGPT
 desktop app. Install it from the Skills menu, type `/pet`, and describe
 what you want. It draws all nine states and writes them to
 `~/.codex/pets/<name>/`, at which point you are back at step 1: copy the
-folder, replace the `pet.json`, convert the WebP if you have not
-installed the decoder.
+folder and replace the `pet.json`.
 
 Be specific in the description. A silhouette, a colour, a material and a
 mood get you much further than a noun.
@@ -364,7 +365,7 @@ nearest-neighbour on a downscale eats whole pixel rows.
 |---|---|
 | `format` | Must be `1`. Anything else is rejected. |
 | `name` | Shown as the pet's name. |
-| `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. PNG, JPEG, GIF or SVG; not WebP. |
+| `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. PNG, JPEG, GIF, SVG, and WebP where the decoder is installed. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
 | `scale` | Draw scale. Use an integer for pixel art. Defaults to `1`. |
 | `fps` | Default playback rate for every state. Capped at 12, the clock's own rate. Defaults to `8`. |
@@ -399,7 +400,7 @@ work down this list:
 | Symptom | Cause |
 |---|---|
 | A built-in, not your pet | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
-| A built-in, manifest looks fine | The image did not decode. WebP needs `qt6-imageformats`. Check `sheet` names the file exactly, with no path in front of it. |
+| A built-in, manifest looks fine | The image did not decode. Check `sheet` names the file exactly, with no path in front of it. A WebP on an install older than `qt6-imageformats` lands here. |
 | The folder is missing from the picker | It is not directly under `~/.config/aphotic/pets/`, or its name starts with a dot. |
 | Right pet, wrong frames | `frame.width` or `frame.height` does not match the real cell. Measure the sheet and divide by the column and row count. |
 | Bits of the next frame at the edges | The sheet has padding or gutters between cells. This plugin assumes none. Re-export without them. |
