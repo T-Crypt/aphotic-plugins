@@ -595,10 +595,20 @@ Singleton {
         };
     }
 
-    // Four of the nine standard rows, which the generated format and this
+    // Eight of the nine standard rows, which the generated format and this
     // plugin's own bundled pets share. Row 2 is the mirror of row 1, which
     // this plugin does itself. `sleep` borrows the failure pose, which
     // droops with its eyes half shut where the waiting pose is alert.
+    //
+    // `working`/`waitingProcess`/`attentionRequired`/`complete`/`error` are
+    // `PetAgentState`'s own mood vocabulary (`PET-03`), not this plugin's
+    // idle/walk/react/sleep one -- they exist so a sprite pet gets real
+    // art for a harness's state instead of always falling back to `idle`.
+    // `error` shares row 5 with `sleep`; two moods pointing at the same
+    // pose is fine; `stateFor()` keys on the mood string, not the row.
+    // `compacting` has no row of its own (`PETS.md` §4.3) and is meant to
+    // fall through to `idle` here -- see `Pet.qml`'s badge for how that
+    // state is told apart from plain idle without new art.
     function _standardStates(): var {
         return {
             idle: {
@@ -616,6 +626,26 @@ Singleton {
             sleep: {
                 row: 5,
                 frames: 1
+            },
+            working: {
+                row: 7,
+                frames: 6
+            },
+            waitingProcess: {
+                row: 6,
+                frames: 6
+            },
+            attentionRequired: {
+                row: 8,
+                frames: 6
+            },
+            complete: {
+                row: 4,
+                frames: 5
+            },
+            error: {
+                row: 5,
+                frames: 8
             }
         };
     }

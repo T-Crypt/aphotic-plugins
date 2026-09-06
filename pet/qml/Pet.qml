@@ -73,7 +73,14 @@ Item {
     readonly property bool carried: PetLibrary.dragging && root.owns
     readonly property real drawX: root.carried ? root.clampX(PetLibrary.dragX * root.width - creature.width / 2) : root.petX
     readonly property real drawY: root.carried ? root.clampY(PetLibrary.dragY * root.height - creature.height / 2) : root.petY
-    readonly property string drawMood: root.carried ? "held" : root.mood
+
+    // What a harness session wants shown, or "" on a quiet desktop
+    // (`PET-03`). Held above the pet's own idle/walk/react/fidget/sleep
+    // vocabulary whenever it is non-empty: an agent doing something is
+    // more worth showing than a pet that happens to be mid-fidget, and
+    // being carried outranks both.
+    readonly property string agentMood: PetAgentState.mood
+    readonly property string drawMood: root.carried ? "held" : (root.agentMood.length > 0 ? root.agentMood : root.mood)
 
     // Where the user put the pet, in this surface's pixels. Stored
     // normalised, so the same spot lands in the same place on a different
@@ -85,7 +92,7 @@ Item {
     readonly property real roamMax: root.clampX(root.homePx + PetLibrary.roam)
 
     readonly property bool held: root.mood === "held"
-    readonly property bool animating: root.owns && (root.mood === "walk" || root.mood === "react" || root.mood === "fidget")
+    readonly property bool animating: root.owns && (root.agentMood.length > 0 || root.mood === "walk" || root.mood === "react" || root.mood === "fidget")
     readonly property real fidgetDuration: root.durationOf("fidget", 0.62)
     readonly property real reactDuration: root.durationOf("react", 0.9)
 
@@ -291,7 +298,13 @@ Item {
 
     function advance(dt: real): void {
         root.phase += dt;
-        if (root.mood === "walk")
+        // A harness state loops in place for as long as it lasts, which
+        // may be an arbitrary length of time -- unlike react/fidget, there
+        // is no fixed duration to settle back from, so it only ever stops
+        // because `agentMood` itself goes back to "".
+        if (root.agentMood.length > 0)
+            root.frame = root.frameOf(root.agentMood, true);
+        else if (root.mood === "walk")
             root.stepWalk(dt);
         else if (root.mood === "react")
             root.stepReact();
@@ -426,7 +439,7 @@ Item {
         cursorShape: PetLibrary.locked ? Qt.PointingHandCursor : (root.held ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
 
         onEntered: {
-            if (root.owns && (root.mood === "idle" || root.mood === "sleep")) {
+            if (root.owns && root.agentMood.length === 0 && (root.mood === "idle" || root.mood === "sleep")) {
                 root.lastPoke = Date.now();
                 root.startFidget();
             }
@@ -476,11 +489,74 @@ Item {
 
     Timer {
         interval: root.beatInterval()
-        running: root.owns && root.mood === "idle" && !SessionLockState.locked
+        // A harness with something to show is worth more than ambient
+        // wandering -- the beat timer stands down for as long as
+        // `agentMood` does, same reasoning as `animating` above.
+        running: root.owns && root.agentMood.length === 0 && root.mood === "idle" && !SessionLockState.locked
         repeat: true
         onTriggered: {
             interval = root.beatInterval();
             root.beatNow();
+        }
+    }
+
+    // A small always-legible signal that something is happening,
+    // independent of which pet is drawn. A sprite pet gets a real pose
+    // for most of `agentMood` (`PetLibrary._standardStates()`); a vector
+    // built-in falls back to its plain idle look for a mood it does not
+    // recognise, which would otherwise make a harness's state invisible
+    // on every built-in but Cipher. `compacting` has no sprite row at
+    // all yet (`PETS.md` §4.3) -- its own colour and its own, faster
+    // pulse are what keep it from reading as the same thing as a stalled
+    // `waitingProcess`, which is the one thing it is not allowed to look
+    // like.
+    Rectangle {
+        id: stateBadge
+
+        readonly property bool shown: root.owns && root.agentMood.length > 0
+        readonly property color tone: {
+            switch (root.agentMood) {
+            case "working": return "#4aa3ff";
+            case "waitingProcess": return "#e0a72e";
+            case "attentionRequired": return "#e5484d";
+            case "compacting": return "#b478e0";
+            case "complete": return "#39c979";
+            case "error": return "#e5484d";
+            default: return "transparent";
+            }
+        }
+        readonly property int pulseMs: root.agentMood === "attentionRequired" ? 380 : (root.agentMood === "compacting" ? 260 : 700)
+
+        visible: stateBadge.shown
+        width: 10
+        height: 10
+        radius: 5
+        color: stateBadge.tone
+        border.width: 1
+        border.color: Qt.rgba(0, 0, 0, 0.35)
+        x: creature.x + creature.width - width * 0.6
+        y: creature.y - height * 0.3 - root.lift
+
+        SequentialAnimation {
+            running: stateBadge.shown
+            loops: Animation.Infinite
+
+            NumberAnimation {
+                target: stateBadge
+                property: "opacity"
+                from: 0.35
+                to: 1
+                duration: stateBadge.pulseMs
+                easing.type: Easing.InOutQuad
+            }
+            NumberAnimation {
+                target: stateBadge
+                property: "opacity"
+                from: 1
+                to: 0.35
+                duration: stateBadge.pulseMs
+                easing.type: Easing.InOutQuad
+            }
         }
     }
 }
