@@ -1,8 +1,8 @@
 [plugin]
 name = "pet"
 display_name = "Desktop Pet"
-description = "A small creature that lives at the bottom of the desktop, wanders its own patch of it, and reacts when you click it."
-version = "1.1.0"
+description = "A small creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, and reacts when you click it."
+version = "1.2.0"
 author = "T-Crypt"
 category = "theming"
 capabilities = ["ui-surface"]
@@ -12,20 +12,33 @@ capabilities = ["ui-surface"]
 # gate on -- and PluginRegistry's _layerEnabled/_dataAvailable both return
 # true for an empty token, which is how a surface says "every install".
 #
-# width/height are the surface budget: core sizes the window from them
-# once and never resizes it. Pet.qml exposes a `maskItem` naming the
-# creature, so only the pet itself takes clicks and the rest of the box
-# stays desktop. The roaming room is the 240 of width minus the ~86 the
-# pet occupies.
+# anchor = "free" is the surface budget: the whole usable output, because
+# the pet is dragged around it and a fixed box would be the thing being
+# dragged. Core still owns the window and never resizes it -- the pet
+# moves inside a static surface. Pet.qml exposes a `maskItem` naming the
+# creature, so only the pet itself takes clicks and the whole rest of the
+# screen stays desktop. width/height are ignored for a free anchor.
 [ui.overlay]
 id = "pet"
 component = "qml/Pet.qml"
-anchor = "bottom"
-width = 240
-height = 160
+icon = "pets"
+label = "Desktop Pet"
+anchor = "free"
+
+# Docks into the Appearance category as a collapsed section rather than
+# claiming its own rail entry, same reasoning the Spectrum plugin gives:
+# the Settings rail is a fixed length by design. No requires_layer,
+# matching the overlay above.
+[ui.settings_pane]
+id = "petSettings"
+icon = "pets"
+label = "Desktop Pet"
+component = "qml/PetPane.qml"
+parent = "appearance"
 
 [owns]
-# Nothing in the shell's own settings. Which pet is active lives in
+# Nothing in the shell's own settings. Which pet is active, where the user
+# dragged it and how far it wanders live in
 # ~/.config/aphotic/plugins/pet/pet.json, and imported pets live in
 # ~/.config/aphotic/pets/, both the plugin's own to write and neither a
 # shell setting.
