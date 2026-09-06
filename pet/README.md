@@ -52,7 +52,14 @@ A pet is data, never code. There is no way to import QML here, on
 purpose: third-party QML would run inside the shell's own process with
 the shell's own reach, and that trust question is open.
 
-Put your pet in `~/.config/aphotic/pets/<name>/`:
+So a pet is exactly two files: one PNG sprite sheet and one JSON
+manifest describing how to cut it up.
+
+### 1. Make the folder
+
+Put your pet in `~/.config/aphotic/pets/<name>/`. The folder name is what
+you select it by, so keep it lowercase and free of spaces, slashes and
+dots:
 
 ```
 ~/.config/aphotic/pets/nautilus/
@@ -60,17 +67,47 @@ Put your pet in `~/.config/aphotic/pets/<name>/`:
   sheet.png
 ```
 
-Then name it in `~/.config/aphotic/plugins/pet/pet.json`:
+A folder called `default` is picked up with no config file at all. Any
+other name has to be selected in `~/.config/aphotic/plugins/pet/pet.json`:
 
 ```json
 { "pet": "nautilus" }
 ```
 
-Both files are watched, so an edit takes effect without restarting the
-shell. A folder called `default` is picked up with no config file at
-all.
+### 2. Draw the sheet
 
-### `pet.json`
+The sheet is one PNG laid out as a strict grid. Every cell is the same
+size, the grid starts at the top-left pixel, and there is no padding,
+margin or gutter anywhere -- the plugin finds a frame by multiplying, so
+a one-pixel border shifts every frame after the first.
+
+Each state owns a **row**. Each frame of that state is a **cell across
+it**, starting at column 0. Rows may be shorter than each other, and two
+states may share a row.
+
+```
+        col 0     col 1     col 2     col 3     col 4     col 5
+row 0  [ idle 0 ][ idle 1 ][ idle 2 ][ idle 3 ]
+row 1  [ walk 0 ][ walk 1 ][ walk 2 ][ walk 3 ][ walk 4 ][ walk 5 ]
+row 2  [ react0 ][ react1 ][ react2 ][ react3 ][ react4 ]
+row 3  [ sleep0 ]
+```
+
+Four rules the drawing itself has to follow:
+
+- **Face right.** The pet is mirrored about the cell's centre when it
+  walks left, so draw one direction only.
+- **Stand on the bottom edge of the cell.** The pet is placed 8 px above
+  the bottom of the surface by the cell's bottom edge, not by its
+  pixels. Empty rows at the bottom of a cell make the pet hover over the
+  wallpaper.
+- **Keep the cell tight.** The cell is also the click target and the
+  window's input mask, so transparent padding around the pet is desktop
+  you can no longer click through.
+- **Keep the pet horizontally centred in the cell**, or it will appear to
+  jump sideways when it turns around.
+
+### 3. Write `pet.json`
 
 ```json
 {
@@ -92,43 +129,80 @@ all.
 
 | Key | Meaning |
 |---|---|
-| `format` | Must be `1`. Anything else is rejected. |
-| `name` | Shown as the pet's name. |
+| `format` | Must be the number `1`. Anything else, `"1"` included, is rejected. |
+| `name` | The pet's name. Read but not yet displayed anywhere. |
 | `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
-| `scale` | Draw scale. Use an integer for pixel art. Defaults to `1`. |
-| `fps` | Default playback rate for every state. Capped at 12, the clock's own rate. Defaults to `8`. |
+| `scale` | Draw scale. Use a whole number for pixel art. Defaults to `1`. |
+| `fps` | Default playback rate for every state. Clamped to 1-12, the clock's own rate. Defaults to `8`. |
 | `smooth` | Filter the image when scaling. Leave it `false` for pixel art. |
-| `states` | One entry per state. `idle` is required; the rest fall back to it. |
+| `states` | One entry per state. `idle` is required; the other three fall back to it. |
 
 Each state takes `row` (which row of the sheet, counting from 0),
 `frames` (how many cells across, starting at column 0), and an optional
-`fps` of its own.
+`fps` of its own. Neither is checked against the size of the image: name
+more frames than a row holds and the pet flickers through whatever is to
+the right of it, or through nothing.
 
-The sheet is one image laid out as a grid: each state owns a row, each
-frame of that state is a cell across it. The plugin draws one cell at a
-time by offsetting the image behind a clipping viewport, so switching
-frames costs two coordinate writes and no decode.
+### How each state is played
 
-The pet faces right in the sheet. It is mirrored when it walks left, so
-draw one direction only.
+- **`idle` frame 0 is the still picture.** It is what the pet shows
+  between beats, which is nearly all of the time. No timer runs and the
+  window submits no frames.
+- **The rest of the `idle` row is the fidget**, played once through when
+  a beat picks one and whenever the cursor enters the pet. It runs for
+  `frames / fps` seconds or 0.62, whichever is longer, holds on the last
+  frame for any remainder, then snaps back to frame 0. Draw the last
+  `idle` frame close to frame 0 -- a blink that ends with the eye open --
+  or that snap shows.
+- **`walk` loops** while the pet crosses its patch, and is cut off at
+  whatever frame it has reached when the pet arrives. Make it a seamless
+  cycle that survives being interrupted anywhere. The pet moves 34 px per
+  second across the surface, so each walk frame covers
+  `34 / (scale * fps)` source pixels -- about 2 px at `scale: 2`,
+  `fps: 8`. Move the feet by roughly that much per frame and they will
+  not skate.
+- **`react` plays once** when you click, over `frames / fps` seconds or
+  0.9, whichever is longer, then snaps back to idle frame 0. The pet also
+  hops up to 16 px during it, which the plugin does for you -- do not
+  draw the hop into the frames.
+- **`sleep` frame 0 is the still picture** while the pet naps, after six
+  quiet minutes. It never animates, so extra `sleep` frames are never
+  drawn.
 
-The surface is 240x160 and core never resizes it, so a frame larger than
-that gets clipped by the window. Keep `frame.width` times `scale` under
-about 120 to leave the pet room to walk, and `frame.height` times `scale`
-under about 130.
+### Sizing
 
-### How the states are used
+The surface is 240x160 and core never resizes it, so the drawn size --
+`frame.width * scale` by `frame.height * scale` -- has to live inside it:
 
-- `idle` frame 0 is the still picture between beats. The remaining
-  `idle` frames play once through as the pet's blink or fidget.
-- `walk` loops while the pet crosses its patch.
-- `react` plays once when you click.
-- `sleep` frame 0 is the still picture while the pet naps.
+| | Hard limit | Recommended |
+|---|---|---|
+| `frame.width * scale` | under 224, or the pet never walks | 80-120, to leave a patch worth roaming |
+| `frame.height * scale` | 152, or the top is clipped | up to 136, so the click hop has headroom |
 
-Anything the manifest gets wrong falls back to the built-in pet: a
-missing folder, a rejected manifest, an image that will not decode. The
-surface is never blank.
+The room the pet roams is 240 minus its drawn width, so a wide pet is a
+pet that barely moves.
+
+### When your pet does not show up
+
+Every failure falls back to the built-in pet, silently and with nothing
+in the shell log: a missing folder, a manifest that will not parse, a
+manifest that parses but fails validation, an image that will not decode.
+The surface is never blank, which also means a blank-looking anglerfish
+is your only error message. Work down this list:
+
+1. **Is the JSON valid?** `python -m json.tool ~/.config/aphotic/pets/<name>/pet.json`. A trailing comma or a `//` comment is enough.
+2. **Is `format` the number `1`?** Not `"1"`, not `1.0` in a form that survives as a string.
+3. **Is `states.idle` present?** The other three states are optional; `idle` is not.
+4. **Are `frame.width` and `frame.height` both above zero**, and numbers rather than strings?
+5. **Is `sheet` a bare filename** sitting beside `pet.json`? A path with a `/`, a `\` or a leading `.` is rejected outright.
+6. **Does the folder name match** the `pet` key in `~/.config/aphotic/plugins/pet/pet.json`, and does that file itself parse?
+7. **Does the PNG actually decode?** `file sheet.png` should say PNG. Qt loads it asynchronously, so the built-in pet also shows for the moment before a large sheet is ready.
+
+Both files are watched, so once a pet is loading, edits to either take
+effect without restarting the shell. Creating the folder for the first
+time is the exception -- there was no file there to watch, so reload the
+shell after adding a new pet.
 
 ## Configuration
 
