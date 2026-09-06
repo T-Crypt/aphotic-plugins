@@ -69,6 +69,17 @@ Item {
 
     readonly property bool ready: root.manifest !== null && sheet.status === Image.Ready && root.cellWidth > 0 && root.cellHeight > 0
 
+    // A bundled pet ships the same art twice, WebP and PNG, because Qt
+    // reads WebP only where qt6-imageformats is installed and there is no
+    // vector pet left to draw instead. The second copy is tried once, when
+    // the first reports Error, and a new manifest arms it again.
+    readonly property string sheetUrl: root.manifest ? PetLibrary.urlFor(root.petName, root.manifest) : ""
+    readonly property string fallbackUrl: root.manifest?.sheetUrlFallback ?? ""
+
+    property bool _fellBack: false
+
+    onManifestChanged: root._fellBack = false
+
     readonly property var accent: root.manifest?.accent ?? null
 
     // The shader draws whenever it is usable, tinting or not: `strength`
@@ -106,7 +117,11 @@ Item {
         Image {
             id: sheet
 
-            source: root.manifest ? PetLibrary.urlFor(root.petName, root.manifest) : ""
+            source: root._fellBack ? root.fallbackUrl : root.sheetUrl
+            onStatusChanged: {
+                if (sheet.status === Image.Error && !root._fellBack && root.fallbackUrl.length > 0)
+                    root._fellBack = true;
+            }
             asynchronous: true
             cache: true
             smooth: root.manifest?.smooth ?? true

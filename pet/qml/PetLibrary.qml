@@ -12,14 +12,13 @@ import qs.services.ai
 // Which pet is drawn, where the user put it, and the sheet it is drawn
 // from when the pet is an imported one.
 //
-// Two kinds of pet share one name. A built-in is vector code in this
-// plugin, drawn off the live palette, and `pet` naming one of `builtins`
-// below selects it. Anything else is read as a folder under
-// ~/.config/aphotic/pets/, which is data: one PNG sprite sheet plus one
-// JSON manifest. Importing arbitrary QML would put third-party code
-// inside the shell's own process with the shell's own reach, and the
-// trust question that raises is open (D-05), so an imported pet reads a
-// fixed schema and nothing else.
+// Every pet is data. A pet is one sprite sheet plus a manifest saying how
+// that sheet is laid out, and there is no other kind: the three that
+// travel with the plugin are listed in `bundled` below, and anything else
+// is read as a folder under ~/.config/aphotic/pets/. Importing arbitrary
+// QML would put third-party code inside the shell's own process with the
+// shell's own reach, and the trust question that raises is open (D-05),
+// so an imported pet reads a fixed schema and nothing else.
 //
 // normalise() is the whole of that boundary, and it reads two formats:
 // this plugin's own, and the one the pet generators write, which is
@@ -28,7 +27,8 @@ import qs.services.ai
 // filename living beside the manifest -- no slash, no leading dot, no
 // traversal -- so a manifest can only ever name an image inside its own
 // pet directory, and everything else is bounds-checked into a usable
-// value or the pet is rejected outright and a built-in draws instead.
+// value or the pet is rejected outright and a pet that ships with the
+// plugin draws instead.
 //
 // This is also the only writer of the plugin's own settings. Dragging the
 // pet and every control in the settings pane lands here, which is why the
@@ -51,30 +51,23 @@ Singleton {
     // not this plugin's.
     readonly property string legacyPath: `${root.configDir}/pet.json`
 
-    // Order is the order the settings pane offers them in, so the default
-    // comes first.
-    readonly property var builtins: [
-        {
-            id: "miko",
-            name: qsTr("Miko"),
-            description: qsTr("A small shrine girl who wears the accent colour.")
-        },
-        {
-            // Still "angler" on disk. The art is an orb now, but the id is
-            // what a saved config names, and renaming it would quietly
-            // move every install that had chosen this pet onto another one.
-            id: "angler",
-            name: qsTr("Aphotid"),
-            description: qsTr("A glowing orb. The light in the dark, wearing the accent colour.")
-        },
-        {
-            id: "clip",
-            name: qsTr("Clip"),
-            description: qsTr("A bent paperclip with opinions about what you are writing.")
-        }
-    ]
+    // Which pet a config gets when it names none, and the one an imported
+    // pet falls back to when its folder, manifest or image does not load.
+    readonly property string defaultPet: "lumen"
 
-    readonly property string fallbackBuiltin: "miko"
+    // Ids written by a version whose pets were vector code rather than
+    // sheets. Those three pets are gone, so a config naming one has to
+    // land somewhere, and each lands on its nearest survivor rather than
+    // all three collapsing onto the default: the orb was the orb, and the
+    // character was the character. "default" has meant "whatever ships as
+    // the default" since before there was more than one pet and still
+    // does.
+    readonly property var legacyPets: ({
+        "default": "lumen",
+        "angler": "lumen",
+        "miko": "kozumi",
+        "clip": "lumen"
+    })
 
     // Sprite pets that ship with the plugin. Same data path as an
     // imported pet -- one sheet, one grid, one set of state rows -- but
@@ -91,10 +84,31 @@ Singleton {
     // to live under qml/ to be reachable at all.
     readonly property var bundled: [
         {
+            id: "lumen",
+            name: qsTr("Lumen"),
+            description: qsTr("A sealed lamp adrift in the dark. Its shell is neutral and its core is the accent colour, so it is the pet that changes most with the theme."),
+            sheet: "pets/lumen/spritesheet.webp",
+            sheetFallback: "pets/lumen/spritesheet.png",
+            columns: 8,
+            rows: 11,
+            targetHeight: 96,
+            accent: {
+                // The whole creature bar its shell sits in this window --
+                // nothing else in the sheet is saturated at all -- so the
+                // retint carries the entire glow rather than a trim.
+                from: 165,
+                to: 225,
+                feather: 12,
+                minSat: 0.18,
+                refSat: 0.42
+            }
+        },
+        {
             id: "cipher",
             name: qsTr("Cipher"),
             description: qsTr("A developer at a floating console, wearing the accent colour in his seams and circuitry."),
             sheet: "pets/cipher/spritesheet.webp",
+            sheetFallback: "pets/cipher/spritesheet.png",
             columns: 8,
             rows: 11,
             targetHeight: 96,
@@ -105,48 +119,74 @@ Singleton {
                 minSat: 0.18,
                 refSat: 0.38
             }
+        },
+        {
+            id: "kozumi",
+            name: qsTr("Kozumi"),
+            description: qsTr("A small figure at a laptop, in a dark coat trimmed in the accent colour."),
+            sheet: "pets/kozumi/spritesheet.webp",
+            sheetFallback: "pets/kozumi/spritesheet.png",
+            columns: 8,
+            rows: 11,
+            targetHeight: 96,
+            accent: {
+                // Stops at 15 because her skin starts at 25 and a feather
+                // reaching it would tint her face. The window is her coat
+                // trim and the red through her hair; everything warmer
+                // than it is skin and passes through untouched.
+                from: 320,
+                to: 15,
+                feather: 6,
+                minSat: 0.20,
+                refSat: 0.38
+            }
         }
     ]
 
-    // The raw name, sanitised. "default" is what every pet.json written
-    // before there was more than one built-in says, and it has to keep
-    // meaning "whatever this plugin ships as the default".
+    // The raw name, sanitised, with a retired id translated to the pet
+    // that replaced it. Never returns "default": that is an answer the
+    // rest of this file would have to special-case everywhere, so it is
+    // resolved to a real id here, once.
     readonly property string selected: {
         const name = root._config?.pet;
         if (typeof name !== "string" || name.length === 0)
-            return "default";
+            return root.defaultPet;
         if (name.includes("/") || name.includes("\\") || name.includes(".."))
-            return "default";
-        return name;
+            return root.defaultPet;
+        return root.legacyPets[name] ?? name;
     }
-
-    readonly property bool selectionIsBuiltin: root.selected === "default" || root.builtins.some(b => b.id === root.selected)
 
     // A bundled id wins over a directory of the same name under
     // ~/.config/aphotic/pets/. The two are the same pet in every case that
     // matters -- someone who installed one by hand before it shipped --
     // and the one travelling with the plugin is the one kept in step
     // with it.
-    readonly property var bundledPet: root.selectionIsBuiltin ? null : (root.bundled.find(b => b.id === root.selected) ?? null)
+    readonly property var bundledPet: root.bundled.find(b => b.id === root.selected) ?? null
     readonly property bool selectionIsBundled: root.bundledPet !== null
 
-    // Which vector pet draws. Also the answer when an imported pet is
-    // selected but its folder, manifest or image does not load, which is
-    // what keeps the surface from ever going blank.
-    readonly property string builtin: root.selected !== "default" && root.selectionIsBuiltin ? root.selected : root.fallbackBuiltin
+    // What draws when an imported pet is selected but its folder, manifest
+    // or image does not load. There is no vector pet to fall back on any
+    // more, so the fallback is a sheet like any other -- and because that
+    // sheet travels with the plugin, the surface still never goes blank.
+    readonly property var fallbackPet: root.bundled.find(b => b.id === root.defaultPet) ?? root.bundled[0]
 
-    // Empty for a built-in and for a bundled pet, so nothing goes looking
-    // under ~/.config/aphotic/pets/ for a sheet that was never meant to
-    // live there.
-    readonly property string spriteName: root.selectionIsBuiltin || root.selectionIsBundled ? "" : root.selected
+    // Empty for a bundled pet, so nothing goes looking under
+    // ~/.config/aphotic/pets/ for a sheet that was never meant to live
+    // there. It stays set for an imported pet whose manifest has not
+    // loaded or was rejected, because this is what names the pet.json the
+    // reader below is waiting on -- deriving it from the manifest instead
+    // would leave that reader with no path and the manifest would never
+    // arrive. The fallback is safe regardless: a bundled manifest carries
+    // its own resolved URL and urlFor() prefers it over this name.
+    readonly property string spriteName: root.selectionIsBundled ? "" : root.selected
 
-    // The one manifest everything below reads: a bundled pet's, written
-    // in this file, or an imported pet's, parsed out of its pet.json.
-    readonly property var manifest: root.selectionIsBundled ? root.bundledManifest(root.bundledPet) : root._manifest
+    // The one manifest everything below reads: a bundled pet's, written in
+    // this file, or an imported pet's, parsed out of its pet.json.
+    readonly property var manifest: root.selectionIsBundled ? root.bundledManifest(root.bundledPet) : (root._manifest ?? root.bundledManifest(root.fallbackPet))
 
     readonly property bool spriteReady: root.manifest !== null
-    readonly property string displayName: root.spriteReady ? (root.manifest.name.length > 0 ? root.manifest.name : root.selected) : (root.builtins.find(b => b.id === root.builtin)?.name ?? root.builtin)
-    readonly property string sheetUrl: root.spriteReady ? root.urlFor(root.spriteName, root.manifest) : ""
+    readonly property string displayName: root.manifest.name.length > 0 ? root.manifest.name : root.selected
+    readonly property string sheetUrl: root.urlFor(root.spriteName, root.manifest)
 
     // Zero when the manifest does not state a cell size, which is a
     // manifest whose format fixes the grid instead. PetView divides the
@@ -174,9 +214,9 @@ Singleton {
     readonly property bool tinted: root._config?.tint !== false
 
     // How big the pet is drawn, over whatever size its own manifest asks
-    // for. Relative rather than a pixel height because the built-ins and
-    // every sheet are authored at different sizes, so one absolute number
-    // would mean something different for each of them.
+    // for. Relative rather than a pixel height because every sheet is
+    // authored at a different size, so one absolute number would mean
+    // something different for each of them.
     // PETS.md §5. Two settings people conflate and this keeps apart: who
     // dictation types into, and what drives the pet's own replies.
     //
@@ -423,8 +463,9 @@ Singleton {
     property bool _adopted: false
 
     // A FileView pointed at an empty path never reports a failure, so
-    // switching from an imported pet to a built-in one has to drop the
-    // old manifest here or the sheet would keep drawing over it.
+    // switching from an imported pet to one that ships with the plugin has
+    // to drop the old manifest here or the sheet would keep drawing over
+    // it.
     onSpriteNameChanged: root._manifest = null
 
     function setPet(name: string): void {
@@ -546,6 +587,12 @@ Singleton {
             name: pet.name,
             sheet: "",
             sheetUrl: Qt.resolvedUrl(pet.sheet).toString(),
+            // Same art as a PNG. Qt reads WebP only where
+            // qt6-imageformats is installed, and with no vector pet left
+            // to fall back on, an install without it would have drawn
+            // nothing at all. PetSheetCell swaps to this on a decode
+            // error.
+            sheetUrlFallback: pet.sheetFallback ? Qt.resolvedUrl(pet.sheetFallback).toString() : "",
             frame: null,
             columns: pet.columns,
             rows: pet.rows,
@@ -645,8 +692,8 @@ Singleton {
             columns: root._grid(layout.columns, 8),
             rows: root._grid(layout.rows, version >= 2 ? 11 : 9),
             // No scale: a fixed grid says nothing about how big the art
-            // wants to be on screen, so ask for a height near the built-in
-            // pets and let PetView divide.
+            // wants to be on screen, so ask for a height near the pets
+            // that ship with the plugin and let PetView divide.
             scale: 0,
             targetHeight: 96,
             fps: 8,

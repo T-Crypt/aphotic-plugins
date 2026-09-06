@@ -7,7 +7,7 @@ import QtQuick
 import qs.components
 import qs.services
 
-// The three rising z's every built-in pet shows while it naps.
+// The three rising z's a pet shows while it naps.
 //
 // Placed outside whatever container carries the facing flip, in every pet
 // that uses it: the flip is a horizontal mirror, and a mirrored glyph
