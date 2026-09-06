@@ -9,6 +9,7 @@ import Qt.labs.folderlistmodel
 import qs.config
 import qs.components
 import qs.services
+import qs.services.ai
 import qs.modules.plugins.pet
 
 // Docked into the Appearance category (see plugin.toml's
@@ -25,6 +26,20 @@ ColumnLayout {
     id: root
 
     readonly property string petsUrl: `file://${PetLibrary.petsDir}`
+
+    // Active is worth spelling out, because on a quiet desktop it resolves
+    // to nothing and the row would otherwise look like a setting that had
+    // not taken.
+    readonly property string dictationDescription: {
+        const base = qsTr("Which session dictation types into. Nothing dictates yet: the mic is still being built.");
+        if (PetLibrary.dictationTarget.length > 0)
+            return base;
+        const live = PetLibrary.dictationHarness;
+        if (live.length === 0)
+            return `${base} ${qsTr("No session is running, so Active has nothing to aim at.")}`;
+        const label = AgentRoles.harnesses.find(h => h.id === live)?.label ?? live;
+        return `${base} ${qsTr("Active is %1 right now.").arg(label)}`;
+    }
 
     readonly property var choices: {
         const list = PetLibrary.builtins.map(b => ({
@@ -444,6 +459,48 @@ ColumnLayout {
                 text: qsTr("Reset")
                 onActivated: PetLibrary.resetHome()
             }
+        }
+    }
+
+    StyledText {
+        text: qsTr("Agent")
+        font: Tokens.font.title.small
+    }
+
+    StyledText {
+        Layout.fillWidth: true
+        wrapMode: Text.Wrap
+        text: qsTr("The pet watches your coding sessions and shows what they are doing. These two say which session it means and where it gets its answers.")
+        color: Colours.palette.m3onSurfaceVariant
+        font: Tokens.font.body.small
+    }
+
+    SettingsGroup {
+        Layout.fillWidth: true
+
+        SettingsPresetRow {
+            icon: "mic"
+            label: qsTr("Dictation target")
+            description: root.dictationDescription
+            presets: PetLibrary.dictationTargets.map(t => ({
+                value: t.id,
+                label: t.label
+            }))
+            value: PetLibrary.dictationTarget
+            onSelected: value => PetLibrary.setDictationTarget(value)
+        }
+
+        SettingsPresetRow {
+            icon: "psychology"
+            label: qsTr("Pet backend")
+            description: qsTr("Mirroring means the pet has no answers of its own and shows you the session instead. A local assistant that holds its own conversation needs Ollama and is not built yet.")
+            presets: PetLibrary.backends.map(b => ({
+                value: b.id,
+                label: b.label,
+                enabled: b.available
+            }))
+            value: PetLibrary.backend
+            onSelected: value => PetLibrary.setBackend(value)
         }
     }
 

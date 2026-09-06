@@ -161,6 +161,26 @@ still the desktop's to click. That mask is what makes a screen-sized
 surface tolerable: without it, a free overlay would swallow every click
 on the wallpaper.
 
+## Which session it watches
+
+The pet follows whichever coding session moved last. Settings has two
+controls over that, and they do different jobs.
+
+**Dictation target** picks the session dictation types into. Leave it on
+Active and it follows the session you are in, which is what you want if
+you switch harnesses during the day. Pin it to one harness if you only
+run one. The mic that uses this is still being built, so the setting is
+ahead of the feature it serves.
+
+**Pet backend** picks where the pet's answers come from. Mirroring means
+it has none of its own: it watches a session and shows you its state. A
+local assistant tier that holds its own conversation over Ollama is
+designed and unbuilt, so its pill is drawn but cannot be picked.
+
+Neither setting names a harness in this plugin's code. Both read the
+list the shell keeps, so a harness added to Aphotic turns up here
+without a pet release.
+
 ## Custom pets
 
 A pet is data, never code. There is no way to import QML here, on
@@ -532,3 +552,5 @@ name, and then ignored. Delete it when you see the new file appear.
 | `roam` | How far it wanders either side of that, in pixels. `0` pins it. |
 | `locked` | Stops the drag. Clicking still works. |
 | `tint` | Retint the pet's declared accent regions to the theme. Defaults to on. Does nothing for a pet that declares none. |
+| `dictation` | Which coding session dictation will type into, by harness id (`claude`, `codex`). Empty or absent means Active: whichever session sent the last event. A pin to a harness the shell no longer offers reads as Active. |
+| `backend` | Where the pet's answers come from. Only `mirror` works today, and anything else reads as `mirror`. |

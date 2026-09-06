@@ -2,7 +2,7 @@
 name = "pet"
 display_name = "Desktop Pet"
 description = "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it."
-version = "1.6.0"
+version = "1.8.0"
 author = "T-Crypt"
 category = "theming"
 capabilities = ["ui-surface"]
