@@ -31,8 +31,18 @@ ColumnLayout {
             id: b.id,
             name: b.name,
             description: b.description,
-            imported: false
+            kind: "builtin",
+            pet: null
         }));
+
+        for (const b of PetLibrary.bundled)
+            list.push({
+                id: b.id,
+                name: b.name,
+                description: b.description,
+                kind: "bundled",
+                pet: b
+            });
 
         // A FolderListModel pointed at a directory that does not exist
         // quietly keeps listing the one it had, which is the process's
@@ -48,11 +58,17 @@ ColumnLayout {
             const name = imported.get(i, "fileName");
             if (typeof name !== "string" || name.startsWith("."))
                 continue;
+            // A folder whose name is already taken by a pet that ships
+            // with the plugin is the same pet installed by hand before it
+            // shipped. One tile, and the bundled one is what it picks.
+            if (list.some(c => c.id === name))
+                continue;
             list.push({
                 id: name,
                 name: name,
                 description: qsTr("An imported sprite sheet."),
-                imported: true
+                kind: "imported",
+                pet: null
             });
         }
         return list;
@@ -147,7 +163,7 @@ ColumnLayout {
                     DefaultPet {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 8
-                        visible: !tile.modelData.imported
+                        visible: tile.modelData.kind === "builtin"
                         petId: tile.modelData.id
                         mood: "idle"
                         phase: 0
@@ -157,11 +173,26 @@ ColumnLayout {
                         transformOrigin: Item.Top
                     }
 
+                    PetTilePreview {
+                        id: preview
+
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 8
+                        width: 68
+                        height: 72
+                        visible: tile.modelData.kind !== "builtin"
+                        petName: tile.modelData.kind === "imported" ? tile.modelData.id : ""
+                        bundledPet: tile.modelData.pet
+                    }
+
+                    // Only while its sheet is missing or its manifest was
+                    // rejected. A tile that shows this is a pet that will
+                    // not draw on the desktop either.
                     MaterialIcon {
                         anchors.horizontalCenter: parent.horizontalCenter
                         y: 30
-                        visible: tile.modelData.imported
-                        text: "photo_library"
+                        visible: tile.modelData.kind === "imported" && !preview.ready
+                        text: "broken_image"
                         color: Colours.palette.m3onSurfaceVariant
                         fontStyle: Tokens.font.icon.large
                     }
@@ -187,6 +218,128 @@ ColumnLayout {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: PetLibrary.setPet(tile.modelData.id)
+                    }
+                }
+            }
+        }
+    }
+
+    // No shared "Slider" component exists anywhere in core Settings yet,
+    // so this is self-contained rather than reaching for one that isn't
+    // there -- the same call, for the same reason, the Spectrum plugin's
+    // own pane makes.
+    component SizeSlider: StyledRect {
+        id: slider
+
+        required property string label
+        required property string description
+        required property real value
+        required property real from
+        required property real to
+        signal moved(real value)
+
+        property bool first: true
+        property bool last: true
+
+        readonly property real ratio: Math.max(0, Math.min(1, (slider.value - slider.from) / (slider.to - slider.from)))
+
+        Layout.fillWidth: true
+        implicitHeight: sliderContent.implicitHeight + Tokens.padding.large * 2
+
+        color: Colours.layer(Colours.tPalette.m3surfaceContainer, 2)
+        topLeftRadius: slider.first ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+        topRightRadius: slider.first ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+        bottomLeftRadius: slider.last ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+        bottomRightRadius: slider.last ? Tokens.rounding.extraLarge : Tokens.rounding.extraSmall
+
+        ColumnLayout {
+            id: sliderContent
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Tokens.padding.large
+            spacing: Tokens.spacing.extraSmall
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: slider.label
+                    font: Tokens.font.body.medium
+                }
+
+                StyledText {
+                    text: `${Math.round(slider.value * 100)}%`
+                    color: Colours.palette.m3onSurfaceVariant
+                    font: Tokens.font.label.small
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: slider.description
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.small
+            }
+
+            StyledRect {
+                id: track
+
+                Layout.fillWidth: true
+                Layout.topMargin: Tokens.spacing.small
+                implicitHeight: 6
+                radius: Tokens.rounding.full
+                color: Colours.layer(Colours.tPalette.m3surfaceContainer, 3)
+
+                StyledRect {
+                    width: track.width * slider.ratio
+                    height: parent.height
+                    radius: parent.radius
+                    color: Colours.palette.m3primary
+                }
+
+                // Whole-track jump, declared first so the handle's own
+                // drag area (declared after, below) sits on top of it
+                // where they overlap -- a direct click on the handle
+                // drags instead of jumping out from under the pointer.
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onPressed: mouse => slider.moved(slider.from + Math.max(0, Math.min(1, mouse.x / track.width)) * (slider.to - slider.from))
+                }
+
+                StyledRect {
+                    id: handle
+
+                    width: 16
+                    height: 16
+                    radius: 8
+                    color: Colours.palette.m3primary
+                    y: (track.height - height) / 2
+                    x: track.width * slider.ratio - width / 2
+
+                    MouseArea {
+                        id: dragArea
+
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        cursorShape: Qt.PointingHandCursor
+                        preventStealing: true
+
+                        function apply(mx: real): void {
+                            const local = mapToItem(track, mx, 0).x;
+                            const ratio = Math.max(0, Math.min(1, local / track.width));
+                            slider.moved(slider.from + ratio * (slider.to - slider.from));
+                        }
+
+                        onPressed: mouse => dragArea.apply(mouse.x)
+                        onPositionChanged: mouse => {
+                            if (dragArea.pressed)
+                                dragArea.apply(mouse.x);
+                        }
                     }
                 }
             }
@@ -230,6 +383,15 @@ ColumnLayout {
 
         PetPicker {}
 
+        SizeSlider {
+            label: qsTr("Size")
+            description: qsTr("How big the pet is drawn, over whatever size its own art asks for.")
+            value: PetLibrary.userScale
+            from: PetLibrary.minScale
+            to: PetLibrary.maxScale
+            onMoved: value => PetLibrary.setScale(value)
+        }
+
         SettingsPresetRow {
             icon: "explore"
             label: qsTr("Wandering")
@@ -250,6 +412,19 @@ ColumnLayout {
             ]
             value: PetLibrary.roam
             onSelected: value => PetLibrary.setRoam(value)
+        }
+
+        // Only for a pet that declares which of its colours are the
+        // recolourable ones. A built-in is vector art drawn off the
+        // palette and is always wearing it; a sheet that says nothing
+        // about its own accents has nothing this could safely repaint.
+        SettingsToggleRow {
+            icon: "palette"
+            visible: PetLibrary.themeable
+            label: qsTr("Wear the theme")
+            description: qsTr("Retint the pet's accent colours to match the current theme.")
+            checked: PetLibrary.tinted
+            onToggled: state => PetLibrary.setTinted(state)
         }
 
         SettingsToggleRow {
@@ -275,7 +450,7 @@ ColumnLayout {
     StyledText {
         Layout.fillWidth: true
         wrapMode: Text.Wrap
-        text: qsTr("Pets of your own go in ~/.config/aphotic/pets/ as a sprite sheet and a small manifest. They show up here as soon as the folder exists.")
+        text: qsTr("Pets of your own go in ~/.config/aphotic/pets/ as a sprite sheet and a small manifest. A folder drawn as a broken image has a manifest this cannot read.")
         color: Colours.palette.m3onSurfaceVariant
         font: Tokens.font.label.small
     }

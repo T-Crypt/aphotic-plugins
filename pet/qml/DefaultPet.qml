@@ -11,7 +11,7 @@ import qs.modules.plugins.pet
 // instead of sitting on the desktop as a foreign sprite -- which is also
 // why there is one file per pet and not one sheet per pet.
 //
-// A Loader rather than four items behind `visible`, so only the selected
+// A Loader rather than three items behind `visible`, so only the selected
 // pet's shape tree exists at all, and none of them exists while an
 // imported sprite is drawing. Each pet is a pure function of `mood`,
 // `phase`, `facing` and `excitement`, all pushed in by Pet.qml's brain;
@@ -20,7 +20,7 @@ Loader {
     id: root
 
     // Defaults to whichever built-in is selected. The settings pane sets
-    // it per tile instead, which is what lets one picker show all four
+    // it per tile instead, which is what lets one picker show all three
     // pets live without a second copy of the switch below.
     property string petId: PetLibrary.builtin
 
@@ -34,11 +34,9 @@ Loader {
     sourceComponent: {
         switch (root.petId) {
         case "angler":
-            return anglerPet;
+            return orbPet;
         case "clip":
             return clipPet;
-        case "claude":
-            return claudePet;
         default:
             return mikoPet;
         }
@@ -56,9 +54,9 @@ Loader {
     }
 
     Component {
-        id: anglerPet
+        id: orbPet
 
-        AnglerPet {
+        OrbPet {
             mood: root.mood
             phase: root.phase
             excitement: root.excitement
@@ -70,17 +68,6 @@ Loader {
         id: clipPet
 
         ClipPet {
-            mood: root.mood
-            phase: root.phase
-            excitement: root.excitement
-            facing: root.facing
-        }
-    }
-
-    Component {
-        id: claudePet
-
-        ClaudePet {
             mood: root.mood
             phase: root.phase
             excitement: root.excitement

@@ -5,8 +5,9 @@ Pet 1.0 Pet.qml
 PetView 1.0 PetView.qml
 PetPane 1.0 PetPane.qml
 PetSnooze 1.0 PetSnooze.qml
+PetTilePreview 1.0 PetTilePreview.qml
+PetSheetCell 1.0 PetSheetCell.qml
 DefaultPet 1.0 DefaultPet.qml
 MikoPet 1.0 MikoPet.qml
-AnglerPet 1.0 AnglerPet.qml
+OrbPet 1.0 OrbPet.qml
 ClipPet 1.0 ClipPet.qml
-ClaudePet 1.0 ClaudePet.qml

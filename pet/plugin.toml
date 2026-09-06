@@ -1,8 +1,8 @@
 [plugin]
 name = "pet"
 display_name = "Desktop Pet"
-description = "A small creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, and reacts when you click it."
-version = "1.2.1"
+description = "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it."
+version = "1.5.0"
 author = "T-Crypt"
 category = "theming"
 capabilities = ["ui-surface"]
@@ -38,9 +38,10 @@ parent = "appearance"
 
 [owns]
 # Nothing in the shell's own settings. Which pet is active, where the user
-# dragged it and how far it wanders live in
-# ~/.config/aphotic/plugins/pet/settings.json, and imported pets live in
-# ~/.config/aphotic/pets/, both the plugin's own to write and neither a
-# shell setting. The config was pet.json until 1.2.1, which collided with
-# the manifest name one directory away; PetLibrary migrates it once.
+# dragged it, how big it is drawn, how far it wanders and whether it wears
+# the theme all live in ~/.config/aphotic/plugins/pet/settings.json, and
+# imported pets live in ~/.config/aphotic/pets/, both the plugin's own to
+# write and neither a shell setting. The config was pet.json until 1.2.1,
+# which collided with the manifest name one directory away; PetLibrary
+# migrates it once.
 config_keys = []

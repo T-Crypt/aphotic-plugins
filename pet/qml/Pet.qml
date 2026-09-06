@@ -17,6 +17,15 @@ import qs.modules.plugins.pet
 // still the desktop's to click. That is what makes a screen-sized surface
 // tolerable at all.
 //
+// Core builds one of these per screen, but there is only ever one pet.
+// Every instance asks PetLibrary whether it is the one on duty; the rest
+// draw nothing, run no timer and mask to nothing, so on a three-monitor
+// desk two of the three surfaces are inert and the whole of those two
+// outputs stays the desktop's. Ownership is a property of the shared
+// singleton rather than of any surface, which is what lets it move: drag
+// the pet off the right-hand edge and the surface on the next monitor
+// takes over mid-drag.
+//
 // The behaviour loop is deliberately lazy. `mood` is "idle" nearly all
 // the time, and "idle" means a still picture: no timer, no animation, no
 // repaint. A beat timer wakes every 9-24 s and either sends the pet for a
@@ -33,8 +42,38 @@ Item {
     readonly property int dragThreshold: 6
 
     // The host masks its window to this rather than to the whole surface,
-    // so the desktop keeps its clicks everywhere the pet is not.
-    readonly property Item maskItem: creature
+    // so the desktop keeps its clicks everywhere the pet is not. It is a
+    // bare Item rather than the creature because it also has to be able to
+    // mask to nothing: on every screen the pet is not on, it parks outside
+    // the surface and the mask comes out empty.
+    readonly property Item maskItem: hitbox
+
+    // Which output this instance is drawing on. The only thing the host
+    // tells a plugin about its screen is what QtQuick's attached Screen
+    // says, and `name` is the connector ("DP-1") -- the same string
+    // Quickshell's own ShellScreen carries, because both read it off the
+    // one QScreen.
+    readonly property string screenName: Screen.name
+
+    // Exactly one instance answers true. Everything below is gated on it:
+    // what draws, what takes input, what subscribes to the clock and what
+    // runs a timer, so an idle second monitor costs nothing at all.
+    //
+    // An unnamed screen fails open rather than shut. Ownership is decided
+    // by comparing names, so a platform that hands out empty ones would
+    // otherwise match nowhere and leave the desktop with no pet at all --
+    // where drawing one per screen is merely the behaviour this plugin had
+    // before it knew what a second monitor was.
+    readonly property bool owns: root.screenName.length === 0 || PetLibrary.activeScreen === root.screenName
+
+    // While a drag is in flight the pet's position comes from the shared
+    // singleton rather than from this instance, because the instance
+    // drawing it may not be the instance being dragged -- see the drag
+    // handling further down.
+    readonly property bool carried: PetLibrary.dragging && root.owns
+    readonly property real drawX: root.carried ? root.clampX(PetLibrary.dragX * root.width - creature.width / 2) : root.petX
+    readonly property real drawY: root.carried ? root.clampY(PetLibrary.dragY * root.height - creature.height / 2) : root.petY
+    readonly property string drawMood: root.carried ? "held" : root.mood
 
     // Where the user put the pet, in this surface's pixels. Stored
     // normalised, so the same spot lands in the same place on a different
@@ -46,7 +85,7 @@ Item {
     readonly property real roamMax: root.clampX(root.homePx + PetLibrary.roam)
 
     readonly property bool held: root.mood === "held"
-    readonly property bool animating: root.mood === "walk" || root.mood === "react" || root.mood === "fidget"
+    readonly property bool animating: root.owns && (root.mood === "walk" || root.mood === "react" || root.mood === "fidget")
     readonly property real fidgetDuration: root.durationOf("fidget", 0.62)
     readonly property real reactDuration: root.durationOf("react", 0.9)
 
@@ -60,6 +99,14 @@ Item {
     property int facing: 1
     property int frame: 0
     property real lastPoke: Date.now()
+
+    // Set on the instance holding the pointer grab, which keeps tracking
+    // after the pet has left its screen. `dragCx`/`dragCy` are the pet's
+    // centre in the pixels of whichever surface it is currently over --
+    // not of this one.
+    property string dragScreenName: ""
+    property real dragCx: 0
+    property real dragCy: 0
 
     function clampX(value: real): real {
         return Math.max(0, Math.min(Math.max(0, root.width - creature.width), value));
@@ -149,10 +196,97 @@ Item {
         root.mood = "held";
     }
 
+    // Dropping is the one moment the pet's own position has to catch up
+    // with the shared one. Through the whole drag `petX`/`petY` sit where
+    // the drag started, because what is drawn comes off the singleton
+    // instead -- so letting go without placing leaves the pet drawn from
+    // a position the drag never touched, and it snaps back to where it
+    // was picked up.
+    //
+    // Placing has to come after settling, not before: place() refuses to
+    // move a pet that is still held, which is what the write inside
+    // commitDrag() would otherwise run into on its way through homePx.
     function endHold(): void {
-        if (root.width > 0 && root.height > 0)
-            PetLibrary.setHome((root.petX + creature.width / 2) / root.width, (root.petY + creature.height / 2) / root.height);
+        PetLibrary.commitDrag();
+        root.dragScreenName = "";
         root.settle();
+        root.place();
+    }
+
+    // Seeds a drag from where the pet actually is on this surface, and
+    // hands the shared singleton the first position.
+    function beginDrag(): void {
+        root.dragScreenName = root.screenName;
+        root.dragCx = root.petX + creature.width / 2;
+        root.dragCy = root.petY + creature.height / 2;
+        root.publishDrag();
+        root.startHold();
+    }
+
+    // Advances a drag by one pointer delta, measured in this surface's
+    // pixels. The pet's centre is kept in the pixels of whichever surface
+    // it is currently over, so crossing an edge is just a matter of
+    // subtracting that surface's width and naming the neighbour -- after
+    // which the same raw pointer deltas keep moving it, because a pixel of
+    // pointer travel is a pixel wherever the pointer happens to be.
+    //
+    // One hop per axis per event. A single motion event crossing two whole
+    // monitors is not a thing a pointer does, and looping until it stops
+    // crossing would be a loop over compositor-supplied geometry.
+    function stepDrag(ddx: real, ddy: real): void {
+        let size = PetLibrary.surfaceSize(root.dragScreenName);
+        root.dragCx += ddx;
+        root.dragCy += ddy;
+
+        if (root.dragCx > size.w) {
+            const right = PetLibrary.neighbour(root.dragScreenName, 1, 0);
+            if (right) {
+                root.dragCx -= size.w;
+                root.dragScreenName = right.name;
+                size = PetLibrary.surfaceSize(right.name);
+            }
+        } else if (root.dragCx < 0) {
+            const left = PetLibrary.neighbour(root.dragScreenName, -1, 0);
+            if (left) {
+                root.dragScreenName = left.name;
+                size = PetLibrary.surfaceSize(left.name);
+                root.dragCx += size.w;
+            }
+        }
+
+        if (root.dragCy > size.h) {
+            const below = PetLibrary.neighbour(root.dragScreenName, 0, 1);
+            if (below) {
+                root.dragCy -= size.h;
+                root.dragScreenName = below.name;
+                size = PetLibrary.surfaceSize(below.name);
+            }
+        } else if (root.dragCy < 0) {
+            const above = PetLibrary.neighbour(root.dragScreenName, 0, -1);
+            if (above) {
+                root.dragScreenName = above.name;
+                size = PetLibrary.surfaceSize(above.name);
+                root.dragCy += size.h;
+            }
+        }
+
+        // At the end of the row there is nowhere to hand the pet to, so it
+        // stops against the edge rather than being dragged off the desktop.
+        root.dragCx = Math.max(0, Math.min(size.w, root.dragCx));
+        root.dragCy = Math.max(0, Math.min(size.h, root.dragCy));
+        root.publishDrag();
+    }
+
+    function publishDrag(): void {
+        const size = PetLibrary.surfaceSize(root.dragScreenName);
+        PetLibrary.moveDrag(root.dragScreenName, root.dragCx / size.w, root.dragCy / size.h);
+    }
+
+    // Every surface tells the singleton how big it is, because a drag
+    // landing the pet on another monitor has to place it in that monitor's
+    // surface and only the surface there knows its own size.
+    function report(): void {
+        PetLibrary.reportSurface(root.screenName, root.width, root.height);
     }
 
     function advance(dt: real): void {
@@ -194,7 +328,26 @@ Item {
 
     onHomePxChanged: root.place()
     onHomePyChanged: root.place()
-    Component.onCompleted: root.place()
+
+    onWidthChanged: root.report()
+    onHeightChanged: root.report()
+    onScreenNameChanged: root.report()
+
+    // Taking over means placing the pet at the saved spot on this surface.
+    // Handing over means standing down -- unless this is the surface
+    // driving the drag, which keeps its state until the pointer is
+    // released even though the pet has already moved on.
+    onOwnsChanged: {
+        if (root.owns)
+            root.place();
+        else if (root.dragScreenName.length === 0)
+            root.settle();
+    }
+
+    Component.onCompleted: {
+        root.report();
+        root.place();
+    }
 
     onAnimatingChanged: {
         if (root.animating)
@@ -203,21 +356,48 @@ Item {
             PetClock.release();
     }
 
+    // A monitor unplugged mid-drag takes this surface with it, so the
+    // shared drag has to be let go of here or no other surface would ever
+    // get the pet back.
     Component.onDestruction: {
         if (root.animating)
             PetClock.release();
+        if (root.dragScreenName.length > 0)
+            PetLibrary.cancelDrag();
     }
 
     PetView {
         id: creature
 
-        mood: root.mood
+        // Only the surface on duty draws. The others keep the item, so its
+        // size still answers for the mask and for the clamps, and simply
+        // never show it.
+        visible: root.owns
+        mood: root.drawMood
         phase: root.phase
         excitement: root.excitement
         facing: root.facing
         frame: root.frame
-        x: root.petX
-        y: root.petY - root.lift
+        x: root.drawX
+        y: root.drawY - root.lift
+    }
+
+    // What core masks the window to. On the screen holding the pet it
+    // tracks the creature; everywhere else it parks off the surface, so
+    // the mask comes out empty and that whole output stays the desktop's
+    // to click. It stays live on the surface holding a pointer grab even
+    // after the pet has moved to another screen, because pulling the input
+    // region out from under a grab in flight is not worth finding out
+    // about.
+    Item {
+        id: hitbox
+
+        readonly property bool live: root.owns || root.dragScreenName.length > 0
+
+        x: hitbox.live ? creature.x : -creature.width - 1
+        y: hitbox.live ? creature.y : -creature.height - 1
+        width: creature.width
+        height: creature.height
     }
 
     // Sized to the pet, matching the maskItem above so the clickable area
@@ -232,20 +412,21 @@ Item {
 
         property real pressX: 0
         property real pressY: 0
-        property real grabX: 0
-        property real grabY: 0
+        property real lastX: 0
+        property real lastY: 0
         property bool dragged: false
 
-        x: creature.x
-        y: creature.y
-        width: creature.width
-        height: creature.height
+        x: hitbox.x
+        y: hitbox.y
+        width: hitbox.width
+        height: hitbox.height
+        enabled: hitbox.live
         hoverEnabled: true
         preventStealing: true
         cursorShape: PetLibrary.locked ? Qt.PointingHandCursor : (root.held ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
 
         onEntered: {
-            if (root.mood === "idle" || root.mood === "sleep") {
+            if (root.owns && (root.mood === "idle" || root.mood === "sleep")) {
                 root.lastPoke = Date.now();
                 root.startFidget();
             }
@@ -255,8 +436,8 @@ Item {
             const scene = grip.mapToItem(root, mouse.x, mouse.y);
             grip.pressX = scene.x;
             grip.pressY = scene.y;
-            grip.grabX = root.petX;
-            grip.grabY = root.petY;
+            grip.lastX = scene.x;
+            grip.lastY = scene.y;
             grip.dragged = false;
         }
 
@@ -264,16 +445,15 @@ Item {
             if (!grip.pressed || PetLibrary.locked)
                 return;
             const scene = grip.mapToItem(root, mouse.x, mouse.y);
-            const dx = scene.x - grip.pressX;
-            const dy = scene.y - grip.pressY;
             if (!grip.dragged) {
-                if (Math.abs(dx) < root.dragThreshold && Math.abs(dy) < root.dragThreshold)
+                if (Math.abs(scene.x - grip.pressX) < root.dragThreshold && Math.abs(scene.y - grip.pressY) < root.dragThreshold)
                     return;
                 grip.dragged = true;
-                root.startHold();
+                root.beginDrag();
             }
-            root.petX = root.clampX(grip.grabX + dx);
-            root.petY = root.clampY(grip.grabY + dy);
+            root.stepDrag(scene.x - grip.lastX, scene.y - grip.lastY);
+            grip.lastX = scene.x;
+            grip.lastY = scene.y;
         }
 
         onReleased: {
@@ -296,7 +476,7 @@ Item {
 
     Timer {
         interval: root.beatInterval()
-        running: root.mood === "idle" && !SessionLockState.locked
+        running: root.owns && root.mood === "idle" && !SessionLockState.locked
         repeat: true
         onTriggered: {
             interval = root.beatInterval();

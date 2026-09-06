@@ -6,7 +6,7 @@ the time, wanders around wherever you dropped it every so often, blinks
 when you put the cursor on it, and hops when you click it. After six
 quiet minutes it falls asleep until you touch it again.
 
-Four pets ship with it, all drawn in vector off the live palette so they
+Three pets ship with it, all drawn in vector off the live palette so they
 wear whatever theme you are running. Custom pets are sprite sheets you
 drop in a folder.
 
@@ -24,13 +24,18 @@ No layer required. This plugin declares no `requires_layer` and no
 | Pet | What it is |
 |---|---|
 | **Miko** | A shrine girl. The default. Hair takes the primary accent, hakama and ribbon the tertiary. |
-| **Aphotid** | The anglerfish. Front-heavy, toothed, lit by its own lure. |
+| **Aphotid** | A glowing orb, lit in the accent colour, with ribbons and motes turning around it. The light in the dark. |
 | **Clip** | A bent paperclip with eyebrows. |
-| **Claude** | An eleven-ray starburst that blinks and rolls a little as it walks. |
+| **Cipher** | A developer at a floating console. A sprite rather than vector art, with his jacket seams, circuitry and interface glow retinted to the accent colour. |
 
 Pick one in **Settings → Appearance → Desktop Pet**. The picker draws the
 real pets rather than icons of them, because the point of a built-in is
 that it wears the current theme.
+
+Miko, Aphotid and Clip are vector art drawn straight off the palette.
+Cipher is a sprite sheet that ships with the plugin, so he needs nothing
+downloading or placing first, and he is recoloured by the shader
+described under [Wearing the theme](#wearing-the-theme).
 
 Skin and robe on Miko are the two colours not taken from a palette role.
 A role that lands on grey or green stops reading as a person, and a robe
@@ -38,6 +43,43 @@ taken from whatever contrasts with the hair goes black under half the
 themes, which on a dark wallpaper leaves a head and a skirt with nothing
 between them. Both are fixed warm tones with a little of the accent
 tinted through.
+
+## Size
+
+**Size** in the settings pane scales the pet from half to four times
+whatever size its own art asks for. It is a multiplier rather than a
+pixel height because the vector pets and every sheet are authored at
+different sizes, so one absolute number would mean something different
+for each of them.
+
+Sheets are drawn at around 96 pixels tall by default, which is small on a
+1440p monitor and smaller on anything above it. Sprite art scales up
+cleanly here: these sheets are 192x208 per cell, so 200% is still drawing
+below the source resolution.
+
+## Wearing the theme
+
+A sprite pet can declare which of its colours are the recolourable ones,
+and those are retinted to the current accent whenever the theme changes.
+**Wear the theme** in the settings pane turns it off. The row is hidden
+for a pet that declares nothing, because there is nothing there this
+could safely repaint.
+
+The selection is by hue, not by a mask, because a generated pet is one
+flat image and nothing else. A pet names the hue window its accents live
+in and the saturation floor separating them from its neutrals. Hue is
+replaced and saturation is scaled toward the accent's; value is left
+alone, so every cel-shading band stays where the artist put it. Skin,
+hair and dark cloth fall outside the window and pass through untouched.
+
+The shader ships built. If the `.qsb` is missing, or was built against a
+different Qt than the one running, the pet draws as authored and nothing
+else changes. Rebuild it with:
+
+```sh
+qsb --glsl "100es,120,150" --hlsl 50 --msl 12 \
+  -o qml/shaders/pet-accent.frag.qsb qml/shaders/pet-accent.frag
+```
 
 ## Moving it
 
@@ -52,6 +94,36 @@ where you put it, and **Stay put** pins it there.
 
 The pet is on the bottom layer, so a window covers it. That is the point:
 an ambient thing does not sit over your work.
+
+### More than one monitor
+
+There is one pet, not one per screen. Drag it off the side of a monitor
+and it arrives on the next one along, and the screen it ended up on is
+saved with the position.
+
+Which monitor is next is read from the compositor's own layout rather
+than from the order the outputs happen to be enumerated in, so the
+monitor physically to the left is the one a pet dragged left arrives on,
+and a screen stacked above or below is only ever reached by dragging up
+or down. At the end of the row there is nowhere to go, so the pet stops
+against the edge. That holds for three monitors and for one.
+
+Every output still hosts a surface, because core builds one per screen
+and a plugin does not get to say otherwise. The other surfaces simply
+draw nothing, take no input and run no timer, so the whole of those
+outputs stays the desktop's to click and an idle second monitor costs
+nothing.
+
+Unplug the monitor the pet was left on and it comes back on the first
+remaining one rather than staying on an output that no longer exists.
+Plug it back in and the pet returns to it, because the screen is saved by
+connector name and the saved name starts matching again.
+
+The position is still normalised, so it survives a resolution change --
+but it is normalised against the surface, not the output, and those are
+not the same rectangle: the bar's exclusive zone comes off the top, which
+is why each surface reports its own size rather than anything working it
+out from the monitor's.
 
 ## What it costs
 
@@ -151,20 +223,23 @@ Node's `npx`, which Aphotic does not install:
 npx petdex install boba
 ```
 
-It lands in `~/.codex/pets/boba/`. Copy the folder across and rename it:
+It lands in `~/.codex/pets/boba/`. Copy the folder across, and that is
+the whole job:
 
 ```sh
 cp -r ~/.codex/pets/boba ~/.config/aphotic/pets/boba
 ```
 
-**Then overwrite its `pet.json`.** Petdex writes its own, with `id`,
-`displayName` and `spritesheetPath` in it, and this plugin rejects that
-file because it has no `format: 1`. A pet copied across untouched shows
-you a built-in and no error. Write the manifest in the next section
-instead.
+Nothing to edit. Petdex writes its own manifest, with `id`,
+`displayName` and `spritesheetPath` in it rather than the keys below, and
+this plugin reads that shape directly. The cell size is divided out of
+the image rather than assumed, so a sheet exported at another resolution
+works too, and the drawn height is set near the built-in pets.
 
-The sheets there are a fixed shape, so the manifest is the same every
-time. Cells are 192 by 208 in an 8 by 9 grid, and the nine rows run:
+You only need a manifest of your own to override that, which is worth
+doing when a pet's own poses suit the four states better than the
+defaults. The sheets are a fixed shape: cells in an 8 by 9 grid, and the
+nine rows run:
 
 | Row | State | Frames |
 |---|---|---|
@@ -178,7 +253,8 @@ time. Cells are 192 by 208 in an 8 by 9 grid, and the nine rows run:
 | 7 | running | 6 |
 | 8 | review | 6 |
 
-Four of those nine map onto what this plugin plays:
+Four of those nine are what this plugin plays. Writing them out by hand
+gets you the same result as leaving the folder alone:
 
 ```json
 {
@@ -201,13 +277,15 @@ Four of those nine map onto what this plugin plays:
 Row 2 goes unused, because this plugin mirrors row 1 when the pet walks
 left. Row 4 is a hop if you would rather a click made your pet jump than
 wave. Nothing in that format is a sleeping pose, so `sleep` borrows one:
-row 5 is the pet's failure pose, which on every sheet checked so far
-droops with its eyes half shut and reads as asleep. Row 6 is the
-alternative if yours does not.
+row 5 is the pet's failure pose, which usually droops with its eyes half
+shut and reads as asleep. Row 6 is the alternative where it does not, and
+some pets have neither, which is the main reason to write the manifest
+out yourself.
 
-`scale` matters. A 192 by 208 cell drawn at full size is a small window,
-not a pet. `0.4` puts it at 77 by 83, about the size of the built-ins.
-Painted art wants `smooth: true`; leave it `false` only for pixel art.
+`scale` is the other reason. A 192 by 208 cell drawn at full size is a
+small window, not a pet, so left alone this plugin scales the art to
+about 96 pixels tall. Set `scale` to pick your own size. Painted art
+wants `smooth: true`; leave it `false` only for pixel art.
 
 Petdex sheets are usually `spritesheet.webp`, which a current Aphotic
 decodes. See the WebP note above if yours does not.
@@ -297,6 +375,13 @@ hand-drawn sheet follows.
 
 These are ripped game assets. Keep them to your own desktop.
 
+The same goes for packs that ship one sheet per animation, like the CC0
+AutoSprite library: a folder of `<name>-idle.png`, `<name>-walk.png` and
+a JSON of frame rectangles beside each. This plugin reads one sheet per
+pet, with a state on each row, so those need combining into a single
+image before any of it applies. The picker draws a folder it cannot read
+as a broken image rather than leaving you to find out on the desktop.
+
 ### 5. Draw it yourself
 
 The layout is the same whether you draw it, paste it or prompt for it.
@@ -363,7 +448,7 @@ nearest-neighbour on a downscale eats whole pixel rows.
 
 | Key | Meaning |
 |---|---|
-| `format` | Must be `1`. Anything else is rejected. |
+| `format` | Must be `1`. A manifest without it is read as a generator's if it has a `spritesheetPath`, and rejected otherwise. |
 | `name` | Shown as the pet's name. |
 | `sheet` | The image beside `pet.json`. A bare filename: no slash, no leading dot, no traversal. PNG, JPEG, GIF, SVG, and WebP where the decoder is installed. |
 | `frame.width` / `frame.height` | One cell of the sheet, in source pixels. Both must be above zero. |
@@ -371,6 +456,24 @@ nearest-neighbour on a downscale eats whole pixel rows.
 | `fps` | Default playback rate for every state. Capped at 12, the clock's own rate. Defaults to `8`. |
 | `smooth` | Filter the image when scaling. Leave it `false` for pixel art. |
 | `states` | One entry per state. `idle` is required; the rest fall back to it. |
+| `accent` | Optional. Which colours to retint to the theme. See below. |
+
+#### `accent`
+
+```json
+"accent": { "from": 205, "to": 285, "feather": 10, "minSat": 0.18, "refSat": 0.38 }
+```
+
+| Key | Meaning |
+|---|---|
+| `from` / `to` | The hue window holding the recolourable regions, in degrees from 0 to 360. The window wraps, so `340` to `20` is a legal red band. Required; leave the block out to opt out. |
+| `feather` | Degrees of soft edge at each end, so a gradient crossing the boundary fades rather than steps. Defaults to `10`. |
+| `minSat` | Below this saturation a pixel counts as neutral and is left alone. Defaults to `0.18`. |
+| `refSat` | The saturation the accents were drawn at. Saturation is scaled by accent over reference, so a muted theme mutes the pet in proportion. Defaults to `0.4`. |
+
+Pick the window by looking at the sheet's hue histogram. A pet whose
+accents overlap its skin tones cannot be separated this way, and is
+better left without an `accent` block than tinted into a rash.
 
 Each state takes `row` (which row of the sheet, counting from 0),
 `frames` (how many cells across, starting at column 0), and an optional
@@ -401,8 +504,10 @@ work down this list:
 |---|---|
 | A built-in, not your pet | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
 | A built-in, manifest looks fine | The image did not decode. Check `sheet` names the file exactly, with no path in front of it. A WebP on an install older than `qt6-imageformats` lands here. |
+| A broken-image tile in the picker | The manifest is neither this plugin's shape nor a generator's. A pack with one sheet per animation lands here; it needs combining into one image first. |
 | The folder is missing from the picker | It is not directly under `~/.config/aphotic/pets/`, or its name starts with a dot. |
 | Right pet, wrong frames | `frame.width` or `frame.height` does not match the real cell. Measure the sheet and divide by the column and row count. |
+| The top of the next row hangs below the pet's feet | A generated sheet read with the wrong row count. An 8x11 atlas states `"spriteVersionNumber": 2`; an 8x9 one states nothing. A sheet that is neither should carry `"spritesheetLayout": { "columns": 8, "rows": 11 }` saying so. |
 | Bits of the next frame at the edges | The sheet has padding or gutters between cells. This plugin assumes none. Re-export without them. |
 | A blurry pet | `smooth: true` on pixel art, or a fractional `scale`. |
 | A pet that jitters as it walks | The character is not on the same baseline in every frame of `walk`. |
@@ -420,7 +525,10 @@ name, and then ignored. Delete it when you see the new file appear.
 
 | Key | Meaning |
 |---|---|
-| `pet` | A built-in id (`miko`, `angler`, `clip`, `claude`) or a folder name under `~/.config/aphotic/pets/`. `default` means whichever built-in ships as the default. |
-| `x` / `y` | Where the pet sits, as a fraction of the screen from 0 to 1. The centre of the creature, not its corner. |
+| `pet` | A built-in id (`miko`, `angler`, `clip`), a bundled sprite id (`cipher`), or a folder name under `~/.config/aphotic/pets/`. `default` means whichever built-in ships as the default. A bundled id wins over a folder of the same name. |
+| `screen` | Which monitor the pet is on, by connector name (`DP-1`). Absent on a config written before the pet could cross screens, and on a fresh install; either way the pet starts on the first output. A name that is not plugged in right now is kept rather than rewritten, so the pet goes back when that monitor does. |
+| `x` / `y` | Where the pet sits on that screen, as a fraction of the surface from 0 to 1. The centre of the creature, not its corner. |
+| `size` | How big the pet is drawn, over whatever size its own art asks for. Clamped between `0.5` and `4`. Defaults to `1`. |
 | `roam` | How far it wanders either side of that, in pixels. `0` pins it. |
 | `locked` | Stops the drag. Clicking still works. |
+| `tint` | Retint the pet's declared accent regions to the theme. Defaults to on. Does nothing for a pet that declares none. |
