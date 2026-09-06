@@ -6,9 +6,9 @@ the time, wanders around wherever you dropped it every so often, blinks
 when you put the cursor on it, and hops when you click it. After six
 quiet minutes it falls asleep until you touch it again.
 
-Three pets ship with it, all drawn in vector off the live palette so they
-wear whatever theme you are running. Custom pets are sprite sheets you
-drop in a folder.
+Three pets ship with it, each repainted to the live palette so it wears
+whatever theme you are running. More pets are sprite sheets you drop in a
+folder.
 
 ## Install
 
@@ -23,34 +23,36 @@ No layer required. This plugin declares no `requires_layer` and no
 
 | Pet | What it is |
 |---|---|
-| **Miko** | A shrine girl. The default. Hair takes the primary accent, hakama and ribbon the tertiary. |
-| **Aphotid** | A glowing orb, lit in the accent colour, with ribbons and motes turning around it. The light in the dark. |
-| **Clip** | A bent paperclip with eyebrows. |
-| **Cipher** | A developer at a floating console. A sprite rather than vector art, with his jacket seams, circuitry and interface glow retinted to the accent colour. |
+| **Lumen** | A sealed lamp adrift in the dark. The default. Its shell stays dark and its core takes the accent colour, which makes it the pet that changes most between themes. |
+| **Cipher** | A developer at a floating console, with his jacket seams, circuitry and interface glow in the accent colour. |
+| **Kozumi** | A small figure at a laptop, in a dark coat trimmed in the accent colour, with the same colour run through her hair. |
 
 Pick one in **Settings → Appearance → Desktop Pet**. The picker draws the
-real pets rather than icons of them, because the point of a built-in is
-that it wears the current theme.
+real pets rather than icons of them, so a tile shows the colours the
+desktop is about to use.
 
-Miko, Aphotid and Clip are vector art drawn straight off the palette.
-Cipher is a sprite sheet that ships with the plugin, so he needs nothing
-downloading or placing first, and he is recoloured by the shader
-described under [Wearing the theme](#wearing-the-theme).
+All three are sprite sheets that travel with the plugin, so none of them
+needs downloading or placing first, and each declares the colours the
+shader retints under [Wearing the theme](#wearing-the-theme).
 
-Skin and robe on Miko are the two colours not taken from a palette role.
-A role that lands on grey or green stops reading as a person, and a robe
-taken from whatever contrasts with the hair goes black under half the
-themes, which on a dark wallpaper leaves a head and a skirt with nothing
-between them. Both are fixed warm tones with a little of the accent
-tinted through.
+Each ships twice, as WebP and as PNG. Qt reads WebP only where
+`qt6-imageformats` is installed, and a sheet that will not decode falls
+back to its PNG rather than leaving the desktop empty. See
+[A note on WebP](#a-note-on-webp).
+
+Kozumi is the one with a hue window that had to be measured rather than
+guessed. Her coat trim and the red in her hair sit just below the hue her
+skin starts at, so her window stops short of it and her face passes
+through untouched. A pet whose accents overlap its skin is the case this
+retint cannot serve, and it is better shipped with no accent block at
+all.
 
 ## Size
 
 **Size** in the settings pane scales the pet from half to four times
 whatever size its own art asks for. It is a multiplier rather than a
-pixel height because the vector pets and every sheet are authored at
-different sizes, so one absolute number would mean something different
-for each of them.
+pixel height because every sheet is authored at a different size, so one
+absolute number would mean something different for each of them.
 
 Sheets are drawn at around 96 pixels tall by default, which is small on a
 1440p monitor and smaller on anything above it. Sprite art scales up
@@ -199,8 +201,8 @@ The picker in **Settings → Appearance → Desktop Pet** lists that folder
 whenever the pane opens, so a pet you add while Settings is already up
 wants one trip out of the pane and back. Both files are watched, so
 editing a pet you have already selected takes effect without restarting
-the shell. A folder sharing a name with a built-in never wins; rename
-it.
+the shell. A folder sharing a name with a pet that ships with the plugin
+never wins; rename it.
 
 That `pet.json` is a pet's own manifest. It is not the same file as
 `~/.config/aphotic/plugins/pet/settings.json`, which is this plugin's own
@@ -217,8 +219,10 @@ that reason, so on a current install a WebP sheet works with nothing to
 do.
 
 On an install predating that package, WebP fails with `Unsupported image
-format`, the pet falls back to a built-in, and nothing else is logged.
-Two ways out. Add the decoder:
+format` and nothing else is logged. The three pets that ship with the
+plugin carry a PNG of the same art and swap to it on that error, so they
+draw either way. An imported pet has no second copy, so it falls back to
+a pet that ships with the plugin. Two ways out. Add the decoder:
 
 ```sh
 sudo pacman -S qt6-imageformats
@@ -254,7 +258,8 @@ Nothing to edit. Petdex writes its own manifest, with `id`,
 `displayName` and `spritesheetPath` in it rather than the keys below, and
 this plugin reads that shape directly. The cell size is divided out of
 the image rather than assumed, so a sheet exported at another resolution
-works too, and the drawn height is set near the built-in pets.
+works too, and the drawn height is set near the pets that ship with the
+plugin.
 
 You only need a manifest of your own to override that, which is worth
 doing when a pet's own poses suit the four states better than the
@@ -517,13 +522,13 @@ draw one direction only.
 
 ### When your pet does not show up
 
-A built-in draws instead. That fallback is unconditional and silent, so
-work down this list:
+One of the pets that ships with the plugin draws instead. That fallback
+is unconditional and silent, so work down this list:
 
 | Symptom | Cause |
 |---|---|
-| A built-in, not your pet | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
-| A built-in, manifest looks fine | The image did not decode. Check `sheet` names the file exactly, with no path in front of it. A WebP on an install older than `qt6-imageformats` lands here. |
+| A pet that ships with the plugin, not yours | `pet.json` was rejected. Check `format` is the number `1`, `states.idle` exists, and `frame.width` and `frame.height` are both above zero. |
+| The same, and the manifest looks fine | The image did not decode. Check `sheet` names the file exactly, with no path in front of it. A WebP on an install older than `qt6-imageformats` lands here. |
 | A broken-image tile in the picker | The manifest is neither this plugin's shape nor a generator's. A pack with one sheet per animation lands here; it needs combining into one image first. |
 | The folder is missing from the picker | It is not directly under `~/.config/aphotic/pets/`, or its name starts with a dot. |
 | Right pet, wrong frames | `frame.width` or `frame.height` does not match the real cell. Measure the sheet and divide by the column and row count. |
@@ -545,7 +550,7 @@ name, and then ignored. Delete it when you see the new file appear.
 
 | Key | Meaning |
 |---|---|
-| `pet` | A built-in id (`miko`, `angler`, `clip`), a bundled sprite id (`cipher`), or a folder name under `~/.config/aphotic/pets/`. `default` means whichever built-in ships as the default. A bundled id wins over a folder of the same name. |
+| `pet` | One of `lumen`, `cipher` or `kozumi`, or a folder name under `~/.config/aphotic/pets/`. `default` means whichever pet ships as the default, which is `lumen`. A shipped id wins over a folder of the same name. The retired ids `miko`, `angler` and `clip` are read as `kozumi`, `lumen` and `lumen`. |
 | `screen` | Which monitor the pet is on, by connector name (`DP-1`). Absent on a config written before the pet could cross screens, and on a fresh install; either way the pet starts on the first output. A name that is not plugged in right now is kept rather than rewritten, so the pet goes back when that monitor does. |
 | `x` / `y` | Where the pet sits on that screen, as a fraction of the surface from 0 to 1. The centre of the creature, not its corner. |
 | `size` | How big the pet is drawn, over whatever size its own art asks for. Clamped between `0.5` and `4`. Defaults to `1`. |

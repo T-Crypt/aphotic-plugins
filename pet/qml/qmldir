@@ -9,7 +9,3 @@ PetPane 1.0 PetPane.qml
 PetSnooze 1.0 PetSnooze.qml
 PetTilePreview 1.0 PetTilePreview.qml
 PetSheetCell 1.0 PetSheetCell.qml
-DefaultPet 1.0 DefaultPet.qml
-MikoPet 1.0 MikoPet.qml
-OrbPet 1.0 OrbPet.qml
-ClipPet 1.0 ClipPet.qml

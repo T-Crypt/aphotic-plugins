@@ -17,9 +17,9 @@ import qs.modules.plugins.pet
 // through PetLibrary, which owns settings.json; nothing in this file
 // touches a file of its own.
 //
-// The tiles draw the real pet rather than an icon of one, because the
-// whole point of a built-in is that it wears the current theme, and a
-// picker that showed a flat glyph would be picking blind. They are the
+// The tiles draw the real pet rather than an icon of one, because a pet
+// is retinted to the current theme and a picker that showed a flat glyph
+// would be picking blind. They are the
 // same components the desktop mounts, held at mood "idle" -- so a tile
 // costs one still shape tree and no clock.
 ColumnLayout {
@@ -42,13 +42,7 @@ ColumnLayout {
     }
 
     readonly property var choices: {
-        const list = PetLibrary.builtins.map(b => ({
-            id: b.id,
-            name: b.name,
-            description: b.description,
-            kind: "builtin",
-            pet: null
-        }));
+        const list = [];
 
         for (const b of PetLibrary.bundled)
             list.push({
@@ -164,7 +158,9 @@ ColumnLayout {
 
                     required property var modelData
 
-                    readonly property bool active: PetLibrary.selected === tile.modelData.id || (PetLibrary.selected === "default" && tile.modelData.id === PetLibrary.fallbackBuiltin)
+                    // `selected` has already turned "default" and every
+                    // retired id into a real one, so this is a plain match.
+                    readonly property bool active: PetLibrary.selected === tile.modelData.id
 
                     width: 84
                     height: 112
@@ -175,19 +171,6 @@ ColumnLayout {
                         CAnim {}
                     }
 
-                    DefaultPet {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: 8
-                        visible: tile.modelData.kind === "builtin"
-                        petId: tile.modelData.id
-                        mood: "idle"
-                        phase: 0
-                        excitement: 0
-                        facing: 1
-                        scale: Math.min(1, 68 / Math.max(1, implicitWidth), 72 / Math.max(1, implicitHeight))
-                        transformOrigin: Item.Top
-                    }
-
                     PetTilePreview {
                         id: preview
 
@@ -195,7 +178,6 @@ ColumnLayout {
                         y: 8
                         width: 68
                         height: 72
-                        visible: tile.modelData.kind !== "builtin"
                         petName: tile.modelData.kind === "imported" ? tile.modelData.id : ""
                         bundledPet: tile.modelData.pet
                     }
@@ -430,9 +412,8 @@ ColumnLayout {
         }
 
         // Only for a pet that declares which of its colours are the
-        // recolourable ones. A built-in is vector art drawn off the
-        // palette and is always wearing it; a sheet that says nothing
-        // about its own accents has nothing this could safely repaint.
+        // recolourable ones. A sheet that says nothing about its own
+        // accents has nothing this could safely repaint.
         SettingsToggleRow {
             icon: "palette"
             visible: PetLibrary.themeable

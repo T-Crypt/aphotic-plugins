@@ -404,8 +404,6 @@ Item {
         // never show it.
         visible: root.owns
         mood: root.drawMood
-        phase: root.phase
-        excitement: root.excitement
         facing: root.facing
         frame: root.frame
         x: root.drawX
@@ -559,12 +557,11 @@ Item {
     }
 
     // A small always-legible signal that something is happening,
-    // independent of which pet is drawn. A sprite pet gets a real pose
-    // for most of `agentMood` (`PetLibrary._standardStates()`); a vector
-    // built-in falls back to its plain idle look for a mood it does not
-    // recognise, which would otherwise make a harness's state invisible
-    // on every built-in but Cipher. `compacting` has no sprite row at
-    // all yet (`PETS.md` §4.3) -- its own colour and its own, faster
+    // independent of which pet is drawn. A pet gets a real pose for most
+    // of `agentMood` (`PetLibrary._standardStates()`), and falls back to
+    // its plain idle look for a mood it does not recognise, which would
+    // otherwise make a harness's state invisible. `compacting` has no
+    // sprite row at all yet (`PETS.md` §4.3) -- its own colour and its own, faster
     // pulse are what keep it from reading as the same thing as a stalled
     // `waitingProcess`, which is the one thing it is not allowed to look
     // like.

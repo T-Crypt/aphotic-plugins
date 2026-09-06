@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // SPDX-FileCopyrightText: Aphotic-Hypr contributors
 //
-// Retints a sprite pet's accent regions onto the live palette, so an
-// imported pet wears the theme instead of sitting on the desktop as a
-// foreign sprite. Built-in pets are vector paths drawn off the palette
-// directly and never come through here.
+// Retints a pet's accent regions onto the live palette, so a pet wears
+// the theme instead of sitting on the desktop as a foreign sprite. Every
+// pet comes through here; one that declares no accent window passes
+// through at strength zero.
 //
 // The accent is selected by hue, not by a mask, because the pet
 // generators produce one flat image and nothing else. A pet declares the
