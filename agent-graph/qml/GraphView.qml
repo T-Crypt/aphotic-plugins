@@ -428,7 +428,7 @@ Item {
                                 id: modelBadge
 
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: node.isSession && root.showLabels && (node.modelData.locality || node.modelData.quant)
+                                visible: node.isSession && root.showLabels && (node.modelData.harness || node.modelData.locality || node.modelData.quant)
                                 radius: Tokens.rounding.small
                                 color: Qt.alpha(pill.ink, 0.16)
                                 implicitWidth: badgeText.implicitWidth + Tokens.padding.small
@@ -438,7 +438,7 @@ Item {
                                     id: badgeText
 
                                     anchors.centerIn: parent
-                                    text: [node.modelData.locality, node.modelData.quant].filter(Boolean).join(" · ")
+                                    text: [node.modelData.harness, node.modelData.locality, node.modelData.quant].filter(Boolean).join(" · ")
                                     font: Tokens.font.label.small
                                     color: pill.ink
                                 }

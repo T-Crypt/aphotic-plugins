@@ -143,7 +143,8 @@ Singleton {
         return Math.abs(hash) % 360;
     }
 
-    // Parsed once per session_start (see applyTo below), never per frame --
+    // Parsed once per model, when applyTo below first sees one, never per
+    // frame --
     // a harness reports whatever backend it's actually using in the same
     // `model` field regardless of whether that's a hosted cloud model or a
     // local one served through a provider like unsloth/Ollama/LM Studio
@@ -166,6 +167,14 @@ Singleton {
             }
         }
 
+        // A model served by Ollama names only the weights ("llama3.1:8b"),
+        // never the server, so the string alone cannot say who is running
+        // it. What Ollama currently has loaded can: matching against that
+        // is the one signal that distinguishes local weights from a cloud
+        // model whose id happens to look bare.
+        if (!provider && AgentProviders.ollamaLoadedModels.some(m => m === raw || m.split(":")[0] === raw))
+            provider = "ollama";
+
         let locality = provider ? AgentRoles.localityFor(provider) : "";
         if (!locality) {
             if (/\.gguf\b/i.test(raw) || /\bQ\d(?:_\d)?(?:_K)?(?:_[SML])?\b/i.test(raw) || raw.includes("/"))
@@ -178,7 +187,8 @@ Singleton {
         const ggufMatch = raw.match(/[\w.-]+\.gguf\b/i);
         const quant = quantMatch ? quantMatch[0] : (ggufMatch ? ggufMatch[0] : "");
 
-        const label = raw.length > 28 ? `${raw.slice(0, 25)}…` : raw;
+        const named = AgentRoles.modelDisplayName(raw, provider);
+        const label = named.length > 28 ? `${named.slice(0, 25)}…` : named;
 
         return { label: label, provider: provider, locality: locality, quant: quant, raw: raw };
     }
@@ -187,6 +197,7 @@ Singleton {
         return {
             id: record.sessionId,
             status: "idle",
+            harness: record.harness ?? "claude",
             model: record.model ?? "",
             modelInfo: root.parseModelInfo(record.model ?? ""),
             cwd: record.cwd ?? "",
@@ -231,8 +242,17 @@ Singleton {
             root._closeNode(session, record);
         } else if (record.event === "session_start") {
             session.status = "idle";
-            session.model = record.model ?? session.model;
-            session.modelInfo = root.parseModelInfo(session.model);
+        }
+
+        // Not folded into session_start above: a session resumed by /clear
+        // states no model there, so the hook resolves it later and states it
+        // on whatever event first knows it. Taking it from any event is what
+        // stops those sessions from showing a bare id for their whole life.
+        if (record.harness)
+            session.harness = record.harness;
+        if (record.model && record.model !== session.model) {
+            session.model = record.model;
+            session.modelInfo = root.parseModelInfo(record.model);
         }
         if (record.cwd)
             session.cwd = record.cwd;

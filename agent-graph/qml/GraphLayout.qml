@@ -5,6 +5,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.services
+import qs.services.ai
 
 QtObject {
     id: root
@@ -177,6 +178,7 @@ QtObject {
                 sessionIndex: s,
                 sessionId: session.id,
                 label: session.modelInfo?.label || session.id.slice(0, 8),
+                harness: AgentRoles.labelFor(session.harness ?? ""),
                 tool: "",
                 status: session.status,
                 parent: -1,
