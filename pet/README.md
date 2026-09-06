@@ -1,13 +1,14 @@
 # Desktop Pet
 
-A small creature that lives at the bottom of the desktop, above the
-wallpaper and below every shell surface. It stands still most of the
-time, wanders its own patch every so often, blinks when you put the
-cursor on it, and hops when you click it. After six quiet minutes it
-falls asleep until you touch it again.
+A small creature that lives on the desktop, above the wallpaper and below
+every shell surface. Drag it anywhere you like. It stands still most of
+the time, wanders around wherever you dropped it every so often, blinks
+when you put the cursor on it, and hops when you click it. After six
+quiet minutes it falls asleep until you touch it again.
 
-Ships with a built-in pet, so it does something the moment you install
-it. Custom pets are sprite sheets you drop in a folder.
+Four pets ship with it, all drawn in vector off the live palette so they
+wear whatever theme you are running. Custom pets are sprite sheets you
+drop in a folder.
 
 ## Install
 
@@ -18,10 +19,44 @@ aphotic plugin install pet
 No layer required. This plugin declares no `requires_layer` and no
 `requires_data`, so it works on every install, minimal or full.
 
+## The pets
+
+| Pet | What it is |
+|---|---|
+| **Miko** | A shrine girl. The default. Hair takes the primary accent, hakama and ribbon the tertiary. |
+| **Aphotid** | The anglerfish. Front-heavy, toothed, lit by its own lure. |
+| **Clip** | A bent paperclip with eyebrows. |
+| **Claude** | An eleven-ray starburst that blinks and rolls a little as it walks. |
+
+Pick one in **Settings → Appearance → Desktop Pet**. The picker draws the
+real pets rather than icons of them, because the point of a built-in is
+that it wears the current theme.
+
+Skin and robe on Miko are the two colours not taken from a palette role.
+A role that lands on grey or green stops reading as a person, and a robe
+taken from whatever contrasts with the hair goes black under half the
+themes, which on a dark wallpaper leaves a head and a skirt with nothing
+between them. Both are fixed warm tones with a little of the accent
+tinted through.
+
+## Moving it
+
+Press and drag. Release drops it, and where you dropped it is saved as
+normalised coordinates, so the same spot lands in the same place if you
+change resolution or plug in a different monitor.
+
+Press and release without moving is still a click, so poking the pet has
+not gone anywhere. **Lock in place** in the settings pane stops the drag
+without stopping the click. **Wandering** sets how far it strays from
+where you put it, and **Stay put** pins it there.
+
+The pet is on the bottom layer, so a window covers it. That is the point:
+an ambient thing does not sit over your work.
+
 ## What it costs
 
-Nothing while the pet is standing still, which is where it spends
-almost all of its life.
+Nothing while the pet is standing still, which is where it spends almost
+all of its life.
 
 The shell's idle-GPU regression (`E2-08`) came from infinite QML
 animations. An animation ticks once per frame, so a window holding a
@@ -36,15 +71,23 @@ integrated from one shared 12 Hz timer, `PetClock`, that:
 
 A beat timer wakes each pet every 9 to 24 seconds and picks a short walk
 or one blink. Both take a couple of seconds of 12 Hz ticks and then let
-the clock stop. Between beats the scene graph is untouched and the
-window submits no frames.
+the clock stop. Between beats the scene graph is untouched and the window
+submits no frames. Dragging drives no clock at all; the position comes
+straight off the pointer events.
+
+The one cost that is not zero at idle is the surface itself. This plugin
+declares `anchor = "free"`, which asks core for the whole usable output
+instead of a box on an edge, because the pet is dragged around it and a
+fixed box would be the thing being dragged. That is a screen-sized
+transparent layer surface for the compositor to blend. It draws nothing
+and takes no input outside the pet, but it is there.
 
 ## Clicking it
 
-The window is masked to the surface the manifest declares, so the
-declared box is also the part of the desktop that stops taking clicks.
-It is kept close to the pet for that reason: 240x160, of which the pet
-itself is about 86x78. The click handler covers the pet, not the box.
+The window is masked to the creature, so everywhere the pet is not is
+still the desktop's to click. That mask is what makes a screen-sized
+surface tolerable: without it, a free overlay would swallow every click
+on the wallpaper.
 
 ## Custom pets
 
@@ -67,33 +110,15 @@ dots:
   sheet.png
 ```
 
-A folder called `default` is picked up with no config file at all. Any
-other name has to be selected in `~/.config/aphotic/plugins/pet/pet.json`:
+The folder shows up in the settings picker as soon as it exists. You can
+also name it directly in `~/.config/aphotic/plugins/pet/pet.json`:
 
 ```json
 { "pet": "nautilus" }
 ```
 
-### 2. Draw the sheet
-
-The sheet is one PNG laid out as a strict grid. Every cell is the same
-size, the grid starts at the top-left pixel, and there is no padding,
-margin or gutter anywhere -- the plugin finds a frame by multiplying, so
-a one-pixel border shifts every frame after the first.
-
-Each state owns a **row**. Each frame of that state is a **cell across
-it**, starting at column 0. Rows may be shorter than each other, and two
-states may share a row.
-
-```
-        col 0     col 1     col 2     col 3     col 4     col 5
-row 0  [ idle 0 ][ idle 1 ][ idle 2 ][ idle 3 ]
-row 1  [ walk 0 ][ walk 1 ][ walk 2 ][ walk 3 ][ walk 4 ][ walk 5 ]
-row 2  [ react0 ][ react1 ][ react2 ][ react3 ][ react4 ]
-row 3  [ sleep0 ]
-```
-
-Four rules the drawing itself has to follow:
+Both files are watched, so an edit takes effect without restarting the
+shell. A folder sharing a name with a built-in never wins; rename it.
 
 - **Face right.** The pet is mirrored about the cell's centre when it
   walks left, so draw one direction only.
@@ -140,84 +165,41 @@ Four rules the drawing itself has to follow:
 
 Each state takes `row` (which row of the sheet, counting from 0),
 `frames` (how many cells across, starting at column 0), and an optional
-`fps` of its own. Neither is checked against the size of the image: name
-more frames than a row holds and the pet flickers through whatever is to
-the right of it, or through nothing.
+`fps` of its own.
 
-### How each state is played
+The sheet is one image laid out as a grid: each state owns a row, each
+frame of that state is a cell across it. The plugin draws one cell at a
+time by offsetting the image behind a clipping viewport, so switching
+frames costs two coordinate writes and no decode.
 
-- **`idle` frame 0 is the still picture.** It is what the pet shows
-  between beats, which is nearly all of the time. No timer runs and the
-  window submits no frames.
-- **The rest of the `idle` row is the fidget**, played once through when
-  a beat picks one and whenever the cursor enters the pet. It runs for
-  `frames / fps` seconds or 0.62, whichever is longer, holds on the last
-  frame for any remainder, then snaps back to frame 0. Draw the last
-  `idle` frame close to frame 0 -- a blink that ends with the eye open --
-  or that snap shows.
-- **`walk` loops** while the pet crosses its patch, and is cut off at
-  whatever frame it has reached when the pet arrives. Make it a seamless
-  cycle that survives being interrupted anywhere. The pet moves 34 px per
-  second across the surface, so each walk frame covers
-  `34 / (scale * fps)` source pixels -- about 2 px at `scale: 2`,
-  `fps: 8`. Move the feet by roughly that much per frame and they will
-  not skate.
-- **`react` plays once** when you click, over `frames / fps` seconds or
-  0.9, whichever is longer, then snaps back to idle frame 0. The pet also
-  hops up to 16 px during it, which the plugin does for you -- do not
-  draw the hop into the frames.
-- **`sleep` frame 0 is the still picture** while the pet naps, after six
-  quiet minutes. It never animates, so extra `sleep` frames are never
-  drawn.
+The pet faces right in the sheet. It is mirrored when it walks left, so
+draw one direction only.
 
-### Sizing
+Nothing clips a big pet any more now that the surface is the whole
+screen, but a creature much over 200 pixels tall stops reading as a pet
+and starts reading as a window.
 
-The surface is 240x160 and core never resizes it, so the drawn size --
-`frame.width * scale` by `frame.height * scale` -- has to live inside it:
+### How the states are used
 
-| | Hard limit | Recommended |
-|---|---|---|
-| `frame.width * scale` | under 224, or the pet never walks | 80-120, to leave a patch worth roaming |
-| `frame.height * scale` | 152, or the top is clipped | up to 136, so the click hop has headroom |
+- `idle` frame 0 is the still picture between beats. The remaining
+  `idle` frames play once through as the pet's blink or fidget, and are
+  also what it shows while you are holding it.
+- `walk` loops while the pet crosses its patch.
+- `react` plays once when you click.
+- `sleep` frame 0 is the still picture while the pet naps.
 
-The room the pet roams is 240 minus its drawn width, so a wide pet is a
-pet that barely moves.
-
-### When your pet does not show up
-
-Every failure falls back to the built-in pet, silently and with nothing
-in the shell log: a missing folder, a manifest that will not parse, a
-manifest that parses but fails validation, an image that will not decode.
-The surface is never blank, which also means a blank-looking anglerfish
-is your only error message. Work down this list:
-
-1. **Is the JSON valid?** `python -m json.tool ~/.config/aphotic/pets/<name>/pet.json`. A trailing comma or a `//` comment is enough.
-2. **Is `format` the number `1`?** Not `"1"`, not `1.0` in a form that survives as a string.
-3. **Is `states.idle` present?** The other three states are optional; `idle` is not.
-4. **Are `frame.width` and `frame.height` both above zero**, and numbers rather than strings?
-5. **Is `sheet` a bare filename** sitting beside `pet.json`? A path with a `/`, a `\` or a leading `.` is rejected outright.
-6. **Does the folder name match** the `pet` key in `~/.config/aphotic/plugins/pet/pet.json`, and does that file itself parse?
-7. **Does the PNG actually decode?** `file sheet.png` should say PNG. Qt loads it asynchronously, so the built-in pet also shows for the moment before a large sheet is ready.
-
-Both files are watched, so once a pet is loading, edits to either take
-effect without restarting the shell. Creating the folder for the first
-time is the exception -- there was no file there to watch, so reload the
-shell after adding a new pet.
+Anything the manifest gets wrong falls back to a built-in: a missing
+folder, a rejected manifest, an image that will not decode. The surface
+is never blank.
 
 ## Configuration
 
-`~/.config/aphotic/plugins/pet/pet.json`
+`~/.config/aphotic/plugins/pet/pet.json`. The settings pane writes it;
+you can too.
 
 | Key | Meaning |
 |---|---|
-| `pet` | Folder name under `~/.config/aphotic/pets/`. Defaults to `default`, which falls back to the built-in pet when that folder is absent. |
-
-## The built-in pet
-
-An anglerfish, drawn as vector paths off the live palette rather than
-shipped as an image, so it retints with the theme. Its body takes the
-primary accent, its fins the tertiary, and its illicium glows brighter
-for a moment when you click it. Front-heavy silhouette, a toothed
-mouth and a few spiny dorsal rays are what read as anglerfish rather
-than a generic fish at this size -- the previous version had the lure
-and still looked like a regular fish.
+| `pet` | A built-in id (`miko`, `angler`, `clip`, `claude`) or a folder name under `~/.config/aphotic/pets/`. `default` means whichever built-in ships as the default. |
+| `x` / `y` | Where the pet sits, as a fraction of the screen from 0 to 1. The centre of the creature, not its corner. |
+| `roam` | How far it wanders either side of that, in pixels. `0` pins it. |
+| `locked` | Stops the drag. Clicking still works. |

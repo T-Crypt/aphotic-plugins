@@ -136,8 +136,8 @@
     {
       "name": "pet",
       "display_name": "Desktop Pet",
-      "description": "A small creature that lives at the bottom of the desktop, wanders its own patch of it, and reacts when you click it.",
-      "version": "1.0.0",
+      "description": "A small creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, and reacts when you click it.",
+      "version": "1.2.0",
       "category": "theming",
       "capabilities": [
         "ui-surface"
@@ -147,15 +147,25 @@
           {
             "surface": "overlay",
             "id": "pet",
-            "icon": "extension",
-            "label": "pet",
+            "icon": "pets",
+            "label": "Desktop Pet",
             "component": "qml/Pet.qml",
             "requires_layer": "",
             "requires_data": "",
             "parent": "",
-            "anchor": "bottom",
-            "width": 240,
-            "height": 160
+            "anchor": "free",
+            "width": 0,
+            "height": 0
+          },
+          {
+            "surface": "settings",
+            "id": "petSettings",
+            "icon": "pets",
+            "label": "Desktop Pet",
+            "component": "qml/PetPane.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "appearance"
           }
         ]
       }

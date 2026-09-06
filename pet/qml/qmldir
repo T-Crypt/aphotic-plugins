@@ -3,4 +3,10 @@ singleton PetClock 1.0 PetClock.qml
 singleton PetLibrary 1.0 PetLibrary.qml
 Pet 1.0 Pet.qml
 PetView 1.0 PetView.qml
+PetPane 1.0 PetPane.qml
+PetSnooze 1.0 PetSnooze.qml
 DefaultPet 1.0 DefaultPet.qml
+MikoPet 1.0 MikoPet.qml
+AnglerPet 1.0 AnglerPet.qml
+ClipPet 1.0 ClipPet.qml
+ClaudePet 1.0 ClaudePet.qml
