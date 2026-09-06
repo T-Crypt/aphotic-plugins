@@ -3,56 +3,64 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.components
+import qs.config
 import qs.services
 
-Rectangle {
+// One pill. Tags, status and the kind of a step all wear this, so the
+// audit reads as one vocabulary rather than three shapes doing the same
+// job.
+StyledRect {
     id: root
 
     required property string label
     property color accent: Colours.palette.m3primaryOnSurface
+    property string icon: ""
     property bool removable: false
     property bool interactive: true
+    property bool filled: false
 
     signal clicked
     signal removed
 
-    implicitWidth: chipRow.implicitWidth + 20
+    implicitWidth: chipRow.implicitWidth + Tokens.padding.medium * 2
     implicitHeight: 26
-    radius: 999
-    color: Qt.alpha(root.accent, 0.14)
+    radius: Tokens.rounding.full
+    color: Qt.alpha(root.accent, root.filled ? 0.22 : 0.12)
     border.width: 1
-    border.color: Qt.alpha(root.accent, 0.42)
+    border.color: Qt.alpha(root.accent, root.filled ? 0.55 : 0.32)
 
-    Rectangle {
-        anchors.fill: parent
-        radius: parent.radius
+    StateLayer {
         color: root.accent
-        opacity: chipMouse.containsMouse ? 0.06 : 0
-
-        Behavior on opacity {
-            NumberAnimation { duration: 120 }
-        }
+        disabled: !root.interactive
+        onClicked: root.clicked()
     }
 
     RowLayout {
         id: chipRow
+
         z: 1
         anchors.centerIn: parent
-        spacing: 6
+        spacing: Tokens.spacing.extraSmall
 
-        Text {
+        MaterialIcon {
+            visible: root.icon.length > 0
+            text: root.icon
+            color: root.accent
+            fontStyle: Tokens.font.icon.small
+            fill: 1
+        }
+
+        StyledText {
             text: root.label
             color: root.accent
-            font.family: "Inter, Noto Sans, Sans-Serif"
-            font.pixelSize: 11
-            font.weight: Font.Medium
+            font: Tokens.font.label.small
         }
 
         MaterialIcon {
             visible: root.removable
             text: "close"
             color: root.accent
-            font.pixelSize: 14
+            fontStyle: Tokens.font.icon.small
 
             MouseArea {
                 anchors.fill: parent
@@ -64,14 +72,5 @@ Rectangle {
                 }
             }
         }
-    }
-
-    MouseArea {
-        id: chipMouse
-        anchors.fill: parent
-        enabled: root.interactive
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
     }
 }
