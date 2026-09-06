@@ -7,6 +7,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.services.ai
 
 // Which pet is drawn, where the user put it, and the sheet it is drawn
 // from when the pet is an imported one.
@@ -176,6 +177,59 @@ Singleton {
     // for. Relative rather than a pixel height because the built-ins and
     // every sheet are authored at different sizes, so one absolute number
     // would mean something different for each of them.
+    // PETS.md §5. Two settings people conflate and this keeps apart: who
+    // dictation types into, and what drives the pet's own replies.
+    //
+    // The target list comes from AgentRoles, which is where the shell
+    // already classifies every AI CLI it knows about. Reading it here
+    // rather than naming harnesses means this file has no harness in it,
+    // which §12 asks for, and a harness added to core turns up in the pet
+    // without a plugin release.
+    readonly property var dictationTargets: [
+        {
+            id: "",
+            label: qsTr("Active")
+        }
+    ].concat(AgentRoles.harnesses.map(h => ({
+        id: h.id,
+        label: h.label
+    })))
+
+    // "" means Active: whichever session last sent an event. A pin to a
+    // harness core no longer offers falls back to Active rather than
+    // sticking on a target nothing can reach.
+    readonly property string dictationTarget: {
+        const pinned = root._config?.dictation;
+        if (typeof pinned !== "string" || pinned.length === 0)
+            return "";
+        return root.dictationTargets.some(t => t.id === pinned) ? pinned : "";
+    }
+
+    // What a dictation click would actually type into right now, which is
+    // "" on a desktop with no harness session running at all.
+    readonly property string dictationHarness: root.dictationTarget.length > 0 ? root.dictationTarget : AgentEvents.activeHarness
+
+    // `available` is what PET-10 flips. Until then the pet has no brain of
+    // its own and shows whatever the harness it is watching is doing.
+    readonly property var backends: [
+        {
+            id: "mirror",
+            label: qsTr("Mirror the harness"),
+            available: true
+        },
+        {
+            id: "ollama",
+            label: qsTr("Local assistant"),
+            available: false
+        }
+    ]
+
+    readonly property string backend: {
+        const want = root._config?.backend;
+        const entry = root.backends.find(b => b.id === want);
+        return entry?.available === true ? entry.id : "mirror";
+    }
+
     readonly property real minScale: 0.5
     readonly property real maxScale: 4
     readonly property real userScale: {
@@ -395,6 +449,15 @@ Singleton {
     // once.
     function setScale(value: real): void {
         root._write({ size: Math.max(root.minScale, Math.min(root.maxScale, Math.round(value * 100) / 100)) });
+    }
+
+    function setDictationTarget(id: string): void {
+        root._write({ dictation: root.dictationTargets.some(t => t.id === id) ? id : "" });
+    }
+
+    function setBackend(id: string): void {
+        if (root.backends.find(b => b.id === id)?.available === true)
+            root._write({ backend: id });
     }
 
     function setTinted(value: bool): void {
