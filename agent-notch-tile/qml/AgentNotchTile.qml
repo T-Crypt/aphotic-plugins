@@ -62,6 +62,58 @@ ColumnLayout {
     readonly property bool hasUsage: root.usage.availability === "available" && root.usage.todayTokens > 0
     readonly property string topModel: root.usage.tokensByModel?.[0]?.model ?? ""
 
+    // Quota windows, and whether they still describe now. The record is
+    // only rewritten while a harness session is live, so an old one is
+    // unknown rather than zero -- and a window whose reset has already
+    // passed rolled over without anyone writing the new figure.
+    readonly property var quota: AgentProviders.quotaOf(AgentEvents.activeHarness || "claude")
+    readonly property bool quotaFresh: AgentProviders.quotaCapturedAt > 0 && (root.now - AgentProviders.quotaCapturedAt) < AgentProviders.quotaMaxAgeSeconds
+
+    readonly property var quotaBars: {
+        if (!root.quotaFresh)
+            return [];
+        const bars = [];
+        for (const [key, label] of [["fiveHour", qsTr("5h")], ["sevenDay", qsTr("7d")], ["context", qsTr("Context")]]) {
+            const w = root.quota[key];
+            if (!w)
+                continue;
+            if (w.resetsAt > 0 && root.now >= w.resetsAt)
+                continue;
+            bars.push({
+                label: label,
+                percent: w.usedPercent,
+                resetsAt: w.resetsAt ?? 0
+            });
+        }
+        return bars;
+    }
+
+    // One clock for every countdown, and only while the tile exists --
+    // a notch tile is built when the notch opens and destroyed when it
+    // closes, so this does not tick on a desktop nobody is looking at.
+    // Minute granularity is all the labels show, so 30s is plenty.
+    property int now: Math.floor(Date.now() / 1000)
+
+    Timer {
+        interval: 30000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.now = Math.floor(Date.now() / 1000)
+    }
+
+    function formatReset(resetsAt: int): string {
+        if (resetsAt <= 0)
+            return "";
+        const minutes = Math.max(0, Math.round((resetsAt - root.now) / 60));
+        if (minutes < 60)
+            return qsTr("%1m").arg(minutes);
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24)
+            return qsTr("%1h %2m").arg(hours).arg(minutes % 60);
+        return qsTr("%1d %2h").arg(Math.floor(hours / 24)).arg(hours % 24);
+    }
+
     readonly property var providerClaims: ResourceEngine.claimsOf("ollama")
     readonly property int providerVramMib: root.providerClaims.reduce((total, claim) => total + (claim.amount ?? 0), 0)
 
@@ -231,7 +283,62 @@ ColumnLayout {
         Layout.topMargin: Tokens.spacing.extraSmall
         implicitHeight: 1
         color: Colours.palette.m3outlineVariant
-        visible: root.hasUsage
+        visible: root.quotaBars.length > 0 || root.hasUsage
+    }
+
+    // The harness's own account of what it has spent, which nothing else
+    // on the machine knows: transcripts record tokens, never the share of
+    // an allowance. Absent entirely until a session reports it.
+    Repeater {
+        model: root.quotaBars
+
+        RowLayout {
+            id: quotaRow
+
+            required property var modelData
+
+            Layout.fillWidth: true
+            spacing: Tokens.spacing.small
+
+            StyledText {
+                Layout.preferredWidth: 48
+                text: quotaRow.modelData.label
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.medium
+                elide: Text.ElideRight
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: 6
+                radius: Tokens.rounding.full
+                color: Colours.palette.m3surfaceContainerHigh
+
+                StyledRect {
+                    width: Math.max(parent.width * quotaRow.modelData.percent / 100, parent.height)
+                    height: parent.height
+                    radius: parent.radius
+                    color: quotaRow.modelData.percent >= 90 ? Colours.palette.m3error : (quotaRow.modelData.percent >= 75 ? Colours.palette.m3tertiary : Colours.palette.m3primary)
+
+                    Behavior on width {
+                        Anim {}
+                    }
+                }
+            }
+
+            StyledText {
+                text: qsTr("%1%").arg(Math.round(quotaRow.modelData.percent))
+                color: Colours.palette.m3onSurface
+                font: Tokens.font.mono.small
+            }
+
+            StyledText {
+                visible: text !== ""
+                text: root.formatReset(quotaRow.modelData.resetsAt)
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.mono.small
+            }
+        }
     }
 
     RowLayout {
