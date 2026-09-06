@@ -29,6 +29,7 @@ SURFACE_SECTIONS = [
     ("ui.pet_action_2", "pet_action"),
     ("ui.pet_action_3", "pet_action"),
     ("ui.settings_pane", "settings"),
+    ("ui.workspace", "workspace"),
     ("ui.overlay", "overlay"),
     ("ui.fullscreen-overlay", "fullscreen-overlay"),
 ]

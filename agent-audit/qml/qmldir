@@ -1,0 +1,3 @@
+module qs.modules.plugins.agentAudit
+singleton AgentAuditService 1.0 AgentAuditService.qml
+AgentAuditWorkspace 1.0 AgentAuditWorkspace.qml
