@@ -92,6 +92,8 @@ Singleton {
 
     property var _sessions: []
     property var _runs: []
+    property bool _restoring: false
+    property var _pending: []
     property string _replayRunId: ""
     property var _replayEvents: []
     property var _events: []
@@ -103,6 +105,18 @@ Singleton {
     }
 
     function _ingest(record): void {
+        // A restore reads the archives asynchronously, so records arriving
+        // meanwhile are newer than everything it is about to fold. Folding
+        // them now would put the session's status at whatever the archive
+        // ends on instead of what just happened, so they wait and get
+        // merged back in timestamp order.
+        if (root._restoring) {
+            const pending = root._pending.slice();
+            pending.push(record);
+            root._pending = pending;
+            return;
+        }
+
         const events = root._events.slice();
         events.push(record);
         let evicted = false;
@@ -134,6 +148,77 @@ Singleton {
     function _reset(): void {
         root._events = [];
         root._sessions = [];
+    }
+
+    // Rebuild live sessions from disk instead of waiting for the next event.
+    //
+    // Two things made a restarted shell lose a running session. The shared
+    // feed replays its backlog only to whoever starts its tail, and another
+    // surface has usually started it long before this graph is opened; and
+    // even that backlog is one shared 400-line window across every session,
+    // which is not a session's history. So the graph came up empty and then
+    // grew a stub session on the next tool call -- same id, but starting at
+    // that moment, with none of the run's earlier tool calls.
+    //
+    // `agent-sessions/` is the index of sessions that have not ended, and
+    // each one's `agent-runs/<id>.jsonl` is its own full history. Folding
+    // those through applyTo -- the same reducer replay uses -- reconstructs
+    // the graph as it stood, so a restart resumes the session rather than
+    // opening a new one.
+    function _restore(): void {
+        root._restoring = true;
+        root._pending = [];
+        restoreReader.running = false;
+        // The first line carries the session's real start time; the rest of
+        // the window is bounded so a long-running session cannot make this
+        // fold unbounded work. A short file yields its first line twice,
+        // which folds to the same state.
+        restoreReader.command = ["sh", "-c",
+            `d='${root._stateDir}'; for f in "$d"/agent-sessions/*.json; do ` +
+            `[ -e "$f" ] || continue; id=$(basename "$f" .json); ` +
+            `r="$d/agent-runs/$id.jsonl"; [ -f "$r" ] || continue; ` +
+            `head -n 1 "$r"; tail -n ${root.maxEvents} "$r"; done`];
+        restoreReader.running = true;
+    }
+
+    function _applyRestored(text: string): void {
+        const parsed = [];
+        for (const line of text.split("\n")) {
+            if (!line.length)
+                continue;
+            try {
+                parsed.push(JSON.parse(line));
+            } catch (e) {
+                continue;
+            }
+        }
+
+        const all = parsed.concat(root._pending);
+        all.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+
+        // The archives and the live feed overlap: the same event reaches
+        // both. A tool call is unique on its id, and the events that have
+        // none are unique on their kind and timestamp within a session.
+        const seen = ({});
+        const ordered = [];
+        for (const record of all) {
+            if (!record || !record.sessionId || !record.event)
+                continue;
+            const key = `${record.sessionId}|${record.event}|${record.toolId ?? ""}|${record.t ?? 0}`;
+            if (seen[key])
+                continue;
+            seen[key] = true;
+            ordered.push(record);
+        }
+
+        let sessions = [];
+        for (const record of ordered)
+            sessions = root.applyTo(sessions, record);
+
+        root._events = ordered.slice(-root.maxEvents);
+        root._sessions = sessions;
+        root._pending = [];
+        root._restoring = false;
     }
 
     function _hueForSession(id: string): int {
@@ -376,6 +461,13 @@ Singleton {
         }
     }
 
+    Process {
+        id: restoreReader
+        stdout: StdioCollector {
+            onStreamFinished: root._applyRestored(text)
+        }
+    }
+
     // Live records come off AgentEvents, the single shared reader of
     // `agent-events.jsonl` -- this plugin used to run a `tail -F` of its
     // own beside the bar's. The hold follows the graph surface, not the
@@ -407,6 +499,15 @@ Singleton {
         }
     }
 
-    onWantsFeedChanged: AgentEvents.hold("agent-graph", root.wantsFeed)
-    Component.onCompleted: AgentEvents.hold("agent-graph", root.wantsFeed)
+    onWantsFeedChanged: {
+        AgentEvents.hold("agent-graph", root.wantsFeed);
+        if (root.wantsFeed)
+            root._restore();
+    }
+
+    Component.onCompleted: {
+        AgentEvents.hold("agent-graph", root.wantsFeed);
+        if (root.wantsFeed)
+            root._restore();
+    }
 }
