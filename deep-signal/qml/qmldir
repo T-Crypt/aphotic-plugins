@@ -1,0 +1,5 @@
+module qs.modules.plugins.deepSignal
+singleton SignalClock 1.0 SignalClock.qml
+singleton Branding 1.0 Branding.qml
+Screensaver 1.0 Screensaver.qml
+ParticleField 1.0 ParticleField.qml
