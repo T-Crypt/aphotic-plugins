@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
+//
+// Aphotic desktop pet, drawing
+// Copyright (C) 2023-2026 Trevin Tindall. Licensed GPL-3.0-or-later.
 
 pragma ComponentBehavior: Bound
 

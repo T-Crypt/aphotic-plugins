@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-only
-# SPDX-FileCopyrightText: Aphotic-Hypr contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
 """Device/effect layer for the OpenRGB Sync plugin.
 
 Ported from a standalone Windows OpenRGB automation project whose whole

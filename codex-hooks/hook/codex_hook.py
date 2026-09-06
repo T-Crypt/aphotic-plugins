@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: GPL-3.0-only
-# SPDX-FileCopyrightText: Aphotic-Hypr contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
 """Codex agent hook translator -- see codex_hook.sh for why this is one
 short-lived process and why nothing in here is allowed to raise.
 

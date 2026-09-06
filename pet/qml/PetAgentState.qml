@@ -1,5 +1,12 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
+//
+// Aphotic desktop pet, harness binding
+// Copyright (C) 2023-2026 Trevin Tindall. Licensed GPL-3.0-or-later.
+//
+// Turns the shared agent event feed into the pet's mood. Reads AgentEvents
+// rather than tailing the log a second time, and holds the feed for the
+// plugin's lifetime since the pet is always on screen.
 
 pragma Singleton
 pragma ComponentBehavior: Bound
