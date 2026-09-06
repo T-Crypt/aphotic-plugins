@@ -6,20 +6,13 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.plugins.pet
 
-// Draws whichever pet is configured: an imported sprite sheet when one
-// loads, a built-in vector pet otherwise. The fallback is unconditional
-// -- a missing directory, a rejected manifest and an image that fails to
+// Draws whichever pet is configured: a sprite sheet when one loads, a
+// built-in vector pet otherwise. The fallback is unconditional -- a
+// missing directory, a rejected manifest and an image that fails to
 // decode all land in the same place, so the surface is never blank.
 //
-// The sheet is one Image behind a clipping viewport, offset to the wanted
-// cell, rather than a re-clipped or re-decoded source per frame. Changing
-// a frame then costs two coordinate writes on a node the GPU already
-// holds.
-//
-// Cell size and draw scale are worked out here rather than read straight
-// off the manifest, because a manifest whose format fixes the grid states
-// neither. Dividing the loaded image by the grid is also what lets one of
-// those sheets be exported at any resolution and still land right.
+// PetSheetCell does the drawing, and the picker's tiles use it too, so a
+// pet looks the same in Settings as it does on the desktop.
 Item {
     id: root
 
@@ -29,14 +22,15 @@ Item {
     required property int facing
     required property int frame
 
-    readonly property real cellWidth: PetLibrary.frameWidth > 0 ? PetLibrary.frameWidth : (PetLibrary.columns > 0 ? sheet.implicitWidth / PetLibrary.columns : 0)
-    readonly property real cellHeight: PetLibrary.frameHeight > 0 ? PetLibrary.frameHeight : (PetLibrary.rows > 0 ? sheet.implicitHeight / PetLibrary.rows : 0)
-    readonly property real drawScale: PetLibrary.scale > 0 ? PetLibrary.scale : (root.cellHeight > 0 ? PetLibrary.targetHeight / root.cellHeight : 1)
+    // What the sheet asks to be drawn at, times what the user asked for.
+    // The built-in pets take the same multiplier below, so the size slider
+    // means the same thing whichever kind of pet is on the desktop.
+    readonly property real sheetScale: PetLibrary.scale > 0 ? PetLibrary.scale : (cell.cellHeight > 0 ? PetLibrary.targetHeight / cell.cellHeight : 1)
 
-    readonly property bool usingSheet: PetLibrary.spriteReady && sheet.status === Image.Ready && root.cellWidth > 0 && root.cellHeight > 0
+    readonly property bool usingSheet: cell.ready
 
-    implicitWidth: root.usingSheet ? root.cellWidth * root.drawScale : fallback.implicitWidth
-    implicitHeight: root.usingSheet ? root.cellHeight * root.drawScale : fallback.implicitHeight
+    implicitWidth: root.usingSheet ? cell.implicitWidth : fallback.implicitWidth * PetLibrary.userScale
+    implicitHeight: root.usingSheet ? cell.implicitHeight : fallback.implicitHeight * PetLibrary.userScale
 
     DefaultPet {
         id: fallback
@@ -46,31 +40,22 @@ Item {
         phase: root.phase
         excitement: root.excitement
         facing: root.facing
+        // Vector pets have no sheet to scale, so the multiplier goes on
+        // the item. Origin at the top left, so the pet grows down and
+        // right out of its own corner -- which is the corner the implicit
+        // size above has already accounted for.
+        scale: PetLibrary.userScale
+        transformOrigin: Item.TopLeft
     }
 
-    Item {
-        id: viewport
+    PetSheetCell {
+        id: cell
 
-        visible: root.usingSheet
-        width: root.cellWidth * root.drawScale
-        height: root.cellHeight * root.drawScale
-        clip: true
-        transform: Scale {
-            origin.x: viewport.width / 2
-            xScale: root.facing
-        }
-
-        Image {
-            id: sheet
-
-            source: PetLibrary.sheetUrl
-            asynchronous: true
-            cache: true
-            smooth: PetLibrary.smooth
-            width: sheet.implicitWidth * root.drawScale
-            height: sheet.implicitHeight * root.drawScale
-            x: -root.frame * root.cellWidth * root.drawScale
-            y: -PetLibrary.stateFor(root.mood).row * root.cellHeight * root.drawScale
-        }
+        manifest: PetLibrary.manifest
+        petName: PetLibrary.spriteName
+        column: root.frame
+        row: PetLibrary.stateFor(root.mood).row
+        facing: root.facing
+        cellScale: root.sheetScale * PetLibrary.userScale
     }
 }
