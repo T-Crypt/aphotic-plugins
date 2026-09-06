@@ -8,7 +8,7 @@ category = "ai"
 capabilities = ["harness-hook"]
 
 [owns]
-external_config = ["~/.claude/settings.json (SessionStart/PreToolUse/PostToolUse/PostToolUseFailure/Notification/Stop/SubagentStop/SessionEnd hook entries)"]
+external_config = ["~/.claude/settings.json (SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/PostToolUseFailure/Notification/PreCompact/PostCompact/Stop/SubagentStop/SessionEnd hook entries)"]
 
 [harness]
 wire = "hooks/wire.sh"
