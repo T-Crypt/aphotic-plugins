@@ -4,118 +4,161 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.components
-import qs.config
 import qs.services
 import qs.modules.plugins.agentAudit
 
 Item {
     id: root
 
+    readonly property color applicationBackground: Colours.palette.m3surfaceContainer
+    readonly property color cardBackground: Qt.alpha(Colours.layer(Colours.palette.m3surfaceContainerHigh, 2), 0.78)
+    readonly property color insetBackground: Colours.layer(Colours.palette.m3surfaceContainer, 2)
+    readonly property color panelBorder: Qt.alpha(Colours.palette.m3onSurface, 0.08)
+    readonly property color textPrimary: Colours.palette.m3onSurface
+    readonly property color textMuted: Colours.palette.m3onSurfaceVariant
+    readonly property color success: Colours.palette.m3tertiaryOnSurface
+    readonly property color error: Colours.palette.m3error
+    readonly property color warning: Colours.palette.m3secondaryOnSurface
+    readonly property color toolAccent: Colours.palette.m3primaryOnSurface
+    readonly property color agentAccent: Colours.palette.m3secondaryOnSurface
+    readonly property string uiFont: "Inter, Noto Sans, Sans-Serif"
+    readonly property string monoFont: "JetBrains Mono, Fira Code, monospace"
+
     readonly property var evidence: AgentAuditService.selectedRunId.length > 0 ? AgentAuditService.replayedEvents : AgentAuditService.liveEvents
-    readonly property var selectedFields: root.evidenceFields(root.selectedEvent)
+    readonly property int flaggedSteps: root.evidence.filter(event => root.eventFailed(event) || root.eventWarning(event)).length
+    readonly property int totalTokens: root.evidence.reduce((sum, event) => sum + Number(event.tokens ?? event.tokenCount ?? event.usage?.total_tokens ?? 0), 0)
+    readonly property int totalDurationMs: root.evidence.reduce((sum, event) => sum + Number(event.durationMs ?? 0), 0)
+
     property var selectedEvent: null
+    property var tags: []
+    property bool editingTag: false
     property string owner: `agent-audit-${Math.random()}`
 
+    signal reportRequested(var report)
+
+    onEvidenceChanged: {
+        if (root.selectedEvent !== null && !root.evidence.includes(root.selectedEvent))
+            root.selectedEvent = null;
+    }
+
     function eventFailed(event: var): bool {
-        return event?.event === "post_tool_use_failure" || event?.error?.length > 0;
+        return event?.event === "post_tool_use_failure" || String(event?.error ?? "").length > 0;
+    }
+
+    function eventWarning(event: var): bool {
+        return String(event?.event ?? "").toLowerCase().includes("warning") || String(event?.level ?? "").toLowerCase() === "warning";
     }
 
     function eventColour(event: var): color {
         if (root.eventFailed(event))
-            return Colours.palette.m3error;
+            return root.error;
+        if (root.eventWarning(event))
+            return root.warning;
         if (event?.event === "post_tool_use")
-            return Colours.palette.m3tertiaryOnSurface;
-        return Colours.palette.m3primaryOnSurface;
+            return root.success;
+        if (event?.tool)
+            return root.toolAccent;
+        return root.agentAccent;
     }
 
-    function eventIcon(event: var): string {
-        if (root.eventFailed(event))
-            return "error";
-        if (event?.event === "post_tool_use")
-            return "check_circle";
-        if (event?.event === "pre_tool_use")
-            return "build";
-        return "timeline";
+    function stepKind(event: var): string {
+        const name = String(event?.event ?? "").toLowerCase();
+        if (name.includes("memory"))
+            return qsTr("Memory access");
+        if (event?.tool || name.includes("tool"))
+            return qsTr("Tool call");
+        if (name.includes("output") || name.includes("stop") || name.includes("complete"))
+            return qsTr("Output");
+        return qsTr("Thought");
     }
 
-    function eventLabel(event: var): string {
-        if (root.eventFailed(event))
-            return qsTr("Tool issue");
-        if (event?.event === "post_tool_use")
-            return qsTr("Tool complete");
-        if (event?.event === "pre_tool_use")
-            return qsTr("Tool started");
-        return event?.event ?? qsTr("Activity");
+    function stepIcon(event: var): string {
+        const kind = root.stepKind(event);
+        if (kind === qsTr("Memory access"))
+            return "memory";
+        if (kind === qsTr("Tool call"))
+            return "terminal";
+        if (kind === qsTr("Output"))
+            return "output";
+        return "psychology";
     }
 
-    function evidenceFields(event: var): var {
-        if (!event)
-            return [];
-        const fields = [
-            { label: qsTr("Activity"), value: root.eventLabel(event) },
-            { label: qsTr("Tool"), value: event.tool ?? qsTr("No tool recorded") },
-            { label: qsTr("Agent"), value: event.agentType ?? event.agent_type ?? qsTr("Primary session") },
-            { label: qsTr("Outcome"), value: root.eventFailed(event) ? qsTr("Needs attention") : qsTr("Recorded") }
-        ];
-        if (event.durationMs)
-            fields.push({ label: qsTr("Duration"), value: qsTr("%1 ms").arg(event.durationMs) });
-        if (event.sessionId || event.session_id)
-            fields.push({ label: qsTr("Session"), value: event.sessionId ?? event.session_id });
-        if (event.timestamp || event.time)
-            fields.push({ label: qsTr("Time"), value: event.timestamp ?? event.time });
-        const detail = event.error ?? event.message ?? event.summary ?? event.command ?? "";
-        if (detail.length > 0)
-            fields.push({ label: root.eventFailed(event) ? qsTr("Reason") : qsTr("Detail"), value: detail });
-        return fields;
+    function stepTitle(event: var): string {
+        return event?.tool ?? event?.summary ?? event?.event ?? qsTr("Agent activity");
+    }
+
+    function payloadText(event: var): string {
+        return event ? JSON.stringify(event, null, 2) : qsTr("Select an execution step to inspect its payload.");
+    }
+
+    function addTag(value: string): void {
+        const tag = value.trim();
+        if (!tag || root.tags.includes(tag))
+            return;
+        root.tags = root.tags.concat([tag]);
+    }
+
+    function removeTag(index: int): void {
+        const next = root.tags.slice();
+        next.splice(index, 1);
+        root.tags = next;
+    }
+
+    function requestReport(): void {
+        root.reportRequested({
+            runId: AgentAuditService.selectedRunId,
+            flaggedSteps: root.flaggedSteps,
+            eventCount: root.evidence.length,
+            tags: root.tags.slice()
+        });
     }
 
     onVisibleChanged: AgentAuditService.setSurfaceVisible(root.owner, visible)
     Component.onCompleted: AgentAuditService.setSurfaceVisible(root.owner, visible)
     Component.onDestruction: AgentAuditService.setSurfaceVisible(root.owner, false)
 
-    component EventRow: StyledRect {
-        id: eventRow
+    component StepDelegate: Rectangle {
+        id: stepRow
+
         required property var eventData
-        readonly property bool selected: root.selectedEvent === eventRow.eventData
+        readonly property bool selected: root.selectedEvent === stepRow.eventData
+        property bool hovered: false
 
-        width: evidenceList.width
-        height: 60
-        radius: Tokens.rounding.medium
-        color: eventRow.selected ? Colours.palette.m3secondaryContainer : Colours.layer(Colours.palette.m3surfaceContainerHigh, 1)
-        clip: true
+        width: stepList.width
+        height: 58
+        radius: 8
+        color: stepRow.selected ? Qt.alpha(root.toolAccent, 0.12) : stepRow.hovered ? Qt.alpha(root.textPrimary, 0.05) : "transparent"
+        border.width: stepRow.selected ? 1 : 0
+        border.color: root.toolAccent
 
-        StyledRect {
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        Rectangle {
             anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 3
-            radius: Tokens.rounding.full
-            color: root.eventColour(eventRow.eventData)
-        }
-
-        StateLayer {
-            anchors.fill: parent
-            radius: parent.radius
-            onClicked: root.selectedEvent = eventRow.eventData
+            anchors.verticalCenter: parent.verticalCenter
+            width: 2
+            height: parent.height - 16
+            radius: 999
+            color: root.eventColour(stepRow.eventData)
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: Tokens.padding.medium
-            anchors.rightMargin: Tokens.padding.medium
-            spacing: Tokens.spacing.small
+            anchors.leftMargin: 12
+            anchors.rightMargin: 10
+            spacing: 10
 
-            StyledRect {
-                Layout.preferredWidth: 30
-                Layout.preferredHeight: 30
-                radius: Tokens.rounding.small
-                color: Qt.tint(Colours.palette.m3surfaceContainer, Qt.alpha(root.eventColour(eventRow.eventData), 0.18))
+            Rectangle {
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 8
+                color: Qt.alpha(root.eventColour(stepRow.eventData), 0.13)
 
                 MaterialIcon {
                     anchors.centerIn: parent
-                    text: root.eventIcon(eventRow.eventData)
-                    color: root.eventColour(eventRow.eventData)
-                    fontStyle: Tokens.font.icon.small
+                    text: root.stepIcon(stepRow.eventData)
+                    color: root.eventColour(stepRow.eventData)
+                    font.pixelSize: 16
                     fill: 1
                 }
             }
@@ -124,298 +167,379 @@ Item {
                 Layout.fillWidth: true
                 spacing: 1
 
-                StyledText {
+                Text {
                     Layout.fillWidth: true
+                    text: root.stepTitle(stepRow.eventData)
+                    color: root.textPrimary
                     elide: Text.ElideRight
-                    text: eventRow.eventData.tool || root.eventLabel(eventRow.eventData)
-                    font: Tokens.font.body.medium
-                    color: eventRow.selected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+                    font.family: root.uiFont
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
                 }
 
-                StyledText {
+                Text {
                     Layout.fillWidth: true
+                    text: root.stepKind(stepRow.eventData)
+                    color: root.textMuted
                     elide: Text.ElideRight
-                    text: `${root.eventLabel(eventRow.eventData)} · ${eventRow.eventData.agentType || eventRow.eventData.agent_type || qsTr("primary")}`
-                    font: Tokens.font.label.small
-                    color: eventRow.selected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
+                    font.family: root.uiFont
+                    font.pixelSize: 10
                 }
             }
 
-            StyledText {
-                visible: !!eventRow.eventData.durationMs
-                text: qsTr("%1 ms").arg(eventRow.eventData.durationMs || 0)
-                font: Tokens.font.mono.small
-                color: eventRow.selected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
+            Text {
+                visible: !!stepRow.eventData.durationMs
+                text: `${stepRow.eventData.durationMs ?? 0} ms`
+                color: root.textMuted
+                font.family: root.monoFont
+                font.pixelSize: 10
             }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onContainsMouseChanged: stepRow.hovered = containsMouse
+            onClicked: root.selectedEvent = stepRow.eventData
         }
     }
 
-    component EvidenceField: StyledRect {
+    component MetricCard: Rectangle {
         required property string label
         required property string value
+        required property string icon
+        required property color accent
 
         Layout.fillWidth: true
-        implicitHeight: valueText.implicitHeight + Tokens.padding.small * 2
-        radius: Tokens.rounding.medium
-        color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 1)
+        implicitHeight: 66
+        radius: 8
+        color: root.insetBackground
+        border.width: 1
+        border.color: root.panelBorder
 
-        Column {
+        RowLayout {
             anchors.fill: parent
-            anchors.margins: Tokens.padding.small
-            spacing: 2
+            anchors.margins: 12
+            spacing: 10
 
-            StyledText {
-                text: parent.parent.label.toUpperCase()
-                font: Tokens.font.label.builders.small.weight(Font.Medium).build()
-                color: Colours.palette.m3onSurfaceVariant
+            Rectangle {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 8
+                color: Qt.alpha(parent.parent.accent, 0.13)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: parent.parent.parent.icon
+                    color: parent.parent.parent.accent
+                    font.pixelSize: 17
+                    fill: 1
+                }
             }
 
-            StyledText {
-                id: valueText
-                width: parent.width
-                wrapMode: Text.Wrap
-                maximumLineCount: 4
-                elide: Text.ElideRight
-                text: parent.parent.value
-                font: Tokens.font.mono.small
-                color: Colours.palette.m3onSurface
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 1
+
+                Text {
+                    text: parent.parent.parent.label.toUpperCase()
+                    color: root.textMuted
+                    font.family: root.uiFont
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.7
+                }
+
+                Text {
+                    text: parent.parent.parent.value
+                    color: root.textPrimary
+                    font.family: root.monoFont
+                    font.pixelSize: 14
+                    font.weight: Font.Medium
+                }
             }
         }
     }
 
-    RowLayout {
+    Rectangle {
         anchors.fill: parent
-        anchors.margins: Tokens.spacing.medium
-        spacing: Tokens.spacing.medium
+        radius: 12
+        color: root.applicationBackground
+        border.width: 1
+        border.color: root.panelBorder
+    }
 
-        StyledRect {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 236
-            radius: Tokens.rounding.large
-            color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+    Rectangle {
+        id: header
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: 16
+        height: 72
+        radius: 12
+        color: root.cardBackground
+        border.width: 1
+        border.color: root.panelBorder
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            spacing: 14
+
+            Rectangle {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                radius: 8
+                color: Qt.alpha(root.toolAccent, 0.14)
+                border.width: 1
+                border.color: Qt.alpha(root.toolAccent, 0.42)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "fact_check"
+                    color: root.toolAccent
+                    font.pixelSize: 20
+                    fill: 1
+                }
+            }
 
             ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Tokens.padding.medium
-                spacing: Tokens.spacing.small
+                spacing: 1
+
+                Text {
+                    text: qsTr("Agent Audit")
+                    color: root.textPrimary
+                    font.family: root.uiFont
+                    font.pixelSize: 15
+                    font.weight: Font.DemiBold
+                }
+
+                Text {
+                    text: AgentAuditService.selectedRunId.length > 0 ? AgentAuditService.selectedRunId : qsTr("Live execution stream")
+                    color: root.textMuted
+                    elide: Text.ElideMiddle
+                    font.family: root.monoFont
+                    font.pixelSize: 10
+                    Layout.maximumWidth: 230
+                }
+            }
+
+            Rectangle {
+                implicitWidth: statusRow.implicitWidth + 18
+                implicitHeight: 26
+                radius: 999
+                color: Qt.alpha(AgentAuditService.liveSessions.length > 0 ? root.success : root.textMuted, 0.12)
+                border.width: 1
+                border.color: Qt.alpha(AgentAuditService.liveSessions.length > 0 ? root.success : root.textMuted, 0.32)
 
                 RowLayout {
-                    Layout.fillWidth: true
+                    id: statusRow
+                    anchors.centerIn: parent
+                    spacing: 6
 
-                    StyledRect {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
-                        radius: Tokens.rounding.medium
-                        color: Colours.palette.m3primary
-
-                        MaterialIcon {
-                            anchors.centerIn: parent
-                            text: "fact_check"
-                            color: Colours.contrastOn(Colours.palette.m3primary)
-                            fontStyle: Tokens.font.icon.small
-                            fill: 1
-                        }
+                    Rectangle {
+                        Layout.preferredWidth: 6
+                        Layout.preferredHeight: 6
+                        radius: 999
+                        color: AgentAuditService.liveSessions.length > 0 ? root.success : root.textMuted
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        StyledText {
-                            text: qsTr("Agent Audit")
-                            font: Tokens.font.title.small
-                            color: Colours.palette.m3onSurface
-                        }
-
-                        StyledText {
-                            text: qsTr("Local session evidence")
-                            font: Tokens.font.label.small
-                            color: Colours.palette.m3onSurfaceVariant
-                        }
+                    Text {
+                        text: AgentAuditService.liveSessions.length > 0 ? qsTr("RUNNING") : qsTr("IDLE")
+                        color: AgentAuditService.liveSessions.length > 0 ? root.success : root.textMuted
+                        font.family: root.uiFont
+                        font.pixelSize: 9
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.6
                     }
                 }
+            }
 
-                StyledRect {
-                    Layout.fillWidth: true
-                    implicitHeight: 34
-                    radius: Tokens.rounding.full
-                    color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 1)
+            ListView {
+                id: headerTags
 
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: Tokens.spacing.extraSmall
+                Layout.fillWidth: true
+                Layout.preferredHeight: 28
+                orientation: ListView.Horizontal
+                spacing: 6
+                clip: true
+                model: root.tags
 
-                        StyledRect {
-                            width: 7
-                            height: 7
-                            anchors.verticalCenter: parent.verticalCenter
-                            radius: Tokens.rounding.full
-                            color: AgentAuditService.liveSessions.length > 0 ? Colours.palette.m3tertiaryOnSurface : Colours.palette.m3onSurfaceVariant
-                        }
+                delegate: TagChip {
+                    required property string modelData
+                    label: modelData
+                    accent: root.agentAccent
+                    interactive: false
+                }
+            }
 
-                        StyledText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("%1 live sessions").arg(AgentAuditService.liveSessions.length)
-                            font: Tokens.font.label.small
-                            color: Colours.palette.m3onSurfaceVariant
-                        }
-                    }
+            TagChip {
+                visible: !root.editingTag
+                label: qsTr("+ Add tag")
+                accent: root.toolAccent
+                onClicked: {
+                    root.editingTag = true;
+                    tagInput.forceActiveFocus();
+                }
+            }
+
+            TextField {
+                id: tagInput
+
+                visible: root.editingTag
+                Layout.preferredWidth: 150
+                Layout.preferredHeight: 28
+                color: root.textPrimary
+                placeholderText: qsTr("tag-name")
+                placeholderTextColor: root.textMuted
+                selectByMouse: true
+                font.family: root.monoFont
+                font.pixelSize: 11
+                leftPadding: 10
+                rightPadding: 10
+                topPadding: 4
+                bottomPadding: 4
+
+                background: Rectangle {
+                    radius: 999
+                    color: root.insetBackground
+                    border.width: 1
+                    border.color: tagInput.activeFocus ? root.toolAccent : root.panelBorder
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    Layout.topMargin: Tokens.spacing.small
-                    text: qsTr("RUNS")
-                    font: Tokens.font.label.builders.small.weight(Font.Medium).build()
-                    color: Colours.palette.m3onSurfaceVariant
+                onAccepted: {
+                    root.addTag(text);
+                    text = "";
+                    root.editingTag = false;
                 }
 
-                ListView {
-                    id: runsList
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    spacing: Tokens.spacing.extraSmall
-                    model: AgentAuditService.runs
-
-                    delegate: StyledRect {
-                        id: runRow
-                        required property var modelData
-                        width: runsList.width
-                        height: 44
-                        radius: Tokens.rounding.medium
-                        color: AgentAuditService.selectedRunId === runRow.modelData.id ? Colours.palette.m3secondaryContainer : "transparent"
-
-                        StateLayer {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            onClicked: AgentAuditService.loadRun(runRow.modelData.id)
-                        }
-
-                        Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: Tokens.padding.small
-                            anchors.rightMargin: Tokens.padding.small
-                            spacing: Tokens.spacing.small
-
-                            MaterialIcon {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "history"
-                                color: AgentAuditService.selectedRunId === runRow.modelData.id ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
-                                fontStyle: Tokens.font.icon.small
-                            }
-
-                            StyledText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 32
-                                elide: Text.ElideRight
-                                text: runRow.modelData.label
-                                font: Tokens.font.label.small
-                                color: AgentAuditService.selectedRunId === runRow.modelData.id ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
-                            }
-                        }
-                    }
+                Keys.onEscapePressed: {
+                    text = "";
+                    root.editingTag = false;
                 }
+            }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    visible: AgentAuditService.runs.length === 0
-                    wrapMode: Text.Wrap
-                    text: qsTr("Recorded sessions appear here after the first tracked run.")
-                    font: Tokens.font.label.small
-                    color: Colours.palette.m3onSurfaceVariant
-                }
+            Text {
+                text: qsTr("%1 steps").arg(root.evidence.length)
+                color: root.textMuted
+                font.family: root.monoFont
+                font.pixelSize: 11
+            }
+        }
+    }
+
+    SplitView {
+        id: workbench
+
+        anchors.top: header.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.topMargin: 12
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        anchors.bottomMargin: 86
+        orientation: Qt.Horizontal
+
+        handle: Rectangle {
+            implicitWidth: 12
+            color: "transparent"
+
+            Rectangle {
+                anchors.centerIn: parent
+                width: 1
+                height: parent.height - 20
+                color: root.panelBorder
             }
         }
 
-        StyledRect {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            radius: Tokens.rounding.large
-            color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+        Rectangle {
+            SplitView.preferredWidth: 270
+            SplitView.minimumWidth: 220
+            radius: 12
+            color: root.cardBackground
+            border.width: 1
+            border.color: root.panelBorder
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: Tokens.padding.medium
-                spacing: Tokens.spacing.small
+                anchors.margins: 12
+                spacing: 10
 
                 RowLayout {
                     Layout.fillWidth: true
 
-                    ColumnLayout {
+                    Text {
                         Layout.fillWidth: true
-                        spacing: 0
-
-                        StyledText {
-                            text: AgentAuditService.selectedRunId.length > 0 ? qsTr("Replay timeline") : qsTr("Live timeline")
-                            font: Tokens.font.title.small
-                            color: Colours.palette.m3onSurface
-                        }
-
-                        StyledText {
-                            text: AgentAuditService.selectedRunId.length > 0 ? qsTr("Step through a recorded session") : qsTr("Evidence recorded on this device")
-                            font: Tokens.font.label.small
-                            color: Colours.palette.m3onSurfaceVariant
-                        }
+                        text: qsTr("RUN TREE")
+                        color: root.textMuted
+                        font.family: root.uiFont
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.8
                     }
 
-                    StyledRect {
-                        implicitWidth: countText.implicitWidth + Tokens.padding.small * 2
-                        implicitHeight: 26
-                        radius: Tokens.rounding.full
-                        color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 1)
-
-                        StyledText {
-                            id: countText
-                            anchors.centerIn: parent
-                            text: qsTr("%1 events").arg(root.evidence.length)
-                            font: Tokens.font.label.small
-                            color: Colours.palette.m3onSurfaceVariant
-                        }
+                    Text {
+                        text: AgentAuditService.selectedRunId.length > 0 ? qsTr("REPLAY") : qsTr("LIVE")
+                        color: root.toolAccent
+                        font.family: root.monoFont
+                        font.pixelSize: 9
                     }
                 }
 
                 ListView {
-                    id: evidenceList
+                    id: stepList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
-                    spacing: Tokens.spacing.extraSmall
+                    spacing: 4
                     model: root.evidence
 
-                    delegate: EventRow {
+                    delegate: StepDelegate {
                         eventData: modelData
                     }
                 }
 
-                StyledRect {
+                Text {
+                    Layout.fillWidth: true
+                    visible: root.evidence.length === 0
+                    text: qsTr("Execution steps appear here when a tracked session produces evidence.")
+                    color: root.textMuted
+                    wrapMode: Text.Wrap
+                    font.family: root.uiFont
+                    font.pixelSize: 11
+                    lineHeight: 1.35
+                }
+
+                Rectangle {
                     Layout.fillWidth: true
                     visible: AgentAuditService.selectedRunId.length > 0
-                    implicitHeight: 44
-                    radius: Tokens.rounding.medium
-                    color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 1)
+                    implicitHeight: 42
+                    radius: 8
+                    color: root.insetBackground
+                    border.width: 1
+                    border.color: root.panelBorder
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: Tokens.padding.small
-                        anchors.rightMargin: Tokens.padding.small
-                        spacing: Tokens.spacing.small
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 8
 
                         MaterialIcon {
                             text: AgentAuditService.replaying ? "pause" : "play_arrow"
-                            color: Colours.palette.m3primaryOnSurface
-                            fontStyle: Tokens.font.icon.small
+                            color: root.toolAccent
+                            font.pixelSize: 17
 
                             MouseArea {
                                 anchors.fill: parent
+                                anchors.margins: -5
+                                cursorShape: Qt.PointingHandCursor
                                 onClicked: AgentAuditService.toggleReplay()
                             }
-                        }
-
-                        StyledText {
-                            text: AgentAuditService.replaying ? qsTr("Replaying") : qsTr("Paused")
-                            font: Tokens.font.label.small
-                            color: Colours.palette.m3onSurfaceVariant
                         }
 
                         Slider {
@@ -428,72 +552,260 @@ Item {
                                 AgentAuditService.replayIndex = Math.round(value);
                             }
                         }
+
+                        Text {
+                            text: `${AgentAuditService.replayIndex}/${AgentAuditService.replayEvents.length}`
+                            color: root.textMuted
+                            font.family: root.monoFont
+                            font.pixelSize: 9
+                        }
                     }
                 }
             }
         }
 
-        StyledRect {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 272
-            radius: Tokens.rounding.large
-            color: Colours.layer(Colours.palette.m3surfaceContainerHigh, 2)
+        Rectangle {
+            SplitView.fillWidth: true
+            SplitView.minimumWidth: 380
+            radius: 12
+            color: root.cardBackground
+            border.width: 1
+            border.color: root.panelBorder
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: Tokens.padding.medium
-                spacing: Tokens.spacing.small
+                anchors.margins: 12
+                spacing: 10
 
                 RowLayout {
                     Layout.fillWidth: true
 
-                    StyledText {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: qsTr("Evidence")
-                        font: Tokens.font.title.small
-                        color: Colours.palette.m3onSurface
+                        spacing: 1
+
+                        Text {
+                            text: qsTr("Payload inspector")
+                            color: root.textPrimary
+                            font.family: root.uiFont
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
+
+                        Text {
+                            text: root.selectedEvent ? root.stepKind(root.selectedEvent) : qsTr("No step selected")
+                            color: root.textMuted
+                            font.family: root.uiFont
+                            font.pixelSize: 10
+                        }
                     }
 
-                    MaterialIcon {
+                    TagChip {
                         visible: root.selectedEvent !== null
-                        text: root.selectedEvent ? root.eventIcon(root.selectedEvent) : ""
-                        color: root.selectedEvent ? root.eventColour(root.selectedEvent) : "transparent"
-                        fontStyle: Tokens.font.icon.small
-                        fill: 1
+                        label: root.selectedEvent ? root.stepKind(root.selectedEvent) : ""
+                        accent: root.selectedEvent ? root.eventColour(root.selectedEvent) : root.toolAccent
+                        interactive: false
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    visible: root.selectedEvent === null
-                    wrapMode: Text.Wrap
-                    text: qsTr("Choose an event to inspect its local evidence.")
-                    font: Tokens.font.body.small
-                    color: Colours.palette.m3onSurfaceVariant
-                }
-
-                Flickable {
+                Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    visible: root.selectedEvent !== null
-                    clip: true
-                    contentHeight: evidenceFieldsColumn.implicitHeight
+                    radius: 8
+                    color: root.insetBackground
+                    border.width: 1
+                    border.color: root.selectedEvent ? Qt.alpha(root.eventColour(root.selectedEvent), 0.42) : root.panelBorder
 
-                    ColumnLayout {
-                        id: evidenceFieldsColumn
-                        width: parent.width
-                        spacing: Tokens.spacing.extraSmall
+                    ScrollView {
+                        anchors.fill: parent
+                        anchors.margins: 16
+                        clip: true
+
+                        TextArea {
+                            text: root.payloadText(root.selectedEvent)
+                            readOnly: true
+                            selectByMouse: true
+                            wrapMode: TextEdit.NoWrap
+                            color: root.selectedEvent ? root.textPrimary : root.textMuted
+                            selectionColor: Qt.alpha(root.toolAccent, 0.35)
+                            selectedTextColor: root.textPrimary
+                            font.family: root.monoFont
+                            font.pixelSize: 12
+                            padding: 0
+                            background: null
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            id: auditPanel
+
+            SplitView.preferredWidth: 300
+            SplitView.minimumWidth: 260
+            radius: 12
+            color: root.cardBackground
+            border.width: 1
+            border.color: root.panelBorder
+
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: 12
+                clip: true
+                contentHeight: auditColumn.implicitHeight
+
+                ColumnLayout {
+                    id: auditColumn
+                    width: parent.width
+                    spacing: 10
+
+                    Text {
+                        text: qsTr("AUDIT CONTROLS")
+                        color: root.textMuted
+                        font.family: root.uiFont
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.8
+                    }
+
+                    MetricCard {
+                        label: qsTr("Tokens")
+                        value: root.totalTokens > 0 ? root.totalTokens.toLocaleString() : qsTr("n/a")
+                        icon: "data_usage"
+                        accent: root.toolAccent
+                    }
+
+                    MetricCard {
+                        label: qsTr("Execution time")
+                        value: root.totalDurationMs > 0 ? `${(root.totalDurationMs / 1000).toFixed(2)} s` : qsTr("n/a")
+                        icon: "timer"
+                        accent: root.agentAccent
+                    }
+
+                    MetricCard {
+                        label: qsTr("Flagged steps")
+                        value: String(root.flaggedSteps)
+                        icon: "flag"
+                        accent: root.flaggedSteps > 0 ? root.warning : root.success
+                    }
+
+                    Text {
+                        Layout.topMargin: 6
+                        text: qsTr("TAGS")
+                        color: root.textMuted
+                        font.family: root.uiFont
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 0.8
+                    }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
 
                         Repeater {
-                            model: root.selectedFields
+                            model: root.tags
 
-                            delegate: EvidenceField {
-                                required property var modelData
-                                label: modelData.label
-                                value: String(modelData.value)
+                            delegate: TagChip {
+                                required property string modelData
+                                required property int index
+                                label: modelData
+                                accent: root.agentAccent
+                                removable: true
+                                onRemoved: root.removeTag(index)
                             }
                         }
                     }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.tags.length === 0
+                        text: qsTr("Add session-local tags from the header. They are not persisted.")
+                        color: root.textMuted
+                        wrapMode: Text.Wrap
+                        font.family: root.uiFont
+                        font.pixelSize: 10
+                        lineHeight: 1.3
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: reportBar
+
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 16
+        anchors.bottomMargin: 16
+        width: 300
+        height: 58
+        radius: 12
+        color: root.cardBackground
+        border.width: 1
+        border.color: root.panelBorder
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                Text {
+                    text: qsTr("AUDIT REPORT")
+                    color: root.textMuted
+                    font.family: root.uiFont
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: 0.6
+                }
+
+                Text {
+                    text: qsTr("%1 flagged steps").arg(root.flaggedSteps)
+                    color: root.flaggedSteps > 0 ? root.warning : root.success
+                    font.family: root.monoFont
+                    font.pixelSize: 11
+                }
+            }
+
+            Rectangle {
+                id: reportButton
+
+                property bool hovered: false
+
+                Layout.preferredWidth: 126
+                Layout.fillHeight: true
+                radius: 8
+                scale: reportButton.hovered ? 1.02 : 1
+                border.width: 1
+                border.color: Qt.alpha(root.toolAccent, 0.62)
+                gradient: Gradient {
+                    GradientStop { position: 0; color: Qt.alpha(root.toolAccent, 0.30) }
+                    GradientStop { position: 1; color: Qt.alpha(Qt.tint(root.toolAccent, root.success), 0.18) }
+                }
+
+                Behavior on scale { NumberAnimation { duration: 120 } }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: qsTr("Generate Report")
+                    color: root.textPrimary
+                    font.family: root.uiFont
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onContainsMouseChanged: reportButton.hovered = containsMouse
+                    onClicked: root.requestReport()
                 }
             }
         }
