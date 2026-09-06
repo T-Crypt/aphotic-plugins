@@ -1,6 +1,34 @@
 {
   "plugins": [
     {
+      "name": "agent-audit",
+      "display_name": "Agent Audit",
+      "description": "Inspect local agent run evidence, live activity, and replay timelines.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "workspace",
+            "id": "agentAudit",
+            "icon": "fact_check",
+            "label": "Agent Audit",
+            "component": "qml/AgentAuditWorkspace.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
