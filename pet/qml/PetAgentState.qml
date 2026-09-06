@@ -42,6 +42,13 @@ Singleton {
 
     readonly property string mood: root._mood
 
+    // The current session's own working directory, or "" -- all
+    // `AgentWindowFocus.focusByCwd()` (core, `qs.services.ai`) needs to
+    // turn `attentionRequired` into a click that focuses the window
+    // behind it. Not part of `_mood`'s own state machine: it just rides
+    // along on whichever bucket is current, same as `mood` itself.
+    readonly property string cwd: root._current.length === 0 ? "" : (root._bucketFor(root._current).cwd || "")
+
     property string _mood: ""
 
     // One bucket per session that has ever sent an event this shell has
@@ -64,7 +71,8 @@ Singleton {
             attention: false,
             hadFailure: false,
             flash: ({ kind: "", until: 0 }),
-            compacting: false
+            compacting: false,
+            cwd: ""
         };
     }
 
@@ -76,7 +84,14 @@ Singleton {
             attention: bucket.attention,
             hadFailure: bucket.hadFailure,
             flash: bucket.flash,
-            compacting: bucket.compacting
+            compacting: bucket.compacting,
+            // Sticky for the bucket's whole life, not just the event that
+            // happened to carry it -- a `notification` firing `attention`
+            // is not guaranteed to be the same event that last carried
+            // `cwd` (it wasn't, until agent_hook.py started forwarding
+            // Claude Code's own `cwd` hook field to every event, but
+            // nothing here should depend on that always being true).
+            cwd: event.cwd || bucket.cwd
         };
 
         switch (event.event) {
