@@ -13,6 +13,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`direnv`](direnv/) | dev | Notifies you when a project opened from the launcher has an `.envrc` |
 | [`workspace-session-log`](workspace-session-log/) | productivity | Keeps a local, timestamped log of Workspace Profile launches |
 | [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay, plus its own Settings pane |
+| [`agent-audit`](agent-audit/) | ai | Claims the Workspace plane: a run picker over live and archived sessions, a step inspector, and per-run tool and failure metrics |
 | [`agent-notch-tile`](agent-notch-tile/) | ai | Adds a notch tile: waiting-for-input badge, active harness and phase, local provider VRAM |
 | [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
 | [`llm-fit`](llm-fit/) | ai | Adds a Settings pane recommending local models your GPU can run, with one-click pull |
@@ -22,6 +23,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`codex-hooks`](codex-hooks/) | ai | Wires Codex into the agent-hook contract, same contract as Claude Code |
 | [`opencode-hooks`](opencode-hooks/) | ai | Wires OpenCode into the agent-hook contract, same contract as Claude Code |
 | [`visualizer`](visualizer/) | core | Draws an audio spectrum on the wallpaper, in the live theme accent, asleep when nothing is playing |
+| [`deep-signal`](deep-signal/) | theming | An idle screensaver: the wordmark resolves out of noise over a drift of particles, in whatever theme is active |
 
 ## Installing a plugin
 
@@ -39,8 +41,9 @@ A plugin is a directory with a `plugin.toml` manifest — copy the
 example closest to what you're building: `openrgb/` (a theme hook),
 `direnv/` (a project hook), `workspace-session-log/` (a workspace hook),
 `claude-hooks/` (a harness hook that wires an external tool's config),
-`agent-graph/` (a UI surface that adds a dashboard tab), or
-`agent-notch-tile/` (a UI surface that adds a notch tile). Set
+`agent-graph/` (a UI surface that adds a dashboard tab),
+`agent-notch-tile/` (a UI surface that adds a notch tile), or
+`agent-audit/` (a UI surface that claims the Workspace plane). Set
 `category` (dev/security/mobile/ai/theming/productivity) and declare
 whichever `capabilities` your plugin actually implements:
 
@@ -50,9 +53,11 @@ whichever `capabilities` your plugin actually implements:
 - `harness-hook` — paired with `[harness]` `wire`/`unwire` scripts, plus
   an `[owns] external_config` list naming the files outside the install
   directory that wiring touches.
-- `ui-surface` — paired with a `[ui.dashboard_tab]`, `[ui.notch_tile]`,
-  `[ui.settings_pane]` and/or `[ui.overlay]` block pointing at a QML
+- `ui-surface` — paired with one or more surface blocks pointing at a QML
   component, plus `[owns] config_keys` for any shell settings it reads.
+  The blocks are `[ui.dashboard_tab]`, `[ui.notch_tile]`,
+  `[ui.settings_pane]`, `[ui.overlay]`, `[ui.fullscreen-overlay]`,
+  `[ui.workspace]`, and numbered `[ui.pet_action]` sections.
   Any block may carry `requires_layer` (`ai`/`dev`/`gaming`/`security`)
   and `requires_data` (`harness`), the surface's activation gate — the
   shell evaluates those without knowing which plugin declared them. Omit
@@ -60,13 +65,22 @@ whichever `capabilities` your plugin actually implements:
   never name another plugin; plugins under the same layer are siblings
   and every install permutation has to stand on its own — someone can
   run any one of them with all the others absent.
-- `[ui.overlay]` is the one surface that gets a window rather than a
+- `[ui.overlay]` is a surface that gets a window rather than a
   slot inside one core already owns. It also takes `anchor`
   (`top`/`bottom`/`left`/`right`) and `width`/`height`, the surface
   budget core sizes that window from once and never renegotiates. The
   window is masked to your item, so the declared box is also the region
   that stops taking the desktop's clicks: ask for what you draw in.
   `pet/` is the worked example.
+- `[ui.workspace]` is the near-full-screen plane, for a tool that needs
+  room to work rather than a corner of a surface core already owns. Takes
+  an `id`, a `label`, an `icon` and a `component`; there is no geometry
+  to declare, because the plane is one size and the shell owns it. More
+  than one plugin may register, and the plane lists them down its left
+  edge in label order, so write a label that reads as a tool name.
+  The plane exists only while at least one such plugin is enabled: with
+  none there is no window, and `SUPER+SHIFT+W` is not bound at all.
+  `agent-audit/` is the worked example.
 - `profile` — paired with a `[profile]` block naming a headless QML
   component that registers a profile with the shell's Profile Engine
   (detection, lifecycle, resource claims). `gaming/` is the worked
