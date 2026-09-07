@@ -27,6 +27,9 @@ Singleton {
     property string errorText: ""
     property var systemInfo: null
     property var recommendations: []
+    property var _scanExitCode: null
+    property bool _scanStdoutFinished: false
+    property bool _scanStderrFinished: false
 
     // Best-effort guess at the model's Ollama library tag -- llmfit's
     // catalog is GGUF/HuggingFace-shaped (full model names, llama.cpp
@@ -59,7 +62,34 @@ Singleton {
             return;
         root.scanning = true;
         root.errorText = "";
+        root._scanExitCode = null;
+        root._scanStdoutFinished = false;
+        root._scanStderrFinished = false;
         scanProc.running = true;
+    }
+
+    function _finishScan(): void {
+        if (root._scanExitCode === null || !root._scanStdoutFinished || !root._scanStderrFinished)
+            return;
+
+        root.scanning = false;
+        if (root._scanExitCode !== 0) {
+            root.errorText = scanStderr.text.trim() || qsTr("llmfit exited with code %1").arg(root._scanExitCode);
+            root.recommendations = [];
+            root.systemInfo = null;
+            return;
+        }
+
+        try {
+            const data = JSON.parse(scanStdout.text);
+            root.systemInfo = data.system ?? null;
+            root.recommendations = data.models ?? [];
+            root.errorText = scanStderr.text.trim();
+        } catch (e) {
+            root.errorText = qsTr("llmfit produced unexpected output: %1").arg(scanStdout.text.slice(0, 200));
+            root.recommendations = [];
+            root.systemInfo = null;
+        }
     }
 
     Process {
@@ -85,39 +115,29 @@ Singleton {
     Process {
         id: scanProc
 
-        command: ["llmfit", "recommend", "--json", "--limit", "3"]
+        command: ["sh", "-c", "exec llmfit recommend --json --limit 3"]
 
         stdout: StdioCollector {
             id: scanStdout
 
             onStreamFinished: {
-                root.scanning = false;
-                if (scanProc.exitCode !== 0) {
-                    root.errorText = scanStderr.text.trim() || qsTr("llmfit exited with code %1").arg(scanProc.exitCode);
-                    root.recommendations = [];
-                    root.systemInfo = null;
-                    return;
-                }
-                try {
-                    const data = JSON.parse(text);
-                    root.systemInfo = data.system ?? null;
-                    root.recommendations = data.models ?? [];
-                    // llmfit can warn on stderr (e.g. a flaky nvidia-smi read)
-                    // while still exiting 0 with usable JSON -- surfacing
-                    // both rather than hiding the warning behind a clean exit
-                    // code, since a warning here means the detected hardware
-                    // itself may be wrong.
-                    root.errorText = scanStderr.text.trim();
-                } catch (e) {
-                    root.errorText = qsTr("llmfit produced unexpected output: %1").arg(text.slice(0, 200));
-                    root.recommendations = [];
-                    root.systemInfo = null;
-                }
+                root._scanStdoutFinished = true;
+                root._finishScan();
             }
         }
 
         stderr: StdioCollector {
             id: scanStderr
+
+            onStreamFinished: {
+                root._scanStderrFinished = true;
+                root._finishScan();
+            }
+        }
+
+        onExited: exitCode => {
+            root._scanExitCode = exitCode;
+            root._finishScan();
         }
     }
 
