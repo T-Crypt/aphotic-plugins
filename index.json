@@ -176,6 +176,34 @@
       }
     },
     {
+      "name": "dev-ports",
+      "display_name": "Dev Ports",
+      "description": "Lists local HTTP dev servers by scanning listening loopback ports, with online/cached status and one click to open.",
+      "version": "1.0.0",
+      "category": "dev",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "workspace",
+            "id": "devPorts",
+            "icon": "lan",
+            "label": "Dev Ports",
+            "component": "qml/DevPortsWorkspace.qml",
+            "requires_layer": "dev",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "direnv",
       "display_name": "direnv Notice",
       "description": "Notifies you when a project opened from the launcher has an .envrc, so you know to review/allow it.",
