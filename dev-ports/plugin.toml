@@ -1,0 +1,22 @@
+[plugin]
+name = "dev-ports"
+display_name = "Dev Ports"
+description = "Lists local HTTP dev servers by scanning listening loopback ports, with online/cached status and one click to open."
+version = "1.0.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["ui-surface"]
+
+[requires]
+# Checked via `aphotic_require` -- warn and no-op, don't block. All three
+# are already pulled in by base packages on a real install; declared here
+# so a stripped-down or non-Aphotic environment gets a clear warning
+# instead of a silently empty list.
+binaries = ["ss", "curl", "xdg-open"]
+
+[ui.workspace]
+id = "devPorts"
+icon = "lan"
+label = "Dev Ports"
+component = "qml/DevPortsWorkspace.qml"
+requires_layer = "dev"

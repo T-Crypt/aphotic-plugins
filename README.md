@@ -16,6 +16,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`agent-audit`](agent-audit/) | ai | Claims the Workspace plane: a run picker over live and archived sessions, a step inspector, and per-run tool and failure metrics |
 | [`agent-notch-tile`](agent-notch-tile/) | ai | Adds a notch tile: waiting-for-input badge, active harness and phase, local provider VRAM |
 | [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
+| [`dev-ports`](dev-ports/) | dev | Claims the Workspace plane: lists local HTTP dev servers found by scanning listening loopback ports, online/cached status, click to open |
 | [`llm-fit`](llm-fit/) | ai | Adds a Settings pane recommending local models your GPU can run, with one-click pull |
 | [`gaming`](gaming/) | gaming | Registers the Gaming profile: gamemode detection, DND while you play, foreground GPU VRAM claim |
 | [`pet`](pet/) | theming | Adds a desktop pet at the bottom of the screen, with sprite-sheet imports for your own |
