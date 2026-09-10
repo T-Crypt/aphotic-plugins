@@ -1,0 +1,11 @@
+module qs.modules.plugins.pet
+singleton PetClock 1.0 PetClock.qml
+singleton PetLibrary 1.0 PetLibrary.qml
+singleton PetAgentState 1.0 PetAgentState.qml
+Pet 1.0 Pet.qml
+PetActionMenu 1.0 PetActionMenu.qml
+PetView 1.0 PetView.qml
+PetPane 1.0 PetPane.qml
+PetSnooze 1.0 PetSnooze.qml
+PetTilePreview 1.0 PetTilePreview.qml
+PetSheetCell 1.0 PetSheetCell.qml

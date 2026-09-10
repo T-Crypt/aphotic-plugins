@@ -2,13 +2,18 @@
 name = "codex-hooks"
 display_name = "Codex Agent Hooks"
 description = "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["harness-hook"]
 
 [requires]
 binaries = ["codex"]
+# Deliberately not core's default `yay -S <binary>` path: there is no AUR
+# package named `codex`, and the name resolves to `codex-bin`, an
+# unrelated Electron app whose chromium dependency is a multi-GB build.
+# See hooks/install-deps.sh.
+install_script = "hooks/install-deps.sh"
 
 [owns]
 external_config = ["~/.codex/hooks.json (SessionStart/PreToolUse/PostToolUse/SubagentStop/Stop/SessionEnd entries)"]

@@ -22,3 +22,14 @@ command -v jq >/dev/null 2>&1 || { echo "jq not found; cannot wire OpenCode hook
 mkdir -p "$dest_dir"
 ln -sfn "$plugin_script" "$dest_dir/aphotic_opencode_hook.js"
 jq -n --arg p "${lib_dir}/agent_hook.py" '{agentHookPy: $p}' > "$dest_dir/.aphotic-hook-config.json"
+
+# OpenCode discovers plugins once, at startup -- unlike Claude Code and
+# Codex, which read their hook config per session, so those two start
+# reporting on the next session with no restart. An OpenCode already
+# running when this is installed never loads the plugin and says nothing
+# about it: it simply never appears in the bar or the graph, which reads
+# as a broken plugin rather than a stale process.
+if pgrep -x opencode >/dev/null 2>&1; then
+    echo "NOTE: OpenCode is running, and loads plugins only at startup." >&2
+    echo "      Restart it before this hook reports anything." >&2
+fi

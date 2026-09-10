@@ -1,0 +1,16 @@
+[plugin]
+name = "agent-audit"
+display_name = "Agent Audit"
+description = "Inspect local agent run evidence, live activity, and replay timelines."
+version = "1.1.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface"]
+
+[ui.workspace]
+id = "agentAudit"
+icon = "fact_check"
+label = "Agent Audit"
+component = "qml/AgentAuditWorkspace.qml"
+requires_layer = "ai"
+requires_data = "harness"

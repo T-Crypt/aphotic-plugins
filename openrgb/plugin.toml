@@ -1,14 +1,29 @@
 [plugin]
 name = "openrgb"
 display_name = "OpenRGB Sync"
-description = "Syncs the active theme's accent color to RGB PC lighting via OpenRGB."
-version = "1.0.0"
+description = "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions."
+version = "2.0.0"
 author = "T-Crypt"
 category = "theming"
-capabilities = ["theme-hook"]
+# theme-hook is the shipped, core-fired capability. profile-hook and
+# agent-event-hook follow the same manifest shape (a capability tag paired
+# with its [hooks] keys, fire-and-forget, never blocks the caller) but core
+# does not fire either one yet -- see README.md, "What core still has to
+# wire". A capability tag core doesn't know about is inert, not an error:
+# the plugin installs, lists and theme-syncs exactly as before.
+capabilities = ["theme-hook", "profile-hook", "agent-event-hook"]
 
 [requires]
 binaries = ["openrgb"]
 
 [hooks]
 on_theme_change = "hooks/on_theme_change.sh"
+on_profile_activate = "hooks/on_profile_activate.sh"
+on_profile_deactivate = "hooks/on_profile_deactivate.sh"
+on_agent_event = "hooks/on_agent_event.sh"
+
+[owns]
+# Only ever written by scripts/setup.sh, and only after an explicit y/N --
+# nothing here installs it silently, and removing the plugin deliberately
+# leaves it alone (it's OpenRGB's file, not this plugin's).
+external_config = ["/etc/udev/rules.d/60-openrgb.rules (offered by scripts/setup.sh, never installed silently)"]

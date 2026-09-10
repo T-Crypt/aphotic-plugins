@@ -1,0 +1,82 @@
+[plugin]
+name = "pet"
+display_name = "Desktop Pet"
+description = "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it."
+version = "1.9.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["ui-surface", "action"]
+
+# No requires_layer and no requires_data, on purpose. Nothing here reads a
+# harness, a profile or anything a layer installs, so there is no fact to
+# gate on -- and PluginRegistry's _layerEnabled/_dataAvailable both return
+# true for an empty token, which is how a surface says "every install".
+#
+# anchor = "free" is the surface budget: the whole usable output, because
+# the pet is dragged around it and a fixed box would be the thing being
+# dragged. Core still owns the window and never resizes it -- the pet
+# moves inside a static surface. Pet.qml exposes a `maskItem` naming the
+# creature, so only the pet itself takes clicks and the whole rest of the
+# screen stays desktop. width/height are ignored for a free anchor.
+[ui.overlay]
+id = "pet"
+component = "qml/Pet.qml"
+icon = "pets"
+label = "Desktop Pet"
+anchor = "free"
+
+# Docks into the Appearance category as a collapsed section rather than
+# claiming its own rail entry, same reasoning the Spectrum plugin gives:
+# the Settings rail is a fixed length by design. No requires_layer,
+# matching the overlay above.
+[ui.settings_pane]
+id = "petSettings"
+icon = "pets"
+label = "Desktop Pet"
+component = "qml/PetPane.qml"
+parent = "appearance"
+
+# The pet's own MVP action list (PETS.md §7.1): a plain click opens this
+# menu once anything is registered here, replacing the poke reaction.
+# `ui.pet_action_2` rather than a second `[ui.pet_action]` -- the shared
+# TOML reader (globalcontrol.sh's `aphotic_toml_get`) matches one section
+# per literal name and has no arrays-of-tables, so a plugin contributing
+# more than one entry of the same surface kind uses the next numbered
+# section instead (cmd_plugin.sh's `_aphotic_plugin_ui_json`, capped at
+# three for now). Each component is headless: it fires its launch in
+# `Component.onCompleted` and the menu tears it down immediately after,
+# same as any other surface's dynamic file:// load.
+[ui.pet_action]
+id = "openTerminal"
+icon = "terminal"
+label = "Terminal"
+component = "qml/actions/LaunchTerminal.qml"
+
+[ui.pet_action_2]
+id = "openVSCode"
+icon = "code"
+label = "VS Code"
+component = "qml/actions/LaunchVSCode.qml"
+
+# An `[action]` (manifest v3.7, ACT-01) is not a surface: it is a named
+# thing a user can ask for, and it turns up wherever the shell offers
+# actions -- the notch's command palette today, and `aphotic` IPC, so a
+# keybind reaches it too. Same headless component shape as the pet_action
+# entries above; the difference is who offers it. A plugin gets five
+# numbered sections ([action] through [action_5]) before the shared TOML
+# reader has to grow arrays-of-tables.
+[action]
+id = "switchPet"
+icon = "pets"
+label = "Switch pet"
+component = "qml/actions/SwitchPet.qml"
+
+[owns]
+# Nothing in the shell's own settings. Which pet is active, where the user
+# dragged it, how big it is drawn, how far it wanders and whether it wears
+# the theme all live in ~/.config/aphotic/plugins/pet/settings.json, and
+# imported pets live in ~/.config/aphotic/pets/, both the plugin's own to
+# write and neither a shell setting. The config was pet.json until 1.2.1,
+# which collided with the manifest name one directory away; PetLibrary
+# migrates it once.
+config_keys = []

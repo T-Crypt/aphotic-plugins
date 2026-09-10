@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
 
 pragma Singleton
 pragma ComponentBehavior: Bound
@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Io
 import qs.services
 import qs.services.ai
+import qs.services.profile
 
 Singleton {
     id: root
@@ -19,9 +20,27 @@ Singleton {
     readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0)
 
     property bool surfaceVisible: false
-    readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0
+    readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0 && !root.gamingActive
 
+    readonly property bool wantsFeed: root.surfaceVisible && !root.gamingActive
+
+    // A gaming session is the desktop's foreground claimant, and this graph
+    // is a background observer of work the user is not looking at while a
+    // game is up. Reading ProfileEngine directly rather than registering a
+    // ResourceEngine claim is deliberate: there is nothing to negotiate
+    // here -- the graph always yields, it never asks Gaming to yield, and a
+    // claim would only add a negotiation whose answer is known.
+    readonly property bool gamingActive: ProfileEngine.activeIds.includes("gaming")
+
+    // An explicit quality choice still overrides hardware detection, but
+    // not this: the user asking for "full" is a standing preference, and a
+    // running game is a transient foreground state that outranks it for as
+    // long as it lasts. Every knob below is derived from `tier`, so pinning
+    // the tier is the whole reclaim -- node cap, event window, particle
+    // count and replay step all drop together.
     readonly property string tier: {
+        if (root.gamingActive)
+            return "lite";
         const requested = Settings.agentGraphQuality;
         if (requested === "lite" || requested === "standard" || requested === "full")
             return requested;
@@ -30,8 +49,20 @@ Singleton {
 
     readonly property int maxNodesPerSession: root.tier === "full" ? 300 : root.tier === "standard" ? 150 : 60
     readonly property int layoutHz: root.tier === "lite" ? 30 : 60
-    readonly property int maxEvents: root.tier === "full" ? 2400 : root.tier === "standard" ? 1200 : 600
-    readonly property int edgeParticles: root.tier === "full" ? 6 : root.tier === "standard" ? 3 : 1
+    readonly property int _tierEvents: root.tier === "full" ? 2400 : root.tier === "standard" ? 1200 : 600
+
+    // Repurposed from the tail depth this plugin used to own: the feed's
+    // backlog is fixed and shared now, so the knob bounds what the graph
+    // itself retains instead. An ended session leaves the graph once none
+    // of its events are left in the window. 0 follows the tier.
+    readonly property int maxEvents: {
+        const configured = Settings.agentGraphHistoryLines;
+        if (typeof configured === "number" && isFinite(configured) && configured > 0)
+            return Math.min(configured, root._tierEvents);
+        return root._tierEvents;
+    }
+
+    readonly property int edgeParticles: root.gamingActive ? 0 : (root.tier === "full" ? 6 : root.tier === "standard" ? 3 : 1)
     readonly property int replayStepEvents: root.tier === "full" ? 1 : root.tier === "standard" ? 2 : 6
     readonly property bool anyRunning: root._sessions.some(s => s.status === "running")
 
@@ -61,11 +92,11 @@ Singleton {
 
     property var _sessions: []
     property var _runs: []
+    property bool _restoring: false
+    property var _pending: []
     property string _replayRunId: ""
     property var _replayEvents: []
     property var _events: []
-    property var _seen: ({})
-    property int _seenCount: 0
 
     readonly property string _stateDir: `${Quickshell.env("HOME")}/.local/state/aphotic`
 
@@ -73,37 +104,121 @@ Singleton {
         return root._sessions.find(s => s.id === id) ?? null;
     }
 
-    function _key(record): string {
-        return `${record.sessionId}|${record.event}|${record.toolId ?? ""}|${record.t ?? record.timestamp}`;
-    }
-
-    function _ingest(line: string): void {
-        let record;
-        try {
-            record = JSON.parse(line);
-        } catch (e) {
+    function _ingest(record): void {
+        // A restore reads the archives asynchronously, so records arriving
+        // meanwhile are newer than everything it is about to fold. Folding
+        // them now would put the session's status at whatever the archive
+        // ends on instead of what just happened, so they wait and get
+        // merged back in timestamp order.
+        if (root._restoring) {
+            const pending = root._pending.slice();
+            pending.push(record);
+            root._pending = pending;
             return;
         }
-        if (!record || !record.sessionId || !record.event)
-            return;
-
-        const key = root._key(record);
-        if (root._seen[key])
-            return;
-        if (root._seenCount > root.maxEvents * 4) {
-            root._seen = ({});
-            root._seenCount = 0;
-        }
-        root._seen[key] = true;
-        root._seenCount++;
 
         const events = root._events.slice();
         events.push(record);
-        while (events.length > root.maxEvents)
+        let evicted = false;
+        while (events.length > root.maxEvents) {
             events.shift();
+            evicted = true;
+        }
         root._events = events;
 
-        root._apply(record);
+        root._sessions = root.applyTo(root._sessions, record);
+
+        if (evicted)
+            root._evictAged();
+    }
+
+    function _evictAged(): void {
+        const retained = ({});
+        for (const record of root._events)
+            retained[record.sessionId] = true;
+        const kept = root._sessions.filter(s => s.status !== "ended" || retained[s.id]);
+        if (kept.length !== root._sessions.length)
+            root._sessions = kept;
+    }
+
+    // Matching the feed's own contract: it drops its state when the last
+    // holder lets go, so the next open rebuilds from the log's backlog
+    // rather than from a snapshot frozen at whatever moment this graph
+    // stopped being watched.
+    function _reset(): void {
+        root._events = [];
+        root._sessions = [];
+    }
+
+    // Rebuild live sessions from disk instead of waiting for the next event.
+    //
+    // Two things made a restarted shell lose a running session. The shared
+    // feed replays its backlog only to whoever starts its tail, and another
+    // surface has usually started it long before this graph is opened; and
+    // even that backlog is one shared 400-line window across every session,
+    // which is not a session's history. So the graph came up empty and then
+    // grew a stub session on the next tool call -- same id, but starting at
+    // that moment, with none of the run's earlier tool calls.
+    //
+    // `agent-sessions/` is the index of sessions that have not ended, and
+    // each one's `agent-runs/<id>.jsonl` is its own full history. Folding
+    // those through applyTo -- the same reducer replay uses -- reconstructs
+    // the graph as it stood, so a restart resumes the session rather than
+    // opening a new one.
+    function _restore(): void {
+        root._restoring = true;
+        root._pending = [];
+        restoreReader.running = false;
+        // The first line carries the session's real start time; the rest of
+        // the window is bounded so a long-running session cannot make this
+        // fold unbounded work. A short file yields its first line twice,
+        // which folds to the same state.
+        restoreReader.command = ["sh", "-c",
+            `d='${root._stateDir}'; for f in "$d"/agent-sessions/*.json; do ` +
+            `[ -e "$f" ] || continue; id=$(basename "$f" .json); ` +
+            `r="$d/agent-runs/$id.jsonl"; [ -f "$r" ] || continue; ` +
+            `head -n 1 "$r"; tail -n ${root.maxEvents} "$r"; done`];
+        restoreReader.running = true;
+    }
+
+    function _applyRestored(text: string): void {
+        const parsed = [];
+        for (const line of text.split("\n")) {
+            if (!line.length)
+                continue;
+            try {
+                parsed.push(JSON.parse(line));
+            } catch (e) {
+                continue;
+            }
+        }
+
+        const all = parsed.concat(root._pending);
+        all.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+
+        // The archives and the live feed overlap: the same event reaches
+        // both. A tool call is unique on its id, and the events that have
+        // none are unique on their kind and timestamp within a session.
+        const seen = ({});
+        const ordered = [];
+        for (const record of all) {
+            if (!record || !record.sessionId || !record.event)
+                continue;
+            const key = `${record.sessionId}|${record.event}|${record.toolId ?? ""}|${record.t ?? 0}`;
+            if (seen[key])
+                continue;
+            seen[key] = true;
+            ordered.push(record);
+        }
+
+        let sessions = [];
+        for (const record of ordered)
+            sessions = root.applyTo(sessions, record);
+
+        root._events = ordered.slice(-root.maxEvents);
+        root._sessions = sessions;
+        root._pending = [];
+        root._restoring = false;
     }
 
     function _hueForSession(id: string): int {
@@ -113,7 +228,8 @@ Singleton {
         return Math.abs(hash) % 360;
     }
 
-    // Parsed once per session_start (see applyTo below), never per frame --
+    // Parsed once per model, when applyTo below first sees one, never per
+    // frame --
     // a harness reports whatever backend it's actually using in the same
     // `model` field regardless of whether that's a hosted cloud model or a
     // local one served through a provider like unsloth/Ollama/LM Studio
@@ -136,6 +252,14 @@ Singleton {
             }
         }
 
+        // A model served by Ollama names only the weights ("llama3.1:8b"),
+        // never the server, so the string alone cannot say who is running
+        // it. What Ollama currently has loaded can: matching against that
+        // is the one signal that distinguishes local weights from a cloud
+        // model whose id happens to look bare.
+        if (!provider && AgentProviders.ollamaLoadedModels.some(m => m === raw || m.split(":")[0] === raw))
+            provider = "ollama";
+
         let locality = provider ? AgentRoles.localityFor(provider) : "";
         if (!locality) {
             if (/\.gguf\b/i.test(raw) || /\bQ\d(?:_\d)?(?:_K)?(?:_[SML])?\b/i.test(raw) || raw.includes("/"))
@@ -148,7 +272,8 @@ Singleton {
         const ggufMatch = raw.match(/[\w.-]+\.gguf\b/i);
         const quant = quantMatch ? quantMatch[0] : (ggufMatch ? ggufMatch[0] : "");
 
-        const label = raw.length > 28 ? `${raw.slice(0, 25)}…` : raw;
+        const named = AgentRoles.modelDisplayName(raw, provider);
+        const label = named.length > 28 ? `${named.slice(0, 25)}…` : named;
 
         return { label: label, provider: provider, locality: locality, quant: quant, raw: raw };
     }
@@ -157,6 +282,7 @@ Singleton {
         return {
             id: record.sessionId,
             status: "idle",
+            harness: record.harness ?? "claude",
             model: record.model ?? "",
             modelInfo: root.parseModelInfo(record.model ?? ""),
             cwd: record.cwd ?? "",
@@ -169,10 +295,9 @@ Singleton {
         };
     }
 
-    function _apply(record): void {
-        root._sessions = root.applyTo(root._sessions, record);
-    }
-
+    // The one node reducer. Live folding and run replay both go through
+    // it, so a recorded run is rebuilt by exactly the code that built the
+    // live graph -- and it stays pure, taking no live state of its own.
     function applyTo(existing, record): var {
         const sessions = existing.slice();
         let index = sessions.findIndex(s => s.id === record.sessionId);
@@ -202,8 +327,17 @@ Singleton {
             root._closeNode(session, record);
         } else if (record.event === "session_start") {
             session.status = "idle";
-            session.model = record.model ?? session.model;
-            session.modelInfo = root.parseModelInfo(session.model);
+        }
+
+        // Not folded into session_start above: a session resumed by /clear
+        // states no model there, so the hook resolves it later and states it
+        // on whatever event first knows it. Taking it from any event is what
+        // stops those sessions from showing a bare id for their whole life.
+        if (record.harness)
+            session.harness = record.harness;
+        if (record.model && record.model !== session.model) {
+            session.model = record.model;
+            session.modelInfo = root.parseModelInfo(record.model);
         }
         if (record.cwd)
             session.cwd = record.cwd;
@@ -327,43 +461,35 @@ Singleton {
         }
     }
 
-    // `command` is read once at spawn, so a changed scope only takes
-    // effect on a fresh tail. The already-ingested backlog is dropped with
-    // it: the setting is meant to be observable, and leaving the old
-    // window's events on screen would make "live only" look broken. The
-    // log on disk is untouched -- this only discards what is being shown.
-    // Falls back to the old hardcoded window on a shell that predates the
-    // setting: undefined would coerce to 0 here, silently dropping all
-    // history on an install that never asked for that.
-    readonly property int historyLines: {
-        const configured = Settings.agentGraphHistoryLines;
-        return (typeof configured === "number" && isFinite(configured) && configured >= 0) ? configured : 400;
-    }
-
-    onHistoryLinesChanged: {
-        if (!eventTail.running)
-            return;
-        eventTail.running = false;
-        root._events = [];
-        root._sessions = [];
-        root._seen = ({});
-        root._seenCount = 0;
-        Qt.callLater(() => eventTail.running = Qt.binding(() => InstallProfile.aiEnabled));
-    }
-
     Process {
-        id: eventTail
-        running: InstallProfile.aiEnabled
-        command: ["sh", "-c", `mkdir -p '${root._stateDir}' && : >> '${root._stateDir}/agent-events.jsonl' && exec tail -n ${root.historyLines} -F '${root._stateDir}/agent-events.jsonl'`]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: data => root._ingest(data)
+        id: restoreReader
+        stdout: StdioCollector {
+            onStreamFinished: root._applyRestored(text)
+        }
+    }
+
+    // Live records come off AgentEvents, the single shared reader of
+    // `agent-events.jsonl` -- this plugin used to run a `tail -F` of its
+    // own beside the bar's. The hold follows the graph surface, not the
+    // install: a plugin nobody has opened is not a reason to keep a tail
+    // alive, and neither is a graph whose scene has been unmounted for a
+    // game.
+    Connections {
+        target: AgentEvents
+
+        function onRecord(event): void {
+            root._ingest(event);
+        }
+
+        function onTailingChanged(): void {
+            if (!AgentEvents.tailing)
+                root._reset();
         }
     }
 
     Timer {
         interval: 30000
-        running: true
+        running: root._sessions.length > 0
         repeat: true
         onTriggered: {
             const cutoff = Date.now() - 300000;
@@ -371,5 +497,17 @@ Singleton {
             if (kept.length !== root._sessions.length)
                 root._sessions = kept;
         }
+    }
+
+    onWantsFeedChanged: {
+        AgentEvents.hold("agent-graph", root.wantsFeed);
+        if (root.wantsFeed)
+            root._restore();
+    }
+
+    Component.onCompleted: {
+        AgentEvents.hold("agent-graph", root.wantsFeed);
+        if (root.wantsFeed)
+            root._restore();
     }
 }

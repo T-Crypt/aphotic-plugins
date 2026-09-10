@@ -1,0 +1,44 @@
+# OpenRGB Sync plugin settings.
+#
+# Copied to $XDG_CONFIG_HOME/aphotic-plugins/openrgb/settings.conf on first
+# run (never overwritten again once it exists). Sourced as plain bash --
+# only edit the values below, don't add commands.
+
+# Fixed hex color ("#ff2d55", or bare "ff2d55") to use instead of the active
+# theme's accent. Leave empty to always follow the theme (default).
+ACCENT_OVERRIDE=""
+
+# Comma-separated, case-insensitive substrings of device names to skip
+# entirely -- e.g. a keyboard or peripheral you control separately.
+#   EXCLUDE_DEVICES="Uni Hub,Strimer"
+EXCLUDE_DEVICES=""
+
+# Effect used when nothing else is going on. "static" or "breathing".
+IDLE_EFFECT="static"
+
+# -- Gaming profile (ProfileEngine activate/deactivate) -----------------
+# Which ProfileEngine domain profiles change the lighting at all. Comma
+# separated; every other domain's profile is ignored.
+PROFILE_IDS="gaming"
+
+# While one of those profiles is active: same theme hue, pushed to at
+# least this saturation/brightness (0.0-1.0 floors, not multipliers -- an
+# already-vivid accent is left alone, a muted one gets lifted).
+GAMING_EFFECT="static"
+GAMING_SATURATION="1.0"
+GAMING_VALUE="1.0"
+
+# -- AI agent sessions --------------------------------------------------
+# Effect used while at least one agent session is live. "breathing" or
+# "static" (set it to match IDLE_EFFECT to disable the agent indicator
+# without unwiring the hook).
+AGENT_EFFECT="breathing"
+
+# Comma-separated harness ids to react to ("claude", "codex", "opencode").
+# Empty means any harness.
+AGENT_HARNESSES=""
+
+# -- SDK server ---------------------------------------------------------
+# Where OpenRGB's SDK server is listening. 6742 is its default port.
+OPENRGB_SDK_HOST="127.0.0.1"
+OPENRGB_SDK_PORT="6742"

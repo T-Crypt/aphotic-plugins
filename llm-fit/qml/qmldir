@@ -1,0 +1,3 @@
+module qs.modules.plugins.llmFit
+singleton LlmFitService 1.0 LlmFitService.qml
+LlmFitPane 1.0 LlmFitPane.qml

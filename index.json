@@ -1,21 +1,73 @@
 {
   "plugins": [
     {
-      "name": "agent-graph",
-      "display_name": "Agent Graph",
-      "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.3.0",
+      "name": "agent-audit",
+      "display_name": "Agent Audit",
+      "description": "Inspect local agent run evidence, live activity, and replay timelines.",
+      "version": "1.1.0",
       "category": "ai",
       "capabilities": [
         "ui-surface"
       ],
       "ui": {
-        "dashboard_tab": {
-          "id": "agentGraph",
-          "icon": "account_tree",
-          "label": "Agent Graph",
-          "component": "qml/AgentGraphTab.qml"
-        }
+        "surfaces": [
+          {
+            "surface": "workspace",
+            "id": "agentAudit",
+            "icon": "fact_check",
+            "label": "Agent Audit",
+            "component": "qml/AgentAuditWorkspace.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "agent-graph",
+      "display_name": "Agent Graph",
+      "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
+      "version": "1.7.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "dashboard",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphTab.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "settings",
+            "id": "agentGraph",
+            "icon": "account_tree",
+            "label": "Agent Graph",
+            "component": "qml/AgentGraphPane.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "ai",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
       }
     },
     {
@@ -29,10 +81,10 @@
       ]
     },
     {
-      "name": "codex-hooks",
-      "display_name": "Codex Agent Hooks",
-      "description": "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
-      "version": "1.0.0",
+      "name": "llm-fit",
+      "display_name": "Hardware Advisor",
+      "description": "Hardware-aware local model recommendations from llmfit, with a one-click Ollama pull for the tags it confirms are real.",
+      "version": "1.1.1",
       "category": "ai",
       "capabilities": [
         "harness-hook"
@@ -77,7 +129,7 @@
       "name": "opencode-hooks",
       "display_name": "OpenCode Agent Hooks",
       "description": "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "category": "ai",
       "capabilities": [
         "harness-hook"

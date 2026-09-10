@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
 
 pragma ComponentBehavior: Bound
 
@@ -245,49 +245,146 @@ ColumnLayout {
             color: Colours.palette.m3onSurfaceVariant
         }
 
-        Flickable {
+        Item {
+            id: runStripArea
+
             Layout.fillWidth: true
-            Layout.preferredHeight: 26
-            contentWidth: runRow.implicitWidth
-            flickableDirection: Flickable.HorizontalFlick
-            clip: true
+            Layout.preferredHeight: 36
 
-            Row {
-                id: runRow
-                spacing: Tokens.spacing.extraSmall
+            // On the wrapper, not inside the Flickable: this also has to
+            // cover the scrollbar strip below the viewport, which reads as
+            // part of the same control. The mapping is needed because a
+            // HorizontalFlick has no vertical panning for Qt to route
+            // angleDelta.y into, so an ordinary wheel does nothing.
+            WheelHandler {
+                onWheel: event => {
+                    const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                    if (delta === 0 || runStrip.maxContentX <= 0)
+                        return;
+                    runStrip.contentX = Math.max(0, Math.min(runStrip.maxContentX, runStrip.contentX - delta));
+                }
+            }
 
-                Repeater {
-                    model: AgentGraphService.runs
+            Flickable {
+                id: runStrip
 
-                    StyledRect {
-                        id: chip
+                readonly property real maxContentX: Math.max(0, runStrip.contentWidth - runStrip.width)
 
-                        required property var modelData
-                        readonly property bool active: chip.modelData.id === root.runId
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 24
+                contentWidth: runRow.implicitWidth
+                contentHeight: height
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                        implicitWidth: chipLabel.implicitWidth + Tokens.padding.medium
-                        implicitHeight: 24
-                        radius: Tokens.rounding.full
-                        color: chip.active ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.9)
-                        border.width: 1
-                        border.color: chip.active ? "transparent" : Colours.palette.m3outlineVariant
+                Row {
+                    id: runRow
+                    spacing: Tokens.spacing.extraSmall
 
-                        StyledText {
-                            id: chipLabel
-                            anchors.centerIn: parent
-                            text: chip.modelData.id.slice(0, 8)
-                            font: Tokens.font.label.small
-                            color: chip.active ? Colours.contrastOn(Colours.palette.m3primary) : Colours.palette.m3onSurfaceVariant
-                        }
+                    Repeater {
+                        model: AgentGraphService.runs
 
-                        StateLayer {
-                            anchors.fill: parent
-                            radius: parent.radius
-                            onClicked: {
-                                root.runId = chip.modelData.id;
-                                AgentGraphService.loadRun(chip.modelData.id);
+                        StyledRect {
+                            id: chip
+
+                            required property var modelData
+                            readonly property bool active: chip.modelData.id === root.runId
+
+                            implicitWidth: chipLabel.implicitWidth + Tokens.padding.medium
+                            implicitHeight: 24
+                            radius: Tokens.rounding.full
+                            color: chip.active ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3surfaceContainerHigh, 0.9)
+                            border.width: 1
+                            border.color: chip.active ? "transparent" : Colours.palette.m3outlineVariant
+
+                            StyledText {
+                                id: chipLabel
+                                anchors.centerIn: parent
+                                text: chip.modelData.id.slice(0, 8)
+                                font: Tokens.font.label.small
+                                color: chip.active ? Colours.contrastOn(Colours.palette.m3primary) : Colours.palette.m3onSurfaceVariant
+                            }
+
+                            StateLayer {
+                                anchors.fill: parent
+                                radius: parent.radius
+                                onClicked: {
+                                    root.runId = chip.modelData.id;
+                                    AgentGraphService.loadRun(chip.modelData.id);
+                                }
                             }
                         }
+                    }
+                }
+            }
+
+            // A real scrollbar rather than the 2px indicator this replaced:
+            // that was a bare Rectangle, so it could only be looked at, and
+            // at two pixels it was not a credible drag target anyway. The
+            // press zone is the full 12px band even though the bar itself
+            // draws thinner, since the drawn height is what a pointer has
+            // to hit otherwise.
+            Item {
+                id: runScrollBar
+
+                readonly property real thumbWidth: Math.max(28, runScrollBar.width * (runStrip.width / Math.max(1, runStrip.contentWidth)))
+                readonly property real travel: Math.max(0, runScrollBar.width - runScrollBar.thumbWidth)
+                readonly property bool engaged: runScrollDrag.pressed || runScrollDrag.containsMouse
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 12
+                visible: runStrip.maxContentX > 0
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    height: 4
+                    radius: height / 2
+                    color: Qt.alpha(Colours.palette.m3outlineVariant, 0.3)
+                }
+
+                Rectangle {
+                    id: runScrollThumb
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: runScrollBar.thumbWidth
+                    height: runScrollBar.engaged ? 8 : 5
+                    radius: height / 2
+                    color: runScrollBar.engaged ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                    x: runScrollBar.travel * (runStrip.contentX / Math.max(1, runStrip.maxContentX))
+
+                    Behavior on height {
+                        Anim {}
+                    }
+
+                    Behavior on color {
+                        CAnim {}
+                    }
+                }
+
+                MouseArea {
+                    id: runScrollDrag
+
+                    function seek(mx: real): void {
+                        if (runScrollBar.travel <= 0)
+                            return;
+                        const f = Math.max(0, Math.min(1, (mx - runScrollBar.thumbWidth / 2) / runScrollBar.travel));
+                        runStrip.contentX = f * runStrip.maxContentX;
+                    }
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    preventStealing: true
+
+                    onPressed: mouse => runScrollDrag.seek(mouse.x)
+                    onPositionChanged: mouse => {
+                        if (runScrollDrag.pressed)
+                            runScrollDrag.seek(mouse.x);
                     }
                 }
             }

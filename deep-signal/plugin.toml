@@ -1,0 +1,36 @@
+[plugin]
+name = "deep-signal"
+display_name = "Deep Signal Screensaver"
+description = "An idle screensaver: the wordmark resolves out of noise like a signal surfacing from deep water, over a sparse drift of bioluminescent particles. Takes its colours from whatever theme is active."
+version = "1.0.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["ui-surface", "cli"]
+
+# No requires_layer and no requires_data. Nothing here reads a harness, a
+# profile or anything a layer installs, so there is no fact to gate on.
+#
+# `trigger = "idle"` is what puts the surface on screen: the shell's own
+# idle timeout, configured in Settings > Power & Security, fires one IPC
+# call and this mounts on it. No width, no height, no anchor -- a
+# fullscreen overlay is the output, so there is no budget to declare.
+[ui.fullscreen-overlay]
+id = "deepSignal"
+label = "Deep Signal"
+icon = "screenshot_monitor"
+component = "qml/Screensaver.qml"
+trigger = "idle"
+
+# `aphotic screensaver` -- set the text, import an image as ASCII, or put
+# it back to the default. A top-level command rather than a subcommand of
+# an existing one, because it does not belong to any of them.
+[cli]
+command = "screensaver"
+script = "cli/screensaver.sh"
+summary = "Set the screensaver text, or import an image as ASCII"
+
+[owns]
+# Nothing in the shell's own settings. The idle timeout that triggers
+# this is core's, and belongs to core whether or not this is installed.
+config_keys = []
+external_config = ["~/.config/aphotic/branding/screensaver.txt (written by `aphotic screensaver`)"]

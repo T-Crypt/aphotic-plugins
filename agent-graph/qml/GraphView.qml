@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// SPDX-FileCopyrightText: Aphotic-Hypr contributors
+// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
 
 pragma ComponentBehavior: Bound
 
@@ -135,6 +135,7 @@ Item {
         areaWidth: root.width
         areaHeight: root.height
         maxNodesPerSession: root.maxNodesPerSession
+        paused: AgentGraphService.gamingActive
     }
 
     function _iconFor(tool: string): string {
@@ -427,7 +428,7 @@ Item {
                                 id: modelBadge
 
                                 anchors.verticalCenter: parent.verticalCenter
-                                visible: node.isSession && root.showLabels && (node.modelData.locality || node.modelData.quant)
+                                visible: node.isSession && root.showLabels && (node.modelData.harness || node.modelData.locality || node.modelData.quant)
                                 radius: Tokens.rounding.small
                                 color: Qt.alpha(pill.ink, 0.16)
                                 implicitWidth: badgeText.implicitWidth + Tokens.padding.small
@@ -437,7 +438,7 @@ Item {
                                     id: badgeText
 
                                     anchors.centerIn: parent
-                                    text: [node.modelData.locality, node.modelData.quant].filter(Boolean).join(" · ")
+                                    text: [node.modelData.harness, node.modelData.locality, node.modelData.quant].filter(Boolean).join(" · ")
                                     font: Tokens.font.label.small
                                     color: pill.ink
                                 }

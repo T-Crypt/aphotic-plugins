@@ -2,7 +2,7 @@
 name = "opencode-hooks"
 display_name = "OpenCode Agent Hooks"
 description = "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["harness-hook"]
