@@ -71,137 +71,24 @@
       }
     },
     {
-      "name": "agent-notch-tile",
-      "display_name": "Agent Notch Tile",
-      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, live subagent count, today's token usage, and the local provider's GPU VRAM claim.",
-      "version": "1.1.0",
-      "category": "ai",
-      "capabilities": [
-        "ui-surface"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "notch",
-            "id": "agents",
-            "icon": "smart_toy",
-            "label": "Agents",
-            "component": "qml/AgentNotchTile.qml",
-            "requires_layer": "ai",
-            "requires_data": "harness",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          }
-        ]
-      }
-    },
-    {
       "name": "claude-hooks",
       "display_name": "Claude Code Agent Hooks",
-      "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, and claims the statusLine slot to read quota windows.",
-      "version": "1.1.0",
+      "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard.",
+      "version": "1.0.0",
       "category": "ai",
       "capabilities": [
         "harness-hook"
       ]
     },
     {
-      "name": "codex-hooks",
-      "display_name": "Codex Agent Hooks",
-      "description": "Wires Codex into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
-      "version": "1.1.0",
+      "name": "llm-fit",
+      "display_name": "Hardware Advisor",
+      "description": "Hardware-aware local model recommendations from llmfit, with a one-click Ollama pull for the tags it confirms are real.",
+      "version": "1.1.1",
       "category": "ai",
       "capabilities": [
         "harness-hook"
       ]
-    },
-    {
-      "name": "deep-signal",
-      "display_name": "Deep Signal Screensaver",
-      "description": "An idle screensaver: the wordmark resolves out of noise like a signal surfacing from deep water, over a sparse drift of bioluminescent particles. Takes its colours from whatever theme is active.",
-      "version": "1.0.0",
-      "category": "theming",
-      "capabilities": [
-        "ui-surface",
-        "cli"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "fullscreen-overlay",
-            "id": "deepSignal",
-            "icon": "screenshot_monitor",
-            "label": "Deep Signal",
-            "component": "qml/Screensaver.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": "idle"
-          }
-        ]
-      }
-    },
-    {
-      "name": "dev-notch-tile",
-      "display_name": "Dev Notch Tile",
-      "description": "Notch tile for the Dev profile: the open project, its lifecycle phase, any resource claims it holds, and a badge when a lockfile has fallen behind its manifest.",
-      "version": "1.1.0",
-      "category": "dev",
-      "capabilities": [
-        "ui-surface"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "notch",
-            "id": "dev",
-            "icon": "code",
-            "label": "Dev",
-            "component": "qml/DevNotchTile.qml",
-            "requires_layer": "dev",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          }
-        ]
-      }
-    },
-    {
-      "name": "dev-ports",
-      "display_name": "Dev Ports",
-      "description": "Lists local HTTP dev servers by scanning listening loopback ports, with online/cached status and one click to open.",
-      "version": "1.0.0",
-      "category": "dev",
-      "capabilities": [
-        "ui-surface"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "workspace",
-            "id": "devPorts",
-            "icon": "lan",
-            "label": "Dev Ports",
-            "component": "qml/DevPortsWorkspace.qml",
-            "requires_layer": "dev",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          }
-        ]
-      }
     },
     {
       "name": "direnv",
@@ -214,42 +101,28 @@
       ]
     },
     {
-      "name": "gaming",
-      "display_name": "Gaming Profile",
-      "description": "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, and a foreground GPU VRAM claim so a local model yields the memory.",
+      "name": "live-wallpaper",
+      "display_name": "Live Wallpapers",
+      "description": "Plays video wallpapers on the desktop background, with the still frame Aphotic already derives its palette from underneath.",
       "version": "1.0.0",
-      "category": "gaming",
+      "category": "theming",
       "capabilities": [
-        "profile"
-      ]
-    },
-    {
-      "name": "llm-fit",
-      "display_name": "Hardware Advisor",
-      "description": "Hardware-aware local model recommendations from llmfit, with a one-click Ollama pull for the tags it confirms are real.",
-      "version": "1.1.1",
-      "category": "ai",
-      "capabilities": [
-        "ui-surface",
-        "cli"
+        "ui-surface"
       ],
       "ui": {
-        "surfaces": [
-          {
-            "surface": "settings",
-            "id": "llmFit",
-            "icon": "memory",
-            "label": "Hardware Advisor",
-            "component": "qml/LlmFitPane.qml",
-            "requires_layer": "ai",
-            "requires_data": "",
-            "parent": "ai",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          }
-        ]
+        "background": {
+          "id": "liveWallpaper",
+          "icon": "movie",
+          "label": "Live Wallpaper",
+          "component": "qml/LiveWallpaperSurface.qml"
+        },
+        "settings_pane": {
+          "id": "liveWallpaper",
+          "icon": "movie",
+          "label": "Live Wallpapers",
+          "component": "qml/LiveWallpaperPane.qml",
+          "parent": "appearance"
+        }
       }
     },
     {
@@ -265,127 +138,12 @@
     {
       "name": "openrgb",
       "display_name": "OpenRGB Sync",
-      "description": "Syncs the theme accent to RGB PC lighting over OpenRGB's SDK, and reacts to the Gaming profile and live AI-agent sessions.",
-      "version": "2.0.0",
+      "description": "Syncs the active theme's accent color to RGB PC lighting via OpenRGB.",
+      "version": "1.0.0",
       "category": "theming",
       "capabilities": [
-        "theme-hook",
-        "profile-hook",
-        "agent-event-hook"
+        "theme-hook"
       ]
-    },
-    {
-      "name": "pet",
-      "display_name": "Desktop Pet",
-      "description": "A creature that lives on the desktop, goes wherever you drag it, wanders its own patch of it, wears the theme, and reacts when you click it.",
-      "version": "1.9.0",
-      "category": "theming",
-      "capabilities": [
-        "ui-surface",
-        "action"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "pet_action",
-            "id": "openTerminal",
-            "icon": "terminal",
-            "label": "Terminal",
-            "component": "qml/actions/LaunchTerminal.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          },
-          {
-            "surface": "pet_action",
-            "id": "openVSCode",
-            "icon": "code",
-            "label": "VS Code",
-            "component": "qml/actions/LaunchVSCode.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          },
-          {
-            "surface": "settings",
-            "id": "petSettings",
-            "icon": "pets",
-            "label": "Desktop Pet",
-            "component": "qml/PetPane.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "appearance",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          },
-          {
-            "surface": "overlay",
-            "id": "pet",
-            "icon": "pets",
-            "label": "Desktop Pet",
-            "component": "qml/Pet.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "free",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          }
-        ]
-      }
-    },
-    {
-      "name": "visualizer",
-      "display_name": "Spectrum",
-      "description": "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing.",
-      "version": "1.1.0",
-      "category": "core",
-      "capabilities": [
-        "ui-surface"
-      ],
-      "ui": {
-        "surfaces": [
-          {
-            "surface": "settings",
-            "id": "visualizerSettings",
-            "icon": "graphic_eq",
-            "label": "Spectrum",
-            "component": "qml/VisualizerPane.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "appearance",
-            "anchor": "",
-            "width": 0,
-            "height": 0,
-            "trigger": ""
-          },
-          {
-            "surface": "overlay",
-            "id": "visualizer",
-            "icon": "graphic_eq",
-            "label": "Spectrum",
-            "component": "qml/Visualizer.qml",
-            "requires_layer": "",
-            "requires_data": "",
-            "parent": "",
-            "anchor": "bottom",
-            "width": 1920,
-            "height": 120,
-            "trigger": ""
-          }
-        ]
-      }
     },
     {
       "name": "workspace-session-log",
