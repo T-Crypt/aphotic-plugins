@@ -1,0 +1,4 @@
+module qs.modules.plugins.liveWallpaper
+singleton LiveWallpaperService 1.0 LiveWallpaperService.qml
+LiveWallpaperSurface 1.0 LiveWallpaperSurface.qml
+LiveWallpaperPane 1.0 LiveWallpaperPane.qml

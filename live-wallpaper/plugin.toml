@@ -1,0 +1,27 @@
+[plugin]
+name = "live-wallpaper"
+display_name = "Live Wallpapers"
+description = "Plays video wallpapers on the desktop background, with the still frame Aphotic already derives its palette from underneath."
+version = "1.0.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["ui-surface"]
+
+[requires]
+binaries = ["ffmpeg"]
+
+[owns]
+config_keys = ["liveWallpaperPauseOnBattery", "liveWallpaperPauseWhenOccluded", "liveWallpaperMuted"]
+
+[ui.background]
+id = "liveWallpaper"
+label = "Live Wallpaper"
+icon = "movie"
+component = "qml/LiveWallpaperSurface.qml"
+
+[ui.settings_pane]
+id = "liveWallpaper"
+icon = "movie"
+label = "Live Wallpapers"
+component = "qml/LiveWallpaperPane.qml"
+parent = "appearance"
