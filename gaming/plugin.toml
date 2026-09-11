@@ -1,8 +1,8 @@
 [plugin]
 name = "gaming"
 display_name = "Gaming Profile"
-description = "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, and a foreground GPU VRAM claim so a local model yields the memory."
-version = "1.0.0"
+description = "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, a foreground GPU VRAM claim so a local model yields the memory, and a Flow workload passport with frame-shelter requests to other profiles on hosts that carry them."
+version = "1.1.0"
 author = "T-Crypt"
 category = "gaming"
 capabilities = ["profile"]

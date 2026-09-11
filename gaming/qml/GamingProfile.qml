@@ -50,6 +50,16 @@ QtObject {
     readonly property bool active: root.activePids.length > 0
 
     property var _games: ({})
+    // pid -> passport token, and owner -> shelter receipt id.
+    property var _passports: ({})
+    property var _shelters: ({})
+
+    // The workload-passport and shelter contracts arrived in a later
+    // Aphotic than this plugin's first release. An older host has neither
+    // name, so the whole Flow tie-in is skipped rather than throwing on
+    // the first game that starts.
+    readonly property bool _flowHosted: typeof WorkloadPassports !== "undefined"
+        && typeof ProfileEngine.canShelter === "function"
 
     Component.onCompleted: root._register()
 
@@ -74,6 +84,9 @@ QtObject {
         root._monitorProc.running = false;
         root._restartTimer.stop();
         root._reset();
+        root._releaseShelters();
+        if (root._flowHosted)
+            WorkloadPassports.closeOwner(root.profileId, "plugin-unloaded");
         ProfileEngine.unregister(root.profileId);
     }
 
@@ -119,8 +132,24 @@ QtObject {
         if (root.gpuVram)
             root.gpuVram.adopt(pid, root.profileId, "foreground");
 
-        if (!ProfileEngine.isActive(root.profileId))
+        // The passport is the session gamemode reported, keyed on the pid
+        // and the moment it was seen. No claim rides along: the VRAM claim
+        // is GpuVramSource's, measured, and stays its own fact.
+        if (root._flowHosted)
+            root._passports[key] = WorkloadPassports.open({
+                plane: "gaming",
+                owner: root.profileId,
+                label: qsTr("Game session %1").arg(pid),
+                trigger: "gamemode",
+                workloadId: `gaming-${pid}`,
+                sessionId: `game:${pid}:${Date.now()}`,
+                sourceAt: Date.now()
+            });
+
+        if (!ProfileEngine.isActive(root.profileId)) {
             ProfileEngine.activate(root.profileId, "gamemode");
+            root._shelterOthers();
+        }
     }
 
     function _remove(pid: int): void {
@@ -135,8 +164,41 @@ QtObject {
         if (root.gpuVram)
             root.gpuVram.unadopt(pid);
 
-        if (Object.keys(root._games).length === 0 && ProfileEngine.isActive(root.profileId))
+        if (root._flowHosted && root._passports[key]) {
+            WorkloadPassports.close(root._passports[key], "gamemode-end");
+            delete root._passports[key];
+        }
+
+        if (Object.keys(root._games).length === 0 && ProfileEngine.isActive(root.profileId)) {
             ProfileEngine.deactivate(root.profileId, "gamemode");
+            root._releaseShelters();
+        }
+    }
+
+    // Frame shelter, asked for rather than taken. Every owner that
+    // published a shelter hook is asked once, and each answer is its own
+    // receipt. Owners without a hook are never asked, so the lens does not
+    // fill with refusals. Nothing here touches the scheduler, a cgroup or
+    // a kernel tunable: what "sheltered" means is the other owner's call.
+    function _shelterOthers(): void {
+        if (!root._flowHosted)
+            return;
+        for (const id of Object.keys(ProfileEngine.profiles)) {
+            if (id === root.profileId || !ProfileEngine.canShelter(id) || root._shelters[id])
+                continue;
+            const receipt = ProfileEngine.requestShelter(id, "game session in the foreground");
+            if (receipt)
+                root._shelters[id] = receipt;
+        }
+    }
+
+    function _releaseShelters(): void {
+        if (!root._flowHosted)
+            return;
+        for (const id of Object.keys(root._shelters)) {
+            ProfileEngine.releaseShelter(id, root._shelters[id]);
+            delete root._shelters[id];
+        }
     }
 
     // dbus-monitor prints a signal across several lines -- the member on
