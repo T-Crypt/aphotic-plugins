@@ -15,6 +15,7 @@ for the plugin contract, manifest format, and how installation works.
 | [`agent-graph`](agent-graph/) | ai | Adds a dashboard tab with a live tool-call graph and run replay, plus its own Settings pane |
 | [`agent-audit`](agent-audit/) | ai | Claims the Workspace plane: a run picker over live and archived sessions, a step inspector, and per-run tool and failure metrics |
 | [`agent-notch-tile`](agent-notch-tile/) | ai | Adds a notch tile: waiting-for-input badge, active harness and phase, local provider VRAM |
+| [`llama-swap`](llama-swap/) | ai | Adds an AI notch tile for llama-swap reachability, loaded models, measured VRAM, generation stats, inference mode, and unload controls |
 | [`dev-notch-tile`](dev-notch-tile/) | dev | Adds a notch tile for the Dev profile: open project, phase, resource claims |
 | [`dev-ports`](dev-ports/) | dev | Claims the Workspace plane: lists local HTTP dev servers found by scanning listening loopback ports, online/cached status, click to open |
 | [`llm-fit`](llm-fit/) | ai | Adds a Settings pane recommending local models your GPU can run, with one-click pull |
@@ -66,6 +67,9 @@ whichever `capabilities` your plugin actually implements:
   never name another plugin; plugins under the same layer are siblings
   and every install permutation has to stand on its own — someone can
   run any one of them with all the others absent.
+- Top-level `shelter = "unload"` lets a profile unload a plugin's UI
+  surfaces while that profile needs the frame budget. Core restores the
+  surfaces when the shelter receipt is released.
 - `[ui.overlay]` is a surface that gets a window rather than a
   slot inside one core already owns. It also takes `anchor`
   (`top`/`bottom`/`left`/`right`) and `width`/`height`, the surface

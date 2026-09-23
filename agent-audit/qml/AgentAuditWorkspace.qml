@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.components
 import qs.config
 import qs.services
+import qs.services.ai
 import qs.modules.plugins.agentAudit
 
 // The audit workstation: pick a run on the left, read one step in the
@@ -105,6 +106,24 @@ Item {
     }
 
     readonly property int busiestTool: root.toolTally.length > 0 ? root.toolTally[0].count : 0
+
+    readonly property var modelByToolId: {
+        const models = ({});
+        for (const event of root.evidence) {
+            if (event.toolId && event.model)
+                models[event.toolId] = event.model;
+        }
+        return models;
+    }
+
+    readonly property var sessionModelInfo: {
+        for (let i = root.evidence.length - 1; i >= 0; i--) {
+            const info = root.modelInfoFor(root.evidence[i]);
+            if (info.provider)
+                return info;
+        }
+        return { provider: "", model: "", raw: "" };
+    }
 
     property var selectedEvent: null
     property var tags: []
@@ -215,6 +234,25 @@ Item {
         return null;
     }
 
+    function llamaSwapModel(modelString: string): string {
+        const raw = String(modelString ?? "");
+        const candidates = [raw.toLowerCase()];
+        const slash = raw.indexOf("/");
+        if (slash >= 0)
+            candidates.push(raw.slice(slash + 1).toLowerCase());
+        return AgentProviders.llamaSwapLoadedModels.find(name => candidates.includes(String(name).toLowerCase())) ?? "";
+    }
+
+    function modelInfoFor(event: var): var {
+        const raw = String(event?.model ?? root.modelByToolId[event?.toolId] ?? "");
+        const matched = root.llamaSwapModel(raw);
+        return {
+            provider: matched ? "llama-swap" : "",
+            model: matched || raw,
+            raw: raw
+        };
+    }
+
     function clockOf(event: var): string {
         const ms = Number(event?.t ?? 0);
         if (!(ms > 0))
@@ -255,6 +293,7 @@ Item {
             return [];
         const rows = [];
         const partner = root.partnerOf(event);
+        const modelInfo = root.modelInfoFor(event);
         function push(label, value, mono) {
             if (value === undefined || value === null || String(value).length === 0)
                 return;
@@ -269,7 +308,8 @@ Item {
         push(qsTr("Tool"), event.tool, true);
         push(qsTr("Status"), event.status);
         push(qsTr("Harness"), event.harness ?? partner?.harness);
-        push(qsTr("Model"), event.model ?? partner?.model, true);
+        push(qsTr("Provider"), modelInfo.provider);
+        push(qsTr("Model"), modelInfo.model, true);
         push(qsTr("Agent type"), event.agentType ?? partner?.agentType);
         push(qsTr("Agent id"), event.agentId ?? partner?.agentId, true);
         push(qsTr("Spawned agent"), event.spawnedAgentId, true);
@@ -387,6 +427,7 @@ Item {
 
         readonly property bool selected: root.selectedEvent === stepRow.eventData
         readonly property color tone: root.eventColour(stepRow.eventData)
+        readonly property var modelInfo: root.modelInfoFor(stepRow.eventData)
 
         width: ListView.view.width
         implicitHeight: 52
@@ -445,7 +486,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.eventKind(stepRow.eventData)
+                    text: [root.eventKind(stepRow.eventData), stepRow.modelInfo.provider, stepRow.modelInfo.model].filter(Boolean).join(" · ")
                     color: root.textMuted
                     elide: Text.ElideRight
                     font: Tokens.font.label.small
@@ -583,6 +624,21 @@ Item {
                 accent: root.replaying ? root.accentAgent : live ? root.statusPass : root.textMuted
                 interactive: false
                 filled: true
+            }
+
+            TagChip {
+                visible: root.sessionModelInfo.provider.length > 0
+                label: "llama-swap"
+                icon: "memory"
+                accent: root.accentAgent
+                interactive: false
+            }
+
+            TagChip {
+                visible: root.sessionModelInfo.provider.length > 0
+                label: root.sessionModelInfo.model
+                accent: root.accentAgent
+                interactive: false
             }
 
             Item {
@@ -925,6 +981,16 @@ Item {
                         visible: root.selectedEvent !== null
                         label: root.selectedEvent ? String(root.selectedEvent.status ?? "") : ""
                         accent: root.selectedEvent ? root.eventColour(root.selectedEvent) : root.accentTool
+                        interactive: false
+                    }
+
+                    TagChip {
+                        readonly property var modelInfo: root.modelInfoFor(root.selectedEvent)
+
+                        visible: modelInfo.provider.length > 0
+                        label: "llama-swap"
+                        icon: "memory"
+                        accent: root.accentAgent
                         interactive: false
                     }
                 }

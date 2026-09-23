@@ -1,3 +1,5 @@
+shelter = "unload"
+
 [plugin]
 name = "visualizer"
 display_name = "Spectrum"

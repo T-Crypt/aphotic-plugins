@@ -14,7 +14,7 @@ import qs.modules.plugins.agentGraph
 Item {
     id: root
 
-    property var sessions: AgentGraphService.sessions
+    property var sessions: AgentGraphService.graphSessions
     property int maxNodesPerSession: AgentGraphService.maxNodesPerSession
     property int edgeParticles: AgentGraphService.edgeParticles
 

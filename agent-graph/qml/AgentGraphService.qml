@@ -15,14 +15,16 @@ Singleton {
     id: root
 
     readonly property var sessions: root._sessions
+    readonly property var graphSessions: root._sessions.concat(root.llamaSwapSessions)
     readonly property var events: root._events
     readonly property int liveSessionCount: root._sessions.filter(s => s.status !== "ended").length
-    readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0)
+    readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0) + root.llamaSwapSessions.length
 
     property bool surfaceVisible: false
     readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0 && !root.gamingActive
 
     readonly property bool wantsFeed: root.surfaceVisible && !root.gamingActive
+    readonly property bool wantsStats: root.surfaceVisible && !root.gamingActive && AgentProviders.llamaSwapLoadedModels.length > 0
 
     // A gaming session is the desktop's foreground claimant, and this graph
     // is a background observer of work the user is not looking at while a
@@ -66,7 +68,7 @@ Singleton {
     readonly property int replayStepEvents: root.tier === "full" ? 1 : root.tier === "standard" ? 2 : 6
     readonly property bool anyRunning: root._sessions.some(s => s.status === "running")
 
-    readonly property bool _gpuContended: AgentProviders.ollamaLoadedModels.length > 0
+    readonly property bool _gpuContended: AgentProviders.ollamaLoadedModels.length > 0 || AgentProviders.llamaSwapLoadedModels.length > 0
 
     readonly property string _detectedTier: {
         const name = SystemUsage.gpuName.toLowerCase();
@@ -78,6 +80,31 @@ Singleton {
             return "full";
         return "standard";
     }
+
+    readonly property var llamaSwapSessions: AgentProviders.llamaSwapLoadedModels.map(name => {
+        const generating = LlamaSwapStats.generating
+            && LlamaSwapStats.model.toLowerCase() === String(name).toLowerCase();
+        return {
+            id: `provider:llama-swap:${name}`,
+            status: generating ? "running" : "idle",
+            harness: "llama-swap",
+            model: name,
+            modelInfo: {
+                label: AgentRoles.modelDisplayName(name, "llama-swap"),
+                provider: "llama-swap",
+                locality: "local",
+                quant: "",
+                raw: name
+            },
+            cwd: "",
+            startedAt: 0,
+            updatedAt: 0,
+            endedAt: 0,
+            hue: root._hueForSession(`provider:llama-swap:${name}`),
+            nodes: [],
+            agentParents: ({})
+        };
+    })
 
     function _demote(tier: string, should: bool): string {
         if (!should)
@@ -238,17 +265,29 @@ Singleton {
     // detect. Known provider ids from AgentRoles take priority; a cloud/
     // local heuristic on the string shape is the fallback for anything
     // that doesn't name a known provider outright.
+    function _llamaSwapModel(modelString: string): string {
+        const raw = String(modelString ?? "");
+        const candidates = [raw.toLowerCase()];
+        const slash = raw.indexOf("/");
+        if (slash >= 0)
+            candidates.push(raw.slice(slash + 1).toLowerCase());
+        return AgentProviders.llamaSwapLoadedModels.find(name => candidates.includes(String(name).toLowerCase())) ?? "";
+    }
+
     function parseModelInfo(modelString: string): var {
         const raw = modelString ?? "";
         if (!raw)
             return { label: "", provider: "", locality: "", quant: "", raw: "" };
 
         const lower = raw.toLowerCase();
-        let provider = "";
-        for (const p of AgentRoles.providers) {
-            if (lower.includes(p.id.toLowerCase())) {
-                provider = p.id;
-                break;
+        const llamaSwapModel = root._llamaSwapModel(raw);
+        let provider = llamaSwapModel ? "llama-swap" : "";
+        if (!provider) {
+            for (const p of AgentRoles.providers) {
+                if (lower.includes(p.id.toLowerCase())) {
+                    provider = p.id;
+                    break;
+                }
             }
         }
 
@@ -272,7 +311,7 @@ Singleton {
         const ggufMatch = raw.match(/[\w.-]+\.gguf\b/i);
         const quant = quantMatch ? quantMatch[0] : (ggufMatch ? ggufMatch[0] : "");
 
-        const named = AgentRoles.modelDisplayName(raw, provider);
+        const named = AgentRoles.modelDisplayName(llamaSwapModel || raw, provider);
         const label = named.length > 28 ? `${named.slice(0, 25)}…` : named;
 
         return { label: label, provider: provider, locality: locality, quant: quant, raw: raw };
@@ -505,8 +544,11 @@ Singleton {
             root._restore();
     }
 
+    onWantsStatsChanged: LlamaSwapStats.hold("agent-graph", root.wantsStats)
+
     Component.onCompleted: {
         AgentEvents.hold("agent-graph", root.wantsFeed);
+        LlamaSwapStats.hold("agent-graph", root.wantsStats);
         if (root.wantsFeed)
             root._restore();
     }

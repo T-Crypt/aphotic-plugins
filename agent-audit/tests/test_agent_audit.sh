@@ -62,6 +62,12 @@ rg -q 'function eventKind' "$PANE" || fail "steps are not classified"
 rg -q 'function detailFields' "$PANE" || fail "inspector has no field table"
 rg -q 'post_tool_use_failure' "$PANE" || fail "failures are not recognised"
 rg -q 'spawnedAgentId' "$PANE" || fail "subagent attribution is not read"
+rg -q 'AgentProviders\.llamaSwapLoadedModels' "$PANE" || fail "loaded llama-swap models are ignored"
+rg -q 'function llamaSwapModel' "$PANE" || fail "missing llama-swap model resolver"
+rg -q 'toLowerCase\(\)' "$PANE" || fail "llama-swap matching is not case-insensitive"
+rg -q 'slice\(slash \+ 1\)' "$PANE" || fail "provider-prefixed models are not normalized"
+rg -q 'label: "llama-swap"' "$PANE" || fail "missing llama-swap provider chip"
+rg -q 'modelInfo\.model' "$PANE" || fail "resolved model name is not shown"
 
 # The schema carries no tool input or output, so nothing here may claim
 # to show a payload or a diff.

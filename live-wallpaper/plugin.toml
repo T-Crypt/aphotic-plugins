@@ -1,3 +1,5 @@
+shelter = "unload"
+
 [plugin]
 name = "live-wallpaper"
 display_name = "Live Wallpapers"

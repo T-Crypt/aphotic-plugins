@@ -1,0 +1,3 @@
+module qs.modules.plugins.llamaSwap
+singleton LlamaSwapService 1.0 LlamaSwapService.qml
+LlamaSwapNotchTile 1.0 LlamaSwapNotchTile.qml

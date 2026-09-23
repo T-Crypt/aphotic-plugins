@@ -1,3 +1,5 @@
+shelter = "unload"
+
 [plugin]
 name = "pet"
 display_name = "Desktop Pet"
