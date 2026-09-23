@@ -1,0 +1,18 @@
+[plugin]
+name = "llama-swap"
+display_name = "llama-swap"
+description = "Notch tile for llama-swap reachability, loaded models, measured GPU memory, live generation stats, inference mode, and model unload controls."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface"]
+
+[ui.notch_tile]
+id = "ai"
+icon = "memory"
+label = "AI"
+component = "qml/LlamaSwapNotchTile.qml"
+requires_layer = "ai"
+
+[requires]
+binaries = ["curl", "pgrep"]

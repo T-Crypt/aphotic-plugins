@@ -5,6 +5,10 @@ Live tool-call graph and run replay for
 watch Claude Code / Codex sessions unfold as a node graph in the
 Dashboard, then scrub back through a recorded run.
 
+Loaded llama-swap models also appear as provider nodes when no local
+harness session uses them. This keeps models serving network clients
+visible and marks the active model as generating while the graph is open.
+
 ## Requires
 
 Nothing beyond the shell itself — pure QML, no external binary. It reads

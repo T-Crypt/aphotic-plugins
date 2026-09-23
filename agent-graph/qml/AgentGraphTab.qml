@@ -146,7 +146,7 @@ StyledRect {
 
             sourceComponent: GraphView {
                 visible: root.visible
-                sessions: root.replayMode ? replay.sessions : AgentGraphService.sessions
+                sessions: root.replayMode ? replay.sessions : AgentGraphService.graphSessions
             }
         }
 
