@@ -78,7 +78,9 @@ Singleton {
             if (lines[i].length === 0)
                 continue;
             try {
-                const event = JSON.parse(lines[i]);
+                let event = JSON.parse(lines[i]);
+                if (typeof AgentEvents.normalize === "function")
+                    event = AgentEvents.normalize(event);
                 if (event?.event && event?.sessionId)
                     parsed.push(event);
             } catch (e) {}

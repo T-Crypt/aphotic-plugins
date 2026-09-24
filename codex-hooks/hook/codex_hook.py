@@ -1,43 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2023-2026 Trevin Tindall (T-Crypt) and Aphotic-Hypr contributors
-"""Codex agent hook translator -- see codex_hook.sh for why this is one
-short-lived process and why nothing in here is allowed to raise.
+"""Translate one hook payload to v2 and hand it to the shared writer.
 
-Codex's command hooks hand this process one JSON object on stdin whose
-field names already match the contract agent_hook.py expects from Claude
-Code (docs/AGENT_TRACKING.md, "Extending to another harness"): the
-translation happens at the harness's own adapter boundary, never by
-teaching agent_hook.py a second input shape. What needs changing:
-
-  * tag the record harness = "codex" (agent_hook.py defaults to "claude"
-    when the field is absent, which would mislabel every Codex session)
-  * SessionEnd calls its reason "reason"; agent_hook.py reads
-    "end_reason" (Claude Code's name)
-  * known Codex tool-name aliases are normalized to the graph/bar
-    vocabulary (`shell` arrives where Claude says `Bash`, `apply_patch`
-    where Claude says `Edit`, `spawn_agent` where Claude says `Agent`).
-    MCP and function names like `mcp__filesystem__read_file` or
-    `update_plan` pass through untouched -- capitalizing them would only
-    mangle display in the graph's icon/category lookups.
-
-Everything else (session_id, tool_use_id, agent_id/agent_type on subagent
-events, model, cwd, source on SessionStart, turn_id, ...) already carries
-the right names and is passed through verbatim. agent_hook.py is then
-spawned with the translated JSON on its stdin -- the same spawn-per-event
-shape the OpenCode plugin (opencode_hook.js) already uses. Duration
-tracking isn't done here: a per-event process has no state between
-PreToolUse and PostToolUse, and Codex's payloads don't carry a duration.
-
-This translator now lives in this plugin's own package, decoupled from
-core's agent_hook.py (Configs/.local/lib/aphotic/) -- unlike on `main`,
-where both files sat in the same directory and a same-directory lookup
-was enough. codex_hook.sh passes core's lib dir as argv[1] (itself
-supplied by cmd_plugin.sh's harness-hook wire/unwire contract, see
-docs/archive/PLUGIN_SYSTEM.md); the same-directory fallback below only
-matters for local plugin development against a checked-out core repo
-laid out the old way.
+Every failure stays silent and exits successfully.
 """
+from datetime import datetime, timezone
 import json
 import os
 import subprocess
@@ -47,6 +15,16 @@ TOOL_NAMES = {
     "shell": "Bash",
     "apply_patch": "Edit",
     "spawn_agent": "Agent",
+}
+
+EVENTS = {
+    "SessionStart": ("session_start", "running", None),
+    "PreToolUse": ("tool_call", "running", "running"),
+    "PostToolUse": ("tool_call", "running", "completed"),
+    "PostToolUseFailure": ("tool_call", "running", "errored"),
+    "Stop": ("turn", "idle", None),
+    "SubagentStop": ("turn", "idle", None),
+    "SessionEnd": ("session_end", "ended", None),
 }
 
 
@@ -59,20 +37,63 @@ def main():
         return 0
 
     event = payload.get("hook_event_name") or ""
-    if not event or not payload.get("session_id"):
+    session_id = payload.get("session_id") or ""
+    if not isinstance(event, str) or event not in EVENTS:
+        return 0
+    if not isinstance(session_id, str) or not session_id:
         return 0
 
-    record = dict(payload)
-    record["harness"] = "codex"
-    if event == "SessionEnd" and record.get("reason") and "end_reason" not in record:
-        record["end_reason"] = record["reason"]
-    tool = record.get("tool_name")
-    if isinstance(tool, str) and tool in TOOL_NAMES:
-        record["tool_name"] = TOOL_NAMES[tool]
-
-    lib_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
-    hook_path = os.path.join(lib_dir, "agent_hook.py")
     try:
+        kind, status, tool_status = EVENTS[event]
+        now = datetime.now(timezone.utc)
+        record = {
+            "v": 2,
+            "harness": "codex",
+            "sessionId": session_id,
+            "event": kind,
+            "t": int(now.timestamp() * 1000),
+            "ts": now.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "status": status,
+            "provider": "openai",
+        }
+        if tool_status:
+            record["toolStatus"] = tool_status
+
+        for key, field in (
+            ("tool_use_id", "toolId"),
+            ("agent_id", "agentId"),
+            ("agent_type", "agentType"),
+            ("duration_ms", "durationMs"),
+            ("model", "model"),
+            ("cwd", "cwd"),
+            ("source", "source"),
+        ):
+            value = payload.get(key)
+            if value not in (None, ""):
+                record[field] = value
+
+        tool = payload.get("tool_name")
+        if isinstance(tool, str) and tool:
+            record["tool"] = TOOL_NAMES.get(tool, tool)
+
+        if event == "SessionEnd":
+            reason = payload.get("end_reason") or payload.get("reason")
+            if reason:
+                record["endReason"] = reason
+
+        response = payload.get("tool_response")
+        if isinstance(response, dict):
+            for key, field in (
+                ("agentId", "spawnedAgentId"),
+                ("description", "agentDescription"),
+                ("resolvedModel", "agentModel"),
+            ):
+                value = response.get(key)
+                if value not in (None, ""):
+                    record[field] = value
+
+        lib_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.abspath(__file__))
+        hook_path = os.path.join(lib_dir, "agent_hook.py")
         proc = subprocess.Popen(
             [sys.executable, hook_path],
             stdin=subprocess.PIPE,

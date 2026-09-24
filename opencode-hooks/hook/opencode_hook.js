@@ -51,11 +51,38 @@ function normalizeTool(name) {
 }
 
 function send(payload) {
-  const child = spawn("python3", [HOOK_PATH], { stdio: ["pipe", "ignore", "ignore"] });
-  child.on("error", () => {});
-  child.stdin.on("error", () => {});
-  child.stdin.write(JSON.stringify({ harness: "opencode", ...payload }));
-  child.stdin.end();
+  try {
+    const t = Date.now();
+    const child = spawn("python3", [HOOK_PATH], { stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", () => {});
+    child.stdin.on("error", () => {});
+    child.stdin.write(JSON.stringify({
+      v: 2,
+      harness: "opencode",
+      ...payload,
+      t,
+      ts: new Date(t).toISOString(),
+    }));
+    child.stdin.end();
+  } catch (e) {}
+}
+
+function usageFields(info) {
+  const tokens = info?.tokens;
+  if (!tokens || typeof tokens !== "object")
+    return null;
+  const values = {
+    inputTokens: tokens.input,
+    outputTokens: tokens.output,
+    cacheReadTokens: tokens.cache?.read,
+    cacheWriteTokens: tokens.cache?.write,
+  };
+  const fields = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (Number.isFinite(value))
+      fields[key] = value;
+  }
+  return Object.keys(fields).length > 0 ? fields : null;
 }
 
 export const AphoticAgentTracking = async ({ directory }) => {
@@ -69,11 +96,13 @@ export const AphoticAgentTracking = async ({ directory }) => {
         case "session.created": {
           const info = event.properties.info;
           known.add(info.id);
+          const identity = models.get(info.id) || {};
           send({
-            session_id: info.id,
-            hook_event_name: "SessionStart",
+            sessionId: info.id,
+            event: "session_start",
+            status: "running",
             cwd: info.directory || directory,
-            model: models.get(info.id) || "",
+            ...identity,
           });
           break;
         }
@@ -81,16 +110,24 @@ export const AphoticAgentTracking = async ({ directory }) => {
           const id = event.properties.sessionID;
           if (!known.has(id))
             break;
-          send({ session_id: id, hook_event_name: "Stop" });
+          send({ sessionId: id, event: "turn", status: "idle" });
           break;
         }
         case "session.deleted": {
           const id = event.properties.info.id;
           if (!known.has(id))
             break;
-          send({ session_id: id, hook_event_name: "SessionEnd" });
+          send({ sessionId: id, event: "session_end", status: "ended" });
           known.delete(id);
           models.delete(id);
+          break;
+        }
+        case "message.updated": {
+          const info = event.properties?.info;
+          const id = info?.sessionID || event.properties?.sessionID;
+          const usage = info?.role === "assistant" ? usageFields(info) : null;
+          if (id && known.has(id) && usage)
+            send({ sessionId: id, event: "usage", status: "running", ...usage });
           break;
         }
       }
@@ -98,40 +135,51 @@ export const AphoticAgentTracking = async ({ directory }) => {
     "chat.params": async input => {
       if (!input.sessionID || !input.model)
         return;
-      const resolved = `${input.model.providerID}/${input.model.id}`;
-      const isNew = models.get(input.sessionID) !== resolved;
-      models.set(input.sessionID, resolved);
+      const provider = input.model.providerID || "";
+      const model = provider && input.model.id ? `${provider}/${input.model.id}` : (input.model.id || provider);
+      if (!model)
+        return;
+      const current = models.get(input.sessionID);
+      const isNew = current?.model !== model || current?.provider !== provider;
+      const identity = { model };
+      if (provider)
+        identity.provider = provider;
+      models.set(input.sessionID, identity);
       // session.created fires before the first chat.params call, so the
       // model is always unknown at that point -- send a follow-up
       // SessionStart-shaped update the first time it resolves (or changes
       // mid-session) so the graph label picks it up instead of staying on
       // the session id fallback.
       if (isNew && known.has(input.sessionID))
-        send({ session_id: input.sessionID, hook_event_name: "SessionStart", model: resolved });
+        send({ sessionId: input.sessionID, event: "session_start", status: "running", ...identity });
     },
     "tool.execute.before": async input => {
       toolStarts.set(input.callID, Date.now());
       send({
-        session_id: input.sessionID,
-        hook_event_name: "PreToolUse",
-        tool_name: normalizeTool(input.tool),
-        tool_use_id: input.callID,
+        sessionId: input.sessionID,
+        event: "tool_call",
+        status: "running",
+        tool: normalizeTool(input.tool),
+        toolId: input.callID,
+        toolStatus: "running",
       });
     },
     "tool.execute.after": async input => {
       const startedAt = toolStarts.get(input.callID);
       toolStarts.delete(input.callID);
       send({
-        session_id: input.sessionID,
-        hook_event_name: "PostToolUse",
-        tool_name: normalizeTool(input.tool),
-        tool_use_id: input.callID,
-        duration_ms: startedAt ? Date.now() - startedAt : undefined,
+        sessionId: input.sessionID,
+        event: "tool_call",
+        status: "running",
+        tool: normalizeTool(input.tool),
+        toolId: input.callID,
+        toolStatus: "completed",
+        durationMs: startedAt !== undefined ? Date.now() - startedAt : undefined,
       });
     },
     dispose: async () => {
       for (const id of known)
-        send({ session_id: id, hook_event_name: "SessionEnd" });
+        send({ sessionId: id, event: "session_end", status: "ended" });
       known.clear();
       models.clear();
       toolStarts.clear();
