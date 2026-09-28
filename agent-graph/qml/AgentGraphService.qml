@@ -214,7 +214,11 @@ Singleton {
             if (!line.length)
                 continue;
             try {
-                parsed.push(JSON.parse(line));
+                let record = JSON.parse(line);
+                // Core versions without v2 normalize keep working unmodified.
+                if (typeof AgentEvents.normalize === "function")
+                    record = AgentEvents.normalize(record);
+                parsed.push(record);
             } catch (e) {
                 continue;
             }
@@ -490,7 +494,10 @@ Singleton {
                     if (!line.length)
                         continue;
                     try {
-                        parsed.push(JSON.parse(line));
+                        let record = JSON.parse(line);
+                        if (typeof AgentEvents.normalize === "function")
+                            record = AgentEvents.normalize(record);
+                        parsed.push(record);
                     } catch (e) {
                         continue;
                     }

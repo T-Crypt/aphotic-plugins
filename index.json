@@ -4,7 +4,7 @@
       "name": "agent-audit",
       "display_name": "Agent Audit",
       "description": "Inspect local agent run evidence, live activity, and replay timelines.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "category": "ai",
       "capabilities": [
         "ui-surface"
@@ -32,7 +32,7 @@
       "name": "agent-graph",
       "display_name": "Agent Graph",
       "description": "Live tool-call graph and run replay for AI coding harnesses (Claude Code, Codex).",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "category": "ai",
       "capabilities": [
         "ui-surface"
@@ -311,8 +311,8 @@
     {
       "name": "opencode-hooks",
       "display_name": "OpenCode Agent Hooks",
-      "description": "Wires OpenCode into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code.",
-      "version": "1.1.0",
+      "description": "Wires OpenCode into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code. Needs opencode >= 2.0.14.",
+      "version": "2.0.0",
       "category": "ai",
       "capabilities": [
         "harness-hook"
