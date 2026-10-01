@@ -95,6 +95,19 @@ async function loadHook(dir, tag) {
 }
 
 
+// Loads the hook the way OpenCode does: through the symlink wire.sh puts in
+// its plugins directory. Node and Bun both resolve import.meta.url to the
+// link's realpath, so the module's own directory is the plugin repo, not
+// the config directory. The config has to come from the environment.
+async function loadHookViaSymlink(pluginsDir, tag) {
+  const source = fileURLToPath(new URL("../hook/opencode_hook.js", import.meta.url));
+  fs.mkdirSync(pluginsDir, { recursive: true });
+  const link = path.join(pluginsDir, `aphotic_opencode_hook_${tag}.js`);
+  fs.symlinkSync(source, link);
+  return import(`${pathToFileURL(link).href}?${tag}`);
+}
+
+
 const STUB_WRITER = [
   "import os, pathlib, sys",
   "pathlib.Path(os.environ['CAPTURE_PATH']).open('a').write(sys.stdin.read() + '\\n')",
@@ -102,12 +115,32 @@ const STUB_WRITER = [
 ].join("\n");
 
 
+// wire.sh records agent_hook.py in the state dir, not beside the symlink:
+// both Node and Bun resolve import.meta.url to the link's realpath, so a
+// config next to the link was looked for in the plugin repo where it was
+// never written. Tests point XDG_STATE_HOME at their own temp dir for the
+// same reason the hook does.
+function stateHome(temp) {
+  const state = path.join(temp, "state");
+  fs.mkdirSync(path.join(state, "aphotic"), { recursive: true });
+  return state;
+}
+
+
+function wireConfig(temp, agentHookPy) {
+  process.env.XDG_STATE_HOME = stateHome(temp);
+  fs.writeFileSync(
+    path.join(process.env.XDG_STATE_HOME, "aphotic", "opencode-hook.json"),
+    JSON.stringify({ agentHookPy }),
+  );
+}
+
+
 test("maps the opencode v2 event stream onto contract records", async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-hook-v2-"));
   const capturePath = path.join(temp, "capture.jsonl");
-  fs.writeFileSync(path.join(temp, ".aphotic-hook-config.json"),
-    JSON.stringify({ agentHookPy: path.join(temp, "agent_hook.py") }));
   fs.writeFileSync(path.join(temp, "agent_hook.py"), STUB_WRITER);
+  wireConfig(temp, path.join(temp, "agent_hook.py"));
   process.env.CAPTURE_PATH = capturePath;
 
   const channel = eventChannel();
@@ -304,9 +337,8 @@ test("maps the opencode v2 event stream onto contract records", async () => {
 test("stays silent below the version floor", async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-hook-old-"));
   const capturePath = path.join(temp, "capture.jsonl");
-  fs.writeFileSync(path.join(temp, ".aphotic-hook-config.json"),
-    JSON.stringify({ agentHookPy: path.join(temp, "agent_hook.py") }));
   fs.writeFileSync(path.join(temp, "agent_hook.py"), STUB_WRITER);
+  wireConfig(temp, path.join(temp, "agent_hook.py"));
   process.env.CAPTURE_PATH = capturePath;
 
   const channel = eventChannel();
@@ -319,4 +351,100 @@ test("stays silent below the version floor", async () => {
   await new Promise((resolve) => setTimeout(resolve, 300));
   assert.equal(fs.existsSync(capturePath), false, "no records below the floor");
   cleanup();
+});
+
+
+test("finds its writer through a symlink, the way OpenCode loads it", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-hook-link-"));
+  const capturePath = path.join(temp, "capture.jsonl");
+  const writer = path.join(temp, "agent_hook.py");
+  fs.writeFileSync(writer, STUB_WRITER);
+  wireConfig(temp, writer);
+  process.env.CAPTURE_PATH = capturePath;
+
+  // No config anywhere near the module. The only one that exists is in the
+  // state dir, which is the whole point: beside the symlink it was written
+  // where import.meta.url could never look.
+  const channel = eventChannel();
+  const plugin = await loadHookViaSymlink(path.join(temp, "plugins"), "link");
+  const ctx = mockCtx(channel);
+  const cleanup = plugin.default.setup(ctx);
+
+  channel.push(envelope("session.created", {
+    sessionID: "ses_link", model: { id: "m", providerID: "p" },
+  }));
+  channel.push(envelope("session.deleted", { sessionID: "ses_link" }));
+
+  const records = await waitForRecords(capturePath, 2);
+  assert.equal(records.length, 2, `expected 2 records through the symlink, got ${records.length}`);
+  assert.equal(records[0].event, "session_start");
+  assert.equal(records[1].event, "session_end");
+
+  cleanup();
+});
+
+
+test("reports a missing config instead of guessing a path", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-hook-unwrap-"));
+  const capturePath = path.join(temp, "capture.jsonl");
+  fs.writeFileSync(path.join(temp, "agent_hook.py"), STUB_WRITER);
+  process.env.CAPTURE_PATH = capturePath;
+  // A state dir with no opencode-hook.json, which is what an unwired box
+  // looks like. There is deliberately no ~/Aphotic-Hypr checkout to find:
+  // the old fallback made the hook work on exactly one machine and report
+  // nothing anywhere else.
+  process.env.XDG_STATE_HOME = path.join(temp, "empty-state");
+
+  const logged = [];
+  const realError = console.error;
+  console.error = (line) => { logged.push(String(line)); };
+  try {
+    const channel = eventChannel();
+    const plugin = await loadHook(temp, "unwrap");
+    const ctx = mockCtx(channel);
+    // Must not throw: OpenCode loads plugins during startup, and taking the
+    // editor down over a one-command fix is worse than reporting it.
+    const cleanup = plugin.default.setup(ctx);
+
+    assert.equal(logged.length, 1, `expected one line, got ${JSON.stringify(logged)}`);
+    assert.match(logged[0], /aphotic opencode hooks/);
+    assert.match(logged[0], /opencode-hook\.json/,
+      "the line must name the file that is missing");
+    assert.match(logged[0], /aphotic plugin enable opencode-hooks/,
+      "the line must name the command that fixes it");
+
+    channel.push(envelope("session.created", { sessionID: "ses_u", model: { id: "m", providerID: "p" } }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    assert.equal(fs.existsSync(capturePath), false, "no records with no writer path");
+    cleanup();
+  } finally {
+    console.error = realError;
+  }
+});
+
+
+test("rejects a config with no usable writer path", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-hook-bad-"));
+  const capturePath = path.join(temp, "capture.jsonl");
+  process.env.CAPTURE_PATH = capturePath;
+  process.env.XDG_STATE_HOME = stateHome(temp);
+  // A config that exists but points nowhere: the shape jq produces if the
+  // lib dir argument was wrong. Falling back to a guessed path here would
+  // spawn a nonexistent interpreter once per event.
+  fs.writeFileSync(path.join(process.env.XDG_STATE_HOME, "aphotic", "opencode-hook.json"),
+    JSON.stringify({ agentHookPy: "" }));
+
+  const logged = [];
+  const realError = console.error;
+  console.error = (line) => { logged.push(String(line)); };
+  try {
+    const channel = eventChannel();
+    const plugin = await loadHook(temp, "bad");
+    const cleanup = plugin.default.setup(mockCtx(channel));
+    assert.equal(logged.length, 1, `expected one line, got ${JSON.stringify(logged)}`);
+    assert.match(logged[0], /no agentHookPy path/);
+    cleanup();
+  } finally {
+    console.error = realError;
+  }
 });

@@ -11,7 +11,10 @@ capabilities = ["harness-hook"]
 binaries = ["opencode"]
 
 [owns]
-external_config = ["~/.config/opencode/plugins/aphotic_opencode_hook.js (symlink)"]
+external_config = [
+    "~/.config/opencode/plugins/aphotic_opencode_hook.js (symlink)",
+    "~/.local/state/aphotic/opencode-hook.json (agent_hook.py path; honours XDG_STATE_HOME)",
+]
 
 [harness]
 wire = "hooks/wire.sh"

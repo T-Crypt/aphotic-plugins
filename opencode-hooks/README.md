@@ -44,17 +44,25 @@ anything unrecognized is just capitalized.
 
 ## What it touches
 
-Two files in `~/.config/opencode/plugins/`, both created by `wire.sh`
-and both removed on disable/remove. Never any other plugin you keep
-there:
+One symlink and one config file, both created by `wire.sh` and both removed
+on disable/remove. Never any other plugin you keep in that directory:
 
-- `aphotic_opencode_hook.js`, a symlink (not a copy), so this repo stays
-  the only place the logic is ever edited. `wire.sh` also removes a
-  leftover pre-plugin-era `opencode_hook.js` symlink: OpenCode loads
-  every `.js` in this directory, so a duplicate would double-report.
-- `.aphotic-hook-config.json`, the resolved `agent_hook.py` path.
-  OpenCode's loader passes no arguments, so the script cannot derive
-  that path from its own location the way `codex-hooks` can.
+- `~/.config/opencode/plugins/aphotic_opencode_hook.js`, a symlink (not a
+  copy), so this repo stays the only place the logic is ever edited.
+- `~/.local/state/aphotic/opencode-hook.json` (or `$XDG_STATE_HOME`), the
+  resolved `agent_hook.py` path. OpenCode's loader passes no arguments and
+  the script cannot derive the path from its own location, because Node
+  and Bun both resolve `import.meta.url` to the symlink's realpath: the
+  module's directory is this repo, not the config directory. That is why
+  the config lives in the shell's own state dir instead of beside the
+  symlink. A hook with no config reports that once and stays silent rather
+  than spawning a path that does not exist.
+
+`wire.sh` and `unwire.sh` also clear the two names this plugin has had
+before, `aphotic-opencode-hook.js` and `opencode_hook.js`. OpenCode loads
+every `.js` in its plugins directory, so a survivor of either name is a
+second copy of this hook: sessions get reported twice and every token
+count doubles.
 
 ## Install
 
