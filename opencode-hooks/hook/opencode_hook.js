@@ -3,22 +3,42 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-// wire.sh writes .aphotic-hook-config.json next to the symlinked plugin
-// file with the absolute path to core's agent_hook.py. OpenCode's plugin
-// loader takes no arguments and this plugin package is installed away
-// from any core checkout, so the path cannot be derived from here. The
-// fallback covers a hand-symlinked local-dev setup with a core checkout
-// at ~/Aphotic-Hypr.
+// wire.sh records the absolute path to core's agent_hook.py in the shell's
+// own state dir. It cannot live beside this file: wire.sh symlinks the
+// plugin into ~/.config/opencode/plugins/, and both Node and Bun resolve
+// import.meta.url to the link's *realpath*, which is this repo. A config
+// written next to the link was therefore looked for in the repo, where it
+// was never written, and only a hardcoded fallback to a core checkout at
+// ~/Aphotic-Hypr kept it working -- on the one machine that has one.
+//
+// The state dir is where the shell already keeps every other agent-hook
+// artefact, so nothing new is invented and the path is derivable from the
+// environment alone.
+function hookConfigPath() {
+  const stateHome = process.env.XDG_STATE_HOME
+    || path.join(os.homedir(), ".local", "state");
+  return path.join(stateHome, "aphotic", "opencode-hook.json");
+}
+
 function resolveHookPath() {
-  const configPath = path.join(path.dirname(new URL(import.meta.url).pathname), ".aphotic-hook-config.json");
+  // Missing or invalid is fatal, not a fallback. A hook that cannot find
+  // agent_hook.py spawns a nonexistent interpreter path once per event and
+  // reports nothing at all, which reads as "no sessions running" forever.
+  let config;
   try {
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    if (config.agentHookPy)
-      return config.agentHookPy;
+    config = JSON.parse(fs.readFileSync(hookConfigPath(), "utf8"));
   } catch (e) {
-    // missing or invalid -- fall through to the default below
+    throw new Error(
+      "aphotic opencode hooks: cannot read " + hookConfigPath() +
+      ". Run 'aphotic plugin enable opencode-hooks' to wire it."
+    );
   }
-  return path.join(os.homedir(), "Aphotic-Hypr", "Configs", ".local", "lib", "aphotic", "agent_hook.py");
+  if (!config || typeof config.agentHookPy !== "string" || !config.agentHookPy)
+    throw new Error(
+      "aphotic opencode hooks: " + hookConfigPath() +
+      " has no agentHookPy path. Run 'aphotic plugin enable opencode-hooks'."
+    );
+  return config.agentHookPy;
 }
 
 // Earliest OpenCode with the v2 plugin surface this plugin needs:
@@ -84,7 +104,17 @@ export default {
     if (!versionAtLeast(ctx && ctx.app && ctx.app.version, MIN_VERSION))
       return () => {};
 
-    const hookPath = resolveHookPath();
+    // A wiring problem is reported, not thrown. OpenCode loads plugins
+    // during startup, so throwing here takes the whole editor down over a
+    // config file the user can fix with one command. The console line is
+    // the only place this can surface, so it names the exact command.
+    let hookPath;
+    try {
+      hookPath = resolveHookPath();
+    } catch (e) {
+      console.error("[aphotic opencode hooks] " + e.message);
+      return () => {};
+    }
     let closed = false;
 
     // sessionID -> { model, emittedModel, child, agentType, lastUsage }
