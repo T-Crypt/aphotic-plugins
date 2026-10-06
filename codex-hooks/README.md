@@ -1,10 +1,13 @@
 # Codex Agent Hooks
 
 Wires [Codex](https://developers.openai.com/codex) into
-[Aphotic-Hypr](https://github.com/T-Crypt/aphotic-hypr)'s agent-hook
-contract — the same contract [`claude-hooks`](../claude-hooks/) uses, so
-Codex sessions land in the bar's agent popout and the
-[Agent Graph](../agent-graph/) dashboard tab alongside Claude Code ones.
+[Aphotic-Hypr](https://github.com/T-Crypt/aphotic-hypr)'s v2
+agent-hook contract — the same contract [`claude-hooks`](../claude-hooks/)
+and [`opencode-hooks`](../opencode-hooks/) use, so Codex sessions land
+in the bar's agent popout, the
+[Agent Graph](../agent-graph/) dashboard tab and the agent audit
+alongside Claude Code ones, with the same stats: model, tokens and
+rate-limit windows.
 
 ## Requires
 
@@ -32,17 +35,33 @@ call. `SessionEnd` is capped at 3 seconds by Codex itself.
 hook schema, so this plugin wires six events where `claude-hooks` wires
 eight.
 
-Unlike Claude Code, Codex's payload needs a small translation first, so
-hooks point at this plugin's own `hook/codex_hook.sh` rather than core's
-`agent_hook.sh`. `hook/codex_hook.py` tags the record `harness =
-"codex"` (otherwise every session would be mislabeled `claude`), renames
-`SessionEnd`'s `reason` to the `end_reason` core reads, and normalizes
-Codex's tool aliases to the graph's vocabulary — `shell` → `Bash`,
-`apply_patch` → `Edit`, `spawn_agent` → `Agent`. MCP and function names
-like `mcp__filesystem__read_file` pass through untouched. Everything else
-already carries the right field names. The translation lives here, at
-the harness's own adapter boundary, rather than teaching core's
-`agent_hook.py` a second input shape.
+Codex's payload already carries Claude Code's field names
+(`session_id`, `tool_use_id`, `tool_name`, `transcript_path`), so the
+adapter mostly translates: it builds v2-contract records
+(`harness = "codex"`, contract event kinds and statuses,
+`SessionEnd`'s `reason` as the v2 `endReason` field) and hands core's
+`agent_hook.py` the finished record — one writer for every harness.
+Tool aliases still get normalized to the graph's vocabulary —
+`shell` → `Bash`, `apply_patch` → `Edit`, `spawn_agent` → `Agent`;
+MCP and function names like `mcp__filesystem__read_file` pass through
+untouched.
+
+Two things Codex does not say on the hook payload come off the
+session log the payload points at:
+
+- **tokens and rate limits.** Codex writes a `token_count` record
+  after every model response. On `PostToolUse`, `Stop` and
+  `SessionEnd` the adapter reads the newest one and adds a `usage`
+  record (per-response input/output/cache tokens) and, when windows
+  are present, a `quota` record (primary/secondary `usedPercent` and
+  `resetsAt`). Each `token_count` is counted once per session, so
+  summing the records gives the session total.
+- **the provider.** The log's first line names the `model_provider`
+  that served the session, so a Codex session on a local provider is
+  labelled with it rather than `openai`.
+
+The translation lives here, at the harness's own adapter boundary,
+rather than teaching core's `agent_hook.py` a second input shape.
 
 ## What it touches
 
