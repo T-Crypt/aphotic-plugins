@@ -73,8 +73,8 @@
     {
       "name": "agent-notch-tile",
       "display_name": "Agent Notch Tile",
-      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, active harness and phase, live subagent count, today's token usage, and the local provider's GPU VRAM claim.",
-      "version": "1.1.0",
+      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, the active harness and phase, a row per other live harness, live subagent count, today's token usage, and the local provider's GPU VRAM claim.",
+      "version": "1.2.0",
       "category": "ai",
       "capabilities": [
         "ui-surface"
@@ -112,7 +112,7 @@
       "name": "codex-hooks",
       "display_name": "Codex Agent Hooks",
       "description": "Wires Codex into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code: model, per-response tokens and rate-limit windows read off Codex's session logs.",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "category": "ai",
       "capabilities": [
         "harness-hook"

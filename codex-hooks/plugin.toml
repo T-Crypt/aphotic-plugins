@@ -2,7 +2,7 @@
 name = "codex-hooks"
 display_name = "Codex Agent Hooks"
 description = "Wires Codex into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code: model, per-response tokens and rate-limit windows read off Codex's session logs."
-version = "2.0.0"
+version = "2.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["harness-hook"]

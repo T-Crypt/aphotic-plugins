@@ -39,6 +39,39 @@ ColumnLayout {
 
     readonly property string harnessLabel: root.labelFor(AgentEvents.activeHarness)
 
+    // The harnesses beside the header's, one compact row each: which
+    // agents a machine runs at once is what the one-line readout above
+    // cannot say. One row per harness (its newest live session), the
+    // harness owning the header excluded, newest first.
+    readonly property var harnessRows: {
+        const byHarness = {};
+        for (const s of AgentEvents.liveSessions) {
+            if (!s.harness || s.harness === AgentEvents.activeHarness)
+                continue;
+            const current = byHarness[s.harness];
+            if (!current || s.updatedAt > current.updatedAt)
+                byHarness[s.harness] = s;
+        }
+        return Object.values(byHarness)
+            .sort((a, b) => b.updatedAt - a.updatedAt)
+            .map(s => ({
+                label: root.labelFor(s.harness),
+                icon: root.iconFor(s.harness),
+                status: s.status,
+                tool: s.tool,
+                subagents: (s.subagents ?? []).length
+            }));
+    }
+
+    // The bar's per-harness icons double as the row's; a harness the
+    // bar does not list (no uiMeta entry, or its plugin off) falls
+    // back to the plain terminal glyph rather than dropping out of the
+    // stack.
+    function iconFor(harnessId: string): string {
+        const provider = AgentProviders.providers.find(p => p.id === harnessId);
+        return provider?.icon ?? "terminal";
+    }
+
     readonly property string phaseLabel: {
         if (root.waitingCount > 0)
             return qsTr("waiting for input");
@@ -223,6 +256,53 @@ ColumnLayout {
                 text: root.waitingCount > 1 ? qsTr("%1 waiting").arg(root.waitingCount) : qsTr("waiting")
                 color: Colours.palette.m3onSecondaryContainer
                 font: Tokens.font.label.builders.small.weight(Font.Medium).build()
+            }
+        }
+    }
+
+    // The rest of the stack: one compact row per live harness other
+    // than the header's, so a machine running several agents at once
+    // reads out all of them. Not actionable -- focus-and-copy belongs
+    // to the waiting rows below, and a harness that is merely working
+    // or idle does not need the terminal forward.
+    Repeater {
+        model: root.harnessRows
+
+        RowLayout {
+            id: harnessRow
+
+            required property var modelData
+
+            Layout.fillWidth: true
+            spacing: Tokens.spacing.small
+
+            MaterialIcon {
+                text: harnessRow.modelData.icon
+                color: Colours.palette.m3onSurfaceVariant
+                fontStyle: Tokens.font.icon.small
+            }
+
+            StyledText {
+                text: qsTr("%1 — %2").arg(harnessRow.modelData.label).arg(harnessRow.modelData.status)
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.medium
+                elide: Text.ElideRight
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: harnessRow.modelData.tool !== ""
+                text: harnessRow.modelData.tool
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.small
+                elide: Text.ElideMiddle
+            }
+
+            StyledText {
+                visible: harnessRow.modelData.subagents > 0
+                text: qsTr("%1 subagents").arg(harnessRow.modelData.subagents)
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.label.small
             }
         }
     }
