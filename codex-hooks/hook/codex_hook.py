@@ -20,9 +20,12 @@ Two things Codex does not say on the hook payload:
     windows). On the events that close a model response
     (PostToolUse, Stop, SessionEnd) this adapter tails the log and
     adds a `usage` record and, when windows are present, a `quota`
-    record. `last_token_usage` is a per-response delta, the same
-    shape Claude's per-tool usage lines carry, so a consumer summing
-    usage records gets a session total, not a running total repeated.
+    record keyed the way the feed's consumers draw them (fiveHour and
+    sevenDay, resolved from each window's length), not Codex's own
+    primary/secondary names. `last_token_usage` is a per-response
+    delta, the same shape Claude's per-tool usage lines carry, so a
+    consumer summing usage records gets a session total, not a running
+    total repeated.
   * which provider served the session. The log's first line
     (session_meta) names `model_provider`, so a session running on a
     local provider is not mislabelled "openai".
@@ -146,6 +149,22 @@ def transcript_provider(path):
     return ""
 
 
+# Codex names its windows by position (primary/secondary); the feed's
+# consumers key them by shape. The window's own length is the fact to
+# resolve from: 300 minutes is the five-hour limit, 10080 the weekly
+# one. A length nobody recognises keeps its own name rather than
+# pretending to be a window it is not.
+_WINDOW_KEYS = {300: "fiveHour", 10080: "sevenDay"}
+
+
+def _window_key(name, minutes):
+    """The quota key for one rate limit window, or its raw name."""
+    if isinstance(minutes, bool) or not isinstance(minutes, int):
+        return name
+    key = _WINDOW_KEYS.get(minutes)
+    return key if key is not None else name
+
+
 def token_stats(payload):
     """(usage, quota) fields from one token_count payload, or None."""
     usage = None
@@ -182,7 +201,10 @@ def token_stats(payload):
             resets = window.get("resets_at")
             if not isinstance(resets, (int, float)) or isinstance(resets, bool):
                 resets = 0
-            windows[name] = {"usedPercent": percent, "resetsAt": int(resets)}
+            windows[_window_key(name, window.get("window_minutes"))] = {
+                "usedPercent": percent,
+                "resetsAt": int(resets),
+            }
         if windows:
             quota = windows
 

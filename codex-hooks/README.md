@@ -53,9 +53,12 @@ session log the payload points at:
   after every model response. On `PostToolUse`, `Stop` and
   `SessionEnd` the adapter reads the newest one and adds a `usage`
   record (per-response input/output/cache tokens) and, when windows
-  are present, a `quota` record (primary/secondary `usedPercent` and
-  `resetsAt`). Each `token_count` is counted once per session, so
-  summing the records gives the session total.
+  are present, a `quota` record (`usedPercent` and `resetsAt` per
+  window, keyed the way the feed's consumers draw them: Codex's
+  `primary`/`secondary` windows resolve to `fiveHour`/`sevenDay` from
+  their lengths, an unknown length keeps its own name). Each
+  `token_count` is counted once per session, so summing the records
+  gives the session total.
 - **the provider.** The log's first line names the `model_provider`
   that served the session, so a Codex session on a local provider is
   labelled with it rather than `openai`.

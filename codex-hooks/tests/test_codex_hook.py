@@ -303,9 +303,33 @@ def test_post_tool_use_adds_usage_and_quota_from_the_log():
     assert usage["cacheWriteTokens"] == 2
 
     quota = by_kind["quota"]
+    # Codex's positional names resolve to the feed's canonical window
+    # keys from each window's length (300 min -> fiveHour, 10080 ->
+    # sevenDay), which is what the consumers draw.
     assert quota["quota"] == {
-        "primary": {"usedPercent": 4.0, "resetsAt": 111},
-        "secondary": {"usedPercent": 5.0, "resetsAt": 222},
+        "fiveHour": {"usedPercent": 4.0, "resetsAt": 111},
+        "sevenDay": {"usedPercent": 5.0, "resetsAt": 222},
+    }
+
+
+def test_unknown_window_lengths_keep_their_own_names():
+    env = Env()
+    odd = dict(TOKEN_COUNT_10)
+    payload = dict(odd["payload"])
+    payload["rate_limits"] = {
+        "limit_id": "codex",
+        "primary": {"used_percent": 9.0, "window_minutes": 720, "resets_at": 333},
+    }
+    odd["ordinal"] = 12
+    odd["payload"] = payload
+    env.append_log(odd)
+    env.run(env.with_transcript(POST_TOOL)[0])
+    records = env.records(3)
+    by_kind = {r["event"]: r for r in records}
+    # 720 minutes is no window the feed knows: it stays under the name
+    # Codex gave it instead of being renamed to something false.
+    assert by_kind["quota"]["quota"] == {
+        "primary": {"usedPercent": 9.0, "resetsAt": 333},
     }
 
 
