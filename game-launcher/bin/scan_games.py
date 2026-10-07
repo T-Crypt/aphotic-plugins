@@ -235,6 +235,294 @@ def scan_steam(steam_command):
     return games
 
 
+# ── Lutris ──────────────────────────────────────────────────────────────
+
+def scan_lutris(lutris_command):
+    games = []
+    if not lutris_command:
+        return games
+    db = home() / ".local/share/lutris/pga.db"
+    if not db.is_file():
+        return games
+    try:
+        import sqlite3
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        rows = con.execute(
+            "SELECT slug, name, lastplayed FROM games "
+            "WHERE installed = 1 AND name IS NOT NULL AND name != ''"
+        ).fetchall()
+        con.close()
+    except Exception as exc:  # a corrupt DB degrades to no lutris games
+        warn(f"lutris: {exc}")
+        return games
+    coverart = home() / ".local/share/lutris/coverart"
+    for slug, name, lastplayed in rows:
+        cover = ""
+        for ext in ("jpg", "jpeg", "png"):
+            candidate = coverart / f"{slug}.{ext}"
+            if candidate.is_file():
+                cover = str(candidate)
+                break
+        games.append({
+            "name": name,
+            "source": "lutris",
+            "exec": f"{lutris_command} play {slug}",
+            "cover": cover,
+            "last_played": int(lastplayed or 0),
+            "playtime_hours": 0,
+            "appid": slug or "",
+        })
+    return games
+
+
+# ── Heroic ──────────────────────────────────────────────────────────────
+
+HEROIC_STORES = (("legendary", "epic"), ("gog_store", "gog"), ("nile_config", "amazon"))
+
+
+def _heroic_store(base, store_dir, runner, heroic_command):
+    games = []
+    library = base / "store_cache" / store_dir / "library.json"
+    if not library.is_file():
+        return games
+    try:
+        data = json.loads(library.read_text())
+    except (OSError, ValueError) as exc:
+        warn(f"heroic: {store_dir} unreadable: {exc}")
+        return games
+    installed = None
+    installed_file = base / "store_cache" / store_dir / "installed.json"
+    if installed_file.is_file():
+        try:
+            installed = {g.get("app_name") for g in json.loads(installed_file.read_text()).get("installed", [])}
+        except (OSError, ValueError) as exc:
+            warn(f"heroic: {store_dir} installed.json unreadable: {exc}")
+            installed = None  # unknown, so trust the library
+    for game in data.get("library", []):
+        app = game.get("app_name") or game.get("name") or ""
+        title = game.get("title") or game.get("name") or app
+        if not app or not title:
+            continue
+        if installed is not None and app not in installed:
+            continue
+        games.append({
+            "name": title,
+            "source": "heroic",
+            "exec": f"{heroic_command} --no-gui heroic://launch/{runner}/{app}",
+            "cover": game.get("art_cover") or game.get("art_square") or "",
+            "last_played": 0,
+            "playtime_hours": 0,
+            "appid": app,
+        })
+    return games
+
+
+def scan_heroic(heroic_command):
+    games = []
+    if not heroic_command:
+        return games
+    base = home() / ".config/heroic"
+    if not base.is_dir():
+        return games
+    for store_dir, runner in HEROIC_STORES:
+        games.extend(_heroic_store(base, store_dir, runner, heroic_command))
+    sideload = base / "sideload_apps" / "library.json"
+    if sideload.is_file():
+        try:
+            data = json.loads(sideload.read_text())
+        except (OSError, ValueError) as exc:
+            warn(f"heroic: sideload unreadable: {exc}")
+            data = {}
+        for game in data.get("games", []):
+            if not game.get("is_installed"):
+                continue
+            app = game.get("app_name") or ""
+            title = game.get("title") or app
+            if not app or not title:
+                continue
+            games.append({
+                "name": title,
+                "source": "heroic",
+                "exec": f"{heroic_command} --no-gui heroic://launch/sideload/{app}",
+                "cover": game.get("art_cover") or game.get("art_square") or "",
+                "last_played": 0,
+                "playtime_hours": 0,
+                "appid": app,
+            })
+    return games
+
+
+# ── Cartridges ──────────────────────────────────────────────────────────
+
+def _cartridges_dirs():
+    h = home()
+    return (
+        h / ".local/share/cartridges",
+        h / ".var/app/page.kramo.cartridges/data/cartridges",
+    )
+
+
+def scan_cartridges(cartridges_command):
+    games = []
+    for data_dir in _cartridges_dirs():
+        games_dir = data_dir / "games"
+        covers_dir = data_dir / "covers"
+        if not games_dir.is_dir():
+            continue
+        for path in sorted(games_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text())
+            except (OSError, ValueError) as exc:
+                warn(f"cartridges: {path.name} unreadable: {exc}")
+                continue
+            if not isinstance(data, dict):
+                continue
+            if data.get("hidden") or data.get("blacklisted") or data.get("removed"):
+                continue
+            name = (data.get("name") or "").strip()
+            if not name:
+                continue
+            executable = data.get("executable") or ""
+            if isinstance(executable, list):  # the app joins list forms
+                executable = " ".join(shlex.quote(part) for part in executable)
+            if not executable:
+                if not cartridges_command:
+                    continue  # unlaunchable: no own command, no client
+                executable = cartridges_command
+            cover = ""
+            game_id = data.get("game_id") or path.stem
+            for ext in ("gif", "tiff"):  # gif first: Qt animates it, tiff not
+                candidate = covers_dir / f"{game_id}.{ext}"
+                if candidate.is_file():
+                    cover = str(candidate)
+                    break
+            games.append({
+                "name": name,
+                "source": "cartridges",
+                "exec": executable,
+                "cover": cover,
+                "last_played": int(data.get("last_played") or 0),
+                "playtime_hours": 0,
+                "appid": game_id,
+            })
+    return games
+
+
+# ── Desktop entries ─────────────────────────────────────────────────────
+
+def scan_desktop():
+    games = []
+    desktop = home() / "Desktop"
+    if not desktop.is_dir():
+        return games
+    for path in sorted(desktop.glob("*.desktop")):
+        try:
+            text = path.read_text(errors="replace")
+        except OSError:
+            continue
+        values = {}
+        for line in text.splitlines():
+            match = re.match(r"^\s*([A-Za-z][A-Za-z0-9]*)=(.*)$", line)
+            if match:
+                values[match.group(1)] = match.group(2).strip()
+        name = values.get("Name") or path.stem
+        if any(k in name.lower() for k in EXCLUDE_KEYWORDS):
+            continue
+        exec_ = values.get("Exec", "")
+        if not exec_:
+            continue
+        exec_ = re.sub(r"%[A-Za-z]", "", exec_).strip()  # drop .desktop format args
+        icon = values.get("Icon", "")
+        cover = icon if icon and Path(icon).is_file() else ""
+        games.append({
+            "name": name,
+            "source": "desktop",
+            "exec": exec_,
+            "cover": cover,
+            "last_played": 0,
+            "playtime_hours": 0,
+            "appid": path.stem,
+        })
+    return games
+
+
+# ── Manual list ─────────────────────────────────────────────────────────
+
+def load_manual(path_str):
+    if not path_str:
+        return []
+    try:
+        data = json.loads(Path(path_str).read_text())
+    except (OSError, ValueError) as exc:
+        warn(f"manual list unreadable ({exc})")
+        return []
+    games = []
+    for entry in data if isinstance(data, list) else []:
+        name = (entry.get("name") or "").strip()
+        exec_ = (entry.get("exec") or "").strip()
+        if not name or not exec_:
+            continue
+        games.append({
+            "name": name,
+            "source": "manual",
+            "exec": exec_,
+            "cover": entry.get("cover") or "",
+            "last_played": 0,
+            "playtime_hours": 0,
+            "appid": "",
+        })
+    return games
+
+
+# ── Merge ───────────────────────────────────────────────────────────────
+
+def merge_games(all_games, settings):
+    """Filter, dedupe by name (source priority), apply box art and
+    favorites, sort."""
+    box_dir = settings.get("box_art_dir") or ""
+    favorites = set(settings.get("favorites") or [])
+
+    def box_art(name):
+        if not box_dir:
+            return ""
+        base = Path(box_dir).expanduser()
+        if not base.is_dir():
+            return ""
+        for ext in ("webp", "jpg", "jpeg", "png"):
+            candidate = base / f"{name}.{ext}"
+            if candidate.is_file():
+                return str(candidate)
+        return ""
+
+    best = {}
+    for game in all_games:
+        key = game["name"].strip().lower()
+        if not key:
+            continue
+        current = best.get(key)
+        if current is None or SOURCE_PRIORITY.get(game["source"], 0) > SOURCE_PRIORITY.get(current["source"], 0):
+            best[key] = game
+        elif SOURCE_PRIORITY.get(game["source"], 0) == SOURCE_PRIORITY.get(current["source"], 0):
+            for field in ("cover", "last_played", "playtime_hours", "appid"):
+                if not current.get(field) and game.get(field):
+                    current[field] = game[field]
+
+    merged = []
+    for game in best.values():
+        if not game.get("cover"):
+            game["cover"] = box_art(game["name"])
+        game["favorite"] = f"{game['name']}:{game['source']}" in favorites
+        merged.append(game)
+
+    if settings.get("sort_by", "recent") == "name":
+        merged.sort(key=lambda g: g["name"].lower())
+    else:
+        merged.sort(key=lambda g: (g.get("last_played") or 0, g.get("playtime_hours") or 0), reverse=True)
+    if settings.get("favorites_first", True):
+        merged.sort(key=lambda g: 0 if g["favorite"] else 1)
+    return merged
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--clients-only", action="store_true")
@@ -257,15 +545,27 @@ def main():
         return 0
 
     started = time.time()
-    games = []
-    # Task 2 appends the lutris / heroic / cartridges / desktop / manual
-    # sources here and then runs the merge below.
-    games.extend(scan_steam(clients["steam"]))
+    sources = settings.get("sources") or {}
+    def enabled(name, default=True):
+        return sources.get(name, default)
+
+    all_games = []
+    all_games.extend(load_manual(args.manual))
+    if enabled("steam"):
+        all_games.extend(scan_steam(clients["steam"]))
+    if enabled("lutris"):
+        all_games.extend(scan_lutris(clients["lutris"]))
+    if enabled("heroic"):
+        all_games.extend(scan_heroic(clients["heroic"]))
+    if enabled("cartridges"):
+        all_games.extend(scan_cartridges(clients["cartridges"]))
+    if enabled("desktop"):
+        all_games.extend(scan_desktop())
 
     result = {
         "clients": clients,
         "big_picture": bool(clients["steam"]),
-        "games": games,
+        "games": merge_games(all_games, settings),
     }
     print(json.dumps(result))
     warn(f"scanned {len(result['games'])} games in {time.time() - started:.2f}s")
