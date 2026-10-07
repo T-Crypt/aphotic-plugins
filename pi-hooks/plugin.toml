@@ -1,0 +1,26 @@
+[plugin]
+name = "pi-hooks"
+display_name = "Pi Agent Hooks"
+description = "Wires Pi and Oh My Pi (OMP) into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard: model, per-response tokens, context-window fill, and provider rate-limit windows on OMP."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["harness-hook"]
+
+# Deliberately no [requires] binaries: the gate is an AND over the listed
+# binaries, and this plugin targets two optional runtimes. wire.sh detects
+# each one individually and wires whichever is installed, so a pi-only (or
+# omp-only) machine keeps the plugin enabled, and a machine with neither
+# gets a clear refusal at wire time instead of a plugin that can never turn
+# on.
+
+[owns]
+external_config = [
+    "~/.pi/agent/extensions/aphotic_pi_hook.js (symlink)",
+    "~/.omp/agent/hooks/pre/aphotic_pi_hook.js (re-export shim: OMP's discovery scan ignores symlinks)",
+    "~/.local/state/aphotic/pi-hook.json (agent_hook.py path; honours XDG_STATE_HOME)",
+]
+
+[harness]
+wire = "hooks/wire.sh"
+unwire = "hooks/unwire.sh"
