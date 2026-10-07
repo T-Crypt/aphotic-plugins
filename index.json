@@ -402,6 +402,16 @@
       }
     },
     {
+      "name": "pi-hooks",
+      "display_name": "Pi Agent Hooks",
+      "description": "Wires Pi and Oh My Pi (OMP) into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard: model, per-response tokens, context-window fill, and provider rate-limit windows on OMP.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "harness-hook"
+      ]
+    },
+    {
       "name": "visualizer",
       "display_name": "Spectrum",
       "description": "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing.",
