@@ -154,11 +154,41 @@ def parse_shortcuts(text):
 
 # ── Steam ───────────────────────────────────────────────────────────────
 
+def _steam_localconfig():
+    """First existing localconfig.vdf among Steam's config layouts.
+
+    Steam has moved this file between layouts across versions; the
+    classic path and the per-user userdata layout both occur in the
+    wild, so probe both.
+    """
+    h = home()
+    candidates = [
+        h / ".config/steam/config/localconfig.vdf",
+        h / ".local/share/Steam/config/localconfig.vdf",
+        h / ".steam/steam/config/localconfig.vdf",
+    ]
+    userdata = h / ".local/share/Steam/userdata"
+    if userdata.is_dir():
+        candidates += sorted(
+            userdata.glob("*/config/localconfig.vdf"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 def _steam_playtime():
-    path = home() / ".config/steam/config/localconfig.vdf"
-    if not path.is_file():
+    path = _steam_localconfig()
+    if path is None:
         return {}
-    text = path.read_text(errors="replace")
+    try:
+        text = path.read_text(errors="replace")
+    except OSError as exc:
+        warn(f"steam: unreadable playtime feed {path.name}: {exc}")
+        return {}
     playtime = {}
     for block in re.finditer(r"app(\d+)\s*\{(.*?)\}", text, re.S):
         hours = re.search(r'HoursPlayed "(\d+(?:\.\d+)?)', block.group(2))
@@ -167,71 +197,121 @@ def _steam_playtime():
     return playtime
 
 
+def _steam_acf_dirs():
+    """Every Steam library's steamapps dir: the default one plus any
+    extra folders named in libraryfolders.vdf."""
+    h = home()
+    default = h / ".local/share/Steam/steamapps"
+    dirs = [default]
+    vdf = default / "libraryfolders.vdf"
+    if vdf.is_file():
+        try:
+            text = vdf.read_text(errors="replace")
+        except OSError as exc:
+            warn(f"steam: unreadable libraryfolders.vdf: {exc}")
+            text = ""
+        for match in re.finditer(r'"path"\s+"([^"]+)"', text):
+            dirs.append(Path(match.group(1)) / "steamapps")
+    seen, out = set(), []
+    for directory in dirs:
+        resolved = str(directory.expanduser())
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        out.append(directory)
+    return [d for d in out if d.is_dir()]
+
+
+def _acf_installed(data):
+    """True when a manifest holds game content on disk.
+
+    Steam records the install state in the State block. Some builds
+    omit the block entirely, so when it is absent we infer
+    installation from what is on disk: a named install dir with bytes
+    in it. When a State block is present it is authoritative: a game
+    only counts once it is unpacked or installed.
+    """
+    state = data.get("State", "")
+    if state:
+        keys = set(re.findall(r'"([A-Za-z_]\w*)"', state))
+        return bool(keys & {"UnpackComplete", "Installed", "installed"})
+    installdir = (data.get("installdir") or "").strip()
+    if not installdir:
+        return False
+    try:
+        size = int(data.get("SizeOnDisk") or "0")
+    except ValueError:
+        size = 0
+    return size > 0
+
+
 def scan_steam(steam_command):
     games = []
     if not steam_command:
         return games
-    acf_dir = home() / ".local/share/Steam/steamapps"
-    if not acf_dir.is_dir():
+    acf_dirs = _steam_acf_dirs()
+    if not acf_dirs:
         return games
     playtime = _steam_playtime()
+    seen_appids = set()
 
-    for acf in sorted(acf_dir.glob("appmanifest_*.acf")):
-        try:
-            data = parse_vdf_pairs(acf.read_text(errors="replace"))
-        except OSError as exc:
-            warn(f"steam: unreadable manifest {acf.name}: {exc}")
-            continue
-        appid = data.get("appid", "")
-        name = (data.get("name") or data.get("Name") or "").strip()
-        if not appid or not name or appid == "0":
-            continue
-        state = data.get("State", "")
-        if "UnpackComplete" not in state and "Installed" not in state:
-            continue  # in the library but not installed
-        if any(k in name.lower() for k in EXCLUDE_KEYWORDS):
-            continue
-        games.append({
-            "name": name,
-            "source": "steam",
-            "exec": f"{steam_command} -silent steam://rungameid/{appid}",
-            "cover": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg",
-            "last_played": 0,
-            "playtime_hours": playtime.get(appid, 0),
-            "appid": appid,
-        })
-
-    shortcuts_path = acf_dir / "shortcuts.vdf"
-    if shortcuts_path.is_file():
-        try:
-            text = shortcuts_path.read_text(errors="replace")
-        except OSError:
-            text = ""
-        for shortcut in parse_shortcuts(text):
-            name = shortcut["name"].strip()
-            if not name:
+    for acf_dir in acf_dirs:
+        for acf in sorted(acf_dir.glob("appmanifest_*.acf")):
+            try:
+                data = parse_vdf_pairs(acf.read_text(errors="replace"))
+            except OSError as exc:
+                warn(f"steam: unreadable manifest {acf.name}: {exc}")
                 continue
+            appid = data.get("appid", "")
+            name = (data.get("name") or data.get("Name") or "").strip()
+            if not appid or not name or appid == "0" or appid in seen_appids:
+                continue
+            if not _acf_installed(data):
+                continue  # in the library but not installed
             if any(k in name.lower() for k in EXCLUDE_KEYWORDS):
                 continue
-            if shortcut["appid"].isdigit() and shortcut["appid"] != "0":
-                exec_ = f"{steam_command} -silent steam://rungameid/{shortcut['appid']}"
-            elif shortcut["exe"]:
-                exec_ = shlex.quote(shortcut["exe"])
-                if shortcut["startdir"]:
-                    # StartDir is where the game wants to run from,
-                    # absolute or not: always cd into it first.
-                    exec_ = "cd {} && {}".format(shlex.quote(shortcut["startdir"]), exec_)
-            else:
-                continue
+            seen_appids.add(appid)
             games.append({
                 "name": name,
                 "source": "steam",
-                "exec": exec_,
-                "cover": "",
+                "exec": f"{steam_command} -silent steam://rungameid/{appid}",
+                "cover": f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/header.jpg",
                 "last_played": 0,
-                "playtime_hours": 0,
-                "appid": shortcut["appid"],
+                "playtime_hours": playtime.get(appid, 0),
+                "appid": appid,
             })
+
+        shortcuts_path = acf_dir / "shortcuts.vdf"
+        if shortcuts_path.is_file():
+            try:
+                text = shortcuts_path.read_text(errors="replace")
+            except OSError:
+                text = ""
+            for shortcut in parse_shortcuts(text):
+                name = shortcut["name"].strip()
+                if not name:
+                    continue
+                if any(k in name.lower() for k in EXCLUDE_KEYWORDS):
+                    continue
+                if shortcut["appid"].isdigit() and shortcut["appid"] != "0":
+                    exec_ = f"{steam_command} -silent steam://rungameid/{shortcut['appid']}"
+                elif shortcut["exe"]:
+                    exec_ = shlex.quote(shortcut["exe"])
+                    if shortcut["startdir"]:
+                        # StartDir is where the game wants to run from,
+                        # absolute or not: always cd into it first.
+                        exec_ = "cd {} && {}".format(shlex.quote(shortcut["startdir"]), exec_)
+                else:
+                    continue
+                games.append({
+                    "name": name,
+                    "source": "steam",
+                    "exec": exec_,
+                    "cover": "",
+                    "last_played": 0,
+                    "playtime_hours": 0,
+                    "appid": shortcut["appid"],
+                })
     return games
 
 

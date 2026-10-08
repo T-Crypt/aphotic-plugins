@@ -90,6 +90,57 @@ cat > "$HOME/.local/share/Steam/steamapps/appmanifest_912130.acf" <<'EOF'
 }
 EOF
 
+# No-State-block manifests (as some Steam builds write them): a real
+# install is found, an empty placeholder is not.
+cat > "$HOME/.local/share/Steam/steamapps/appmanifest_3164500.acf" <<'EOF'
+"AppState"
+{
+	"appid" "3164500"
+	"Universe" "1"
+	"name" "Schedule I"
+	"installdir" "Schedule I"
+	"SizeOnDisk" "7417849141"
+}
+EOF
+cat > "$HOME/.local/share/Steam/steamapps/appmanifest_999999.acf" <<'EOF'
+"AppState"
+{
+	"appid" "999999"
+	"Universe" "1"
+	"name" "Ghost App"
+	"installdir" ""
+	"SizeOnDisk" "0"
+}
+EOF
+
+# A second Steam library named in libraryfolders.vdf must be scanned too.
+mkdir -p "$HOME/libraries/games/steamapps"
+cat > "$HOME/.local/share/Steam/steamapps/libraryfolders.vdf" <<EOF
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"$HOME/.local/share/Steam"
+	}
+	"1"
+	{
+		"path"		"$HOME/libraries/games"
+	}
+}
+EOF
+cat > "$HOME/libraries/games/steamapps/appmanifest_400.acf" <<'EOF'
+"AppState"
+{
+	"appid" "400"
+	"Universe" "1"
+	"name" "Portal"
+	"State"
+	{
+		"UnpackComplete" "1"
+	}
+}
+EOF
+
 # Playtime feed.
 cat > "$HOME/.config/steam/config/localconfig.vdf" <<'EOF'
 "UserLocal"
@@ -229,6 +280,13 @@ echo "$OUT" | jq -e '.big_picture == true' >/dev/null || fail "big_picture follo
 echo "$OUT" | jq -e '[.games[] | select(.appid == "730" or .appid == "550")] | map(.name) | sort == ["Counter-Strike 2", "Left 4 Dead 2"]' >/dev/null || fail "steam library list wrong: $OUT"
 echo "$OUT" | jq -e '.games[] | select(.appid == "730") | .playtime_hours == 120' >/dev/null || fail "playtime not read from localconfig"
 echo "$OUT" | jq -e '[.games[] | select(.appid == "730") | .exec] == [(.clients.steam + " -silent steam://rungameid/730")]' >/dev/null || fail "steam exec wrong"
+
+# An install with no State block (some Steam builds write it that way) is
+# found by its on-disk footprint; an empty placeholder manifest is not.
+echo "$OUT" | jq -e '[.games[] | select(.appid == "3164500") | {name, source, exec}] == [{name: "Schedule I", source: "steam", exec: (.clients.steam + " -silent steam://rungameid/3164500")}]' >/dev/null || fail "no-State install missed"
+echo "$OUT" | jq -e '[.games[] | select(.appid == "999999")] | length == 0' >/dev/null || fail "empty placeholder manifest leaked in"
+# A second Steam library named in libraryfolders.vdf is scanned too.
+echo "$OUT" | jq -e '.games[] | select(.appid == "400") | .name == "Portal" and .source == "steam"' >/dev/null || fail "second library folder not scanned"
 
 # Own-exe shortcut: cd into StartDir and run the binary.
 echo "$OUT" | jq -e '.games[] | select(.name == "MyGame") | .exec == "cd /opt/mygame && /opt/mygame/mygame"' >/dev/null || fail "own-exe shortcut exec wrong"
