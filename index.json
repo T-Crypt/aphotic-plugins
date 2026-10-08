@@ -214,6 +214,62 @@
       ]
     },
     {
+      "name": "game-launcher",
+      "display_name": "Game Launcher",
+      "description": "A visual game library on the workspace plane. Finds installed games from Steam, Lutris, Heroic, Cartridges and desktop entries, launches each with its own command, and yields its surfaces to the Gaming profile while a game runs.",
+      "version": "1.0.0",
+      "category": "gaming",
+      "capabilities": [
+        "ui-surface"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "games",
+            "icon": "sports_esports",
+            "label": "Games",
+            "component": "qml/GamesNotchTile.qml",
+            "requires_layer": "gaming",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "settings",
+            "id": "games",
+            "icon": "sports_esports",
+            "label": "Games",
+            "component": "qml/GamesPane.qml",
+            "requires_layer": "gaming",
+            "requires_data": "",
+            "parent": "power",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "workspace",
+            "id": "gameLibrary",
+            "icon": "sports_esports",
+            "label": "Games",
+            "component": "qml/GameLauncherWorkspace.qml",
+            "requires_layer": "gaming",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "gaming",
       "display_name": "Gaming Profile",
       "description": "Desktop-shell coordination around a running game: gamemode detection, do-not-disturb while you play, a foreground GPU VRAM claim so a local model yields the memory, and a Flow workload passport with frame-shelter requests to other profiles on hosts that carry them.",

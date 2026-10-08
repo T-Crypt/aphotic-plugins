@@ -1,0 +1,7 @@
+module qs.modules.plugins.gameLauncher
+singleton GameLauncherService 1.0 GameLauncherService.qml
+GameLauncherWorkspace 1.0 GameLauncherWorkspace.qml
+GameCard 1.0 GameCard.qml
+BigPictureView 1.0 BigPictureView.qml
+GamesPane 1.0 GamesPane.qml
+GamesNotchTile 1.0 GamesNotchTile.qml

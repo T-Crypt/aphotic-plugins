@@ -1,0 +1,38 @@
+shelter = "unload"
+
+[plugin]
+name = "game-launcher"
+display_name = "Game Launcher"
+description = "A visual game library on the workspace plane. Finds installed games from Steam, Lutris, Heroic, Cartridges and desktop entries, launches each with its own command, and yields its surfaces to the Gaming profile while a game runs."
+version = "1.0.0"
+author = "T-Crypt"
+category = "gaming"
+capabilities = ["ui-surface"]
+
+[requires]
+binaries = ["python3"]
+
+[owns]
+external_config = ["~/.config/aphotic/plugins/game-launcher/"]
+
+[ui.workspace]
+id = "gameLibrary"
+icon = "sports_esports"
+label = "Games"
+component = "qml/GameLauncherWorkspace.qml"
+requires_layer = "gaming"
+
+[ui.settings_pane]
+id = "games"
+icon = "sports_esports"
+label = "Games"
+component = "qml/GamesPane.qml"
+parent = "power"
+requires_layer = "gaming"
+
+[ui.notch_tile]
+id = "games"
+icon = "sports_esports"
+label = "Games"
+component = "qml/GamesNotchTile.qml"
+requires_layer = "gaming"
