@@ -56,6 +56,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | Plugin | What you get |
 |---|---|
 | [`gaming`](gaming/) | Spots a running game, turns on Do Not Disturb, and gives the game first claim on the GPU. |
+| [`game-launcher`](game-launcher/) | A visual game library on the workspace plane: it finds your installed games, launches each with its own command, and gets out of the way while you play. |
 | [`workspace-session-log`](workspace-session-log/) | A local log of when you launch each Workspace Profile. |
 
 Some plugins only work with the matching install layer (AI, Dev or Gaming) from the Aphotic
