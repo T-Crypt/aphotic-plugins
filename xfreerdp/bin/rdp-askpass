@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Password prompt for FreeRDP, pointed at by $FREERDP_ASKPASS.
+#
+# FreeRDP invokes the askpass program with its own prompt as arguments, so
+# the value must be a bare executable path rather than a command line.
+# Setting FREERDP_ASKPASS="zenity --password" runs `zenity "--password"`
+# with FreeRDP's prompts appended, which zenity treats as filenames to open:
+# it fails silently and FreeRDP waits forever. This wrapper keeps the
+# prompts to itself and prints only the password, which is all FreeRDP reads
+# from stdout, and exits non-zero printing nothing when the dialog is
+# cancelled.
+
+exec zenity --password --title="Remote Desktop"
