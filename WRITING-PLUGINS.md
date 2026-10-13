@@ -52,6 +52,10 @@ whichever `capabilities` your plugin actually implements:
   (detection, lifecycle, resource claims). `gaming/` is the worked
   example. Resource claims and snapshot parts are declared by the
   component itself, never a second time in the manifest.
+- `keybind` - paired with a `[keybind]` block: a combo the shell binds in
+  the running compositor session while the plugin is installed, enabled
+  and past its gate. No config file is edited, and the bind is released
+  the moment the plugin is disabled, gated off or removed.
 
 ## Declaring dependencies
 
@@ -99,6 +103,35 @@ already in scope exactly as they are for a core command, and `$@` is the
 command's arguments. Use `return`, not `exit`. `llm-fit/cli/ai_fit.sh` is
 the worked example — it was core's `aphotic ai fit` until this capability
 existed.
+
+## `[keybind]` - a combo the plugin owns while it is enabled
+
+```toml
+capabilities = ["keybind"]
+
+[keybind]
+combo = "SUPER + ALT + P"     # required. Canonical Lua form, " + "-separated, key last
+action = "connect"            # required. An action id this manifest declares
+description = "Toggle RDP"    # optional. The cheatsheet label
+requires_layer = "gaming"     # optional. Same gate vocabulary as a surface
+requires_data = "harness"
+```
+
+The combo runs that action through the same path the command palette and
+`aphotic` IPC use, so a keybind never registers a second way to do the thing.
+Sections are `[keybind]` through `[keybind_5]`, flat and single valued like
+every other block. One combo per plugin is the intent today; a second is the
+trigger to grow the reader, the same reasoning `[action]`'s numbering follows.
+
+The shell binds through the compositor's runtime IPC, so nothing the plugin
+declares ever lands in a config file, and the user's own binds are left alone.
+A combo already taken by another plugin cannot be detected in advance: the
+last registration wins and the shell logs the conflict. Pick something the
+shell does not already use.
+
+Declaring `keybind` on a shell with no host for it does not block the install:
+the plugin is reported as partially hosted and that one part stays dark until
+Aphotic is updated.
 
 Then rebuild the catalogue:
 
