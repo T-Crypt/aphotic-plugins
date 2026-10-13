@@ -14,7 +14,7 @@ because nothing about it is special-cased.
   connect` builds the argv from it, and `aphotic xfreerdp connect
   --dry-run` prints that argv without connecting, so you can see exactly
   what would run.
-- **The Windows key gets through.** `/grab-keyboard` is on by default, so
+- **The Windows key gets through.** `-grab-keyboard` is on by default, so
   the remote session sees `SUPER` instead of the compositor eating it.
   Turn it off in the pane if you would rather keep `SUPER` local.
 - **Microphone and camera.** The session carries your local microphone and
@@ -26,7 +26,8 @@ because nothing about it is special-cased.
   behaviour the hand-written launcher had.
 - **No password anywhere.** The session prompts for it through a
   `zenity` dialog pointed at by `FREERDP_ASKPASS`. Nothing is stored, and
-  nothing reaches the command line where `ps` would show it.
+  nothing reaches the command line where `ps` would show it: a password
+  flag in the extra arguments is refused, with the reason.
 
 ## The settings file
 
@@ -73,7 +74,11 @@ Worth knowing:
   keeps workspace flipping normal.
 - `window.fullscreen` is off by default so `SUPER + SHIFT + F` stays the
   manual entry.
-- `extra` is appended to the argv as typed, split on spaces.
+- `extra` is appended to the argv as typed, split on spaces. A flag that
+  carries a password is refused with an error instead of being passed on:
+  `/p:`, `-p:`, `+p:`, `/pth:`, `/assistance:`, and a credential inside a
+  `/gateway:` or `/proxy:` argument. The session asks for the password, so
+  it never turns up in `ps`.
 
 ## The keybind
 
@@ -88,8 +93,12 @@ Until you have updated, point your own config at the command instead. In
 `~/.config/hypr/custom.lua`:
 
 ```lua
-hl.bind("SUPER + ALT + P", "aphotic xfreerdp connect", { description = "Toggle RDP" })
+hl.bind("SUPER + ALT + P", hl.dsp.exec_cmd("aphotic xfreerdp connect"), { description = "Toggle RDP" })
 ```
+
+The second argument has to be a dispatcher (`hl.dsp.exec_cmd(...)`), not a
+bare command string: Hyprland wants an `HL.Dispatcher` there, and the same
+form is what the shell generates for its own binds.
 
 That is one bind replacing the window-find-and-launch block, and it is
 local to your machine: nothing here writes to a compositor config.

@@ -532,7 +532,7 @@ ColumnLayout {
         SettingsRow {
             icon: "terminal"
             label: qsTr("Extra arguments")
-            description: qsTr("Passed to xfreerdp3 as typed, split on spaces, after everything above")
+            description: qsTr("Passed to xfreerdp3 as typed, split on spaces, after everything above. A flag carrying a password is refused, because the session asks for it instead.")
 
             StyledRect {
                 implicitWidth: root.fieldWidth
