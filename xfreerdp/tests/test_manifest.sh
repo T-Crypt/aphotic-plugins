@@ -120,8 +120,15 @@ grep -qE '\bexit\b' "$PLUGIN/cli/rdp.sh" && fail "cli/rdp.sh must use return, no
 grep -qE '\breturn\b' "$PLUGIN/cli/rdp.sh" || fail "cli/rdp.sh never returns"
 
 # The password is asked for, never carried on the command line where `ps`
-# would show it.
-grep -qF '/p:' "$PLUGIN/cli/rdp.sh" && fail "cli/rdp.sh passes a password argument"
+# would show it: this script builds no password argument of its own, and the
+# one field a user could paste one into is refused by name.
+# tests/test_rdp_cli.sh pins that refusal for every spelling FreeRDP takes.
+if grep -qE '_rdp_argv\+=\(.*[-/]p:' "$PLUGIN/cli/rdp.sh"; then
+    fail "cli/rdp.sh builds a password argument"
+fi
+if ! grep -qF '_rdp_is_secret_flag' "$PLUGIN/cli/rdp.sh"; then
+    fail "cli/rdp.sh no longer refuses a password flag in the extra field"
+fi
 grep -qF 'FREERDP_ASKPASS' "$PLUGIN/cli/rdp.sh" || fail "cli/rdp.sh does not point FreeRDP at the askpass helper"
 grep -qF 'zenity --password' "$PLUGIN/bin/rdp-askpass" || fail "bin/rdp-askpass no longer prompts through zenity"
 

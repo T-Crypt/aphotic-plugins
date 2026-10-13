@@ -215,6 +215,105 @@ out="$(run_rdp connect 2>"$TEST_ROOT/err")" || rc=$?
 grep -q 'settings.json' "$TEST_ROOT/err" || fail "the corrupt-file error does not name the file"
 [[ -s "$SETSID_LOG" ]] && fail "a corrupt profile still launched a session"
 
+# Valid JSON of the wrong shape (an array where an object belongs) makes jq
+# itself fail, which used to end in the same bash crash as a newline.
+use_profile "$FIXTURE"
+printf '{"mic":[]}' > "$TEST_ROOT/config/plugins/xfreerdp/settings.json"
+rc=0
+out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || rc=$?
+[[ "$rc" -eq 1 ]] || fail "a wrongly shaped settings file must fail, got exit ${rc}"
+[[ -z "$out" ]] || fail "a wrongly shaped settings file still printed an argv"
+grep -q 'settings.json' "$TEST_ROOT/err" || fail "the wrongly shaped file error does not name the file"
+grep -q 'unbound variable' "$TEST_ROOT/err" && fail "a wrongly shaped file still reaches bash as an unbound variable"
+
+# ------------------------------------------ values a shell cannot carry
+
+# A newline in a value is reachable from the pane (a single-line TextInput
+# still keeps one through paste, and setHost trims only the ends). It used
+# to cut the record short and abort the CLI with `f[1]: unbound variable`:
+# a raw bash error, no message, nothing run. It has to come back as a
+# refusal that names the setting.
+jq '.host = "good.example\nBAD.example"' "$FIXTURE" > "$TEST_ROOT/newline-host.json"
+use_profile "$TEST_ROOT/newline-host.json"
+rc=0
+out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || rc=$?
+[[ "$rc" -eq 1 ]] || fail "a newline in the host must be refused, got exit ${rc}"
+[[ -z "$out" ]] || fail "a newline in the host still printed an argv"
+grep -q "'host'" "$TEST_ROOT/err" || fail "the newline refusal does not name the host setting"
+grep -q 'line break' "$TEST_ROOT/err" || fail "the newline refusal does not say what is wrong"
+grep -q 'unbound variable' "$TEST_ROOT/err" && fail "a newline still reaches bash as an unbound variable"
+
+# The same value in extra used to drop every flag after the newline without
+# a word about it.
+jq '.extra = "/f\n/bpp:16"' "$FIXTURE" > "$TEST_ROOT/newline-extra.json"
+use_profile "$TEST_ROOT/newline-extra.json"
+rc=0
+out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || rc=$?
+[[ "$rc" -eq 1 ]] || fail "a newline in extra must be refused, got exit ${rc}"
+[[ -z "$out" ]] || fail "a newline in extra still printed an argv"
+grep -q "'extra'" "$TEST_ROOT/err" || fail "the newline refusal does not name the extra setting"
+
+# A NUL cannot travel in a bash variable at all, so a value holding one is
+# refused as a damaged record rather than read as a shifted field list.
+jq '.host = "a\u0000b"' "$FIXTURE" > "$TEST_ROOT/nul-host.json"
+use_profile "$TEST_ROOT/nul-host.json"
+rc=0
+out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || rc=$?
+[[ "$rc" -eq 1 ]] || fail "a NUL in a value must be refused, got exit ${rc}"
+[[ -z "$out" ]] || fail "a NUL in a value still printed an argv"
+grep -q 'settings.json' "$TEST_ROOT/err" || fail "the damaged-record error does not name the file"
+grep -q 'unbound variable' "$TEST_ROOT/err" && fail "a NUL still reaches bash as an unbound variable"
+
+# --------------------------------------------------- password flags
+
+# `extra` is passed as typed, so it is the one field a password could reach
+# the argv through, where `ps` would show it. The README and the pane both
+# say that cannot happen; the boundary refuses it instead. FreeRDP treats
+# /p:, -p: and +p: as one flag, so all three are refused, along with the
+# flags that carry a credential in the same argument.
+while read -r flag; do
+    jq --arg f "$flag" '.extra = ("/f " + $f)' "$FIXTURE" > "$TEST_ROOT/password.json"
+    use_profile "$TEST_ROOT/password.json"
+    reset_state
+    rc=0
+    out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || rc=$?
+    [[ "$rc" -eq 1 ]] || fail "'${flag}' in extra must be refused, got exit ${rc}"
+    [[ -z "$out" ]] || fail "'${flag}' still printed an argv"
+    grep -q "'extra'" "$TEST_ROOT/err" || fail "the refusal for '${flag}' does not name the extra setting"
+    grep -q 'unbound variable' "$TEST_ROOT/err" && fail "'${flag}' still reaches bash as an unbound variable"
+done <<'FLAGS'
+/p:hunter2
+-p:hunter2
++p:hunter2
+/p
+/pth:deadbeef
+-assistance:hunter2
+/gateway:g:host,u:u,p:hunter2
+/proxy:http://user:hunter2@127.0.0.1:3128
+FLAGS
+
+# And the launch path refuses it too, not just the dry run.
+jq '.extra = "/f /p:hunter2"' "$FIXTURE" > "$TEST_ROOT/password.json"
+use_profile "$TEST_ROOT/password.json"
+reset_state
+rc=0
+run_rdp connect 2>"$TEST_ROOT/err" || rc=$?
+[[ "$rc" -eq 1 ]] || fail "a password flag must refuse the launch, got exit ${rc}"
+[[ -s "$SETSID_LOG" ]] && fail "a password flag still launched a session"
+
+# A gateway to a host whose port looks like the flag, and a proxy URL with a
+# bare user, carry nothing and must still be passed through.
+while read -r flag; do
+    jq --arg f "$flag" '.extra = $f' "$FIXTURE" > "$TEST_ROOT/clearextra.json"
+    use_profile "$TEST_ROOT/clearextra.json"
+    out="$(run_rdp connect --dry-run 2>"$TEST_ROOT/err")" || fail "'${flag}' must not be refused: $(cat "$TEST_ROOT/err")"
+    [[ "$(tail -1 <<<"$out")" == "$flag" ]] || fail "'${flag}' did not reach the argv as one argument"
+done <<'FLAGS'
+/gateway:g:rdp:443,u:u,d:domain
+/proxy:http://127.0.0.1:3128
+/prevent-session-lock
+FLAGS
+
 # ------------------------------------------------------------ toggle
 
 use_profile "$FIXTURE"

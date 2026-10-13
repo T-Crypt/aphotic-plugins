@@ -11,7 +11,9 @@
 # written by the Settings > Network > Remote Desktop pane and read by
 # nothing else. No password is ever read from it, passed on a command line
 # or stored anywhere: the session asks through FREERDP_ASKPASS, which is
-# why `ps` never shows a password.
+# why `ps` never shows a password. The free-form `extra` tail is the one
+# field a password could reach the argv through, so a flag that carries one
+# is refused there (_rdp_is_secret_flag) instead of being handed over.
 #
 # The argv below follows the proven wrapper this replaces (~/.local/bin/
 # work-rdp) field for field, including the two that look odd and are not:
@@ -80,45 +82,83 @@ _rdp_wait_for_class() {
     return 1
 }
 
-# Every field of the profile, in one jq call and in the argv's own order.
-# Fields are joined with a unit separator rather than newlines so a value
-# can hold anything printable without splitting the stream, and every key is
-# defaulted here: a settings file holding only `host` still produces a
-# complete session, because the merge lives in the pane and this is the
-# reader that has to agree with it.
+# True for an extra argument that would put a secret in this process's
+# command line, where `ps` shows it. FreeRDP takes the password there, and
+# `/p:`, `-p:` and `+p:` are one flag to its own parser, which warns about
+# the exposure itself. /pth:, /assistance: and a credential inside a gateway
+# or proxy argument leak the same way. This plugin asks through
+# FREERDP_ASKPASS instead and says so, so these are refused rather than
+# handed to xfreerdp.
+_rdp_is_secret_flag() {
+    local key="$1"
+
+    # FreeRDP drops one of /, - or + from the front of every argument, so
+    # which spelling a user typed says nothing about which flag it is.
+    case "$key" in
+        /* | -* | +*) key="${key#[-/+]}" ;;
+        *) return 1 ;;
+    esac
+    key="${key#[-/+]}"
+
+    case "$key" in
+        p | p:* | pth:* | assistance:*)
+            return 0
+            ;;
+    esac
+
+    # A credential carried inside a gateway or proxy string: `,p:<secret>` in
+    # the gateway's comma separated form, `user:password@` in a proxy URL.
+    # Both are anchored to those shapes, so a gateway to a host called
+    # `rdp:443` and a proxy URL with no password in it are left alone.
+    if [[ "$key" == gateway:* && "$key" =~ (^|,)p: ]]; then
+        return 0
+    fi
+    if [[ "$key" == proxy:* && "$key" =~ :[^:@/]*@ ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+# Every field of the profile, from one jq call, as name/value pairs with a
+# NUL after each half. Nothing here is line based: jq writes a real newline
+# for a "\n" in a value, and a reader that stopped at one used to cut the
+# record short and abort the CLI with a bash unbound variable instead of an
+# error. The names come out of this list too, so a refusal can name the
+# setting someone has to fix rather than an index nobody can map back.
 #
-# The trailing "end" is a sentinel, not a field: `read -a` drops a trailing
-# empty field, and `extra` is empty in every profile that has no free-form
-# arguments, so without it the last field would sometimes not exist at all.
+# Every key is defaulted here: a settings file holding only `host` still
+# produces a complete session, because the merge lives in the pane and this
+# is the reader that has to agree with it.
 _rdp_read_settings() {
-    jq -r '
-        # jq'"'"'s `//` operator yields the right hand side for false as well as
-        # null, so `.mic.enabled // true` would turn a disabled microphone
-        # back on. This is the null-only default both this reader and the
-        # pane actually mean.
+    jq -j '
+        # `//` yields the right hand side for false as well as null, so
+        # `.mic.enabled // true` would turn a disabled microphone back on.
+        # This is the null-only default both this reader and the pane mean.
         def d($v; $fallback): if $v == null then $fallback else $v end;
         [
-          d(.host; ""),
-          (d(.port; 3389) | tostring),
-          d(.user; ""),
-          d(.sec; "nla"),
-          d(.cert; "ignore"),
-          (d(.mic.enabled; true) | tostring),
-          d(.mic.device; ""),
-          d(.speaker.device; ""),
-          (d(.camera.enabled; true) | tostring),
-          d(.resolution.mode; "dynamic"),
-          (d(.resolution.width; 1920) | tostring),
-          (d(.resolution.height; 1080) | tostring),
-          d(.window.class; "work-rdp"),
-          (d(.window.grab_keyboard; true) | tostring),
-          (d(.window.auto_reconnect; true) | tostring),
-          d(.window.gfx; "AVC420"),
-          d(.window.workspace; "none"),
-          (d(.window.fullscreen; false) | tostring),
-          d(.extra; ""),
-          "end"
-        ] | join("\u001f")
+          ["host",                   d(.host; "")],
+          ["port",                   (d(.port; 3389) | tostring)],
+          ["user",                   d(.user; "")],
+          ["sec",                    d(.sec; "nla")],
+          ["cert",                   d(.cert; "ignore")],
+          ["mic.enabled",            (d(.mic.enabled; true) | tostring)],
+          ["mic.device",             d(.mic.device; "")],
+          ["speaker.device",         d(.speaker.device; "")],
+          ["camera.enabled",         (d(.camera.enabled; true) | tostring)],
+          ["resolution.mode",        d(.resolution.mode; "dynamic")],
+          ["resolution.width",       (d(.resolution.width; 1920) | tostring)],
+          ["resolution.height",      (d(.resolution.height; 1080) | tostring)],
+          ["window.class",           d(.window.class; "work-rdp")],
+          ["window.grab_keyboard",   (d(.window.grab_keyboard; true) | tostring)],
+          ["window.auto_reconnect",  (d(.window.auto_reconnect; true) | tostring)],
+          ["window.gfx",             d(.window.gfx; "AVC420")],
+          ["window.workspace",       d(.window.workspace; "none")],
+          ["window.fullscreen",      (d(.window.fullscreen; false) | tostring)],
+          ["extra",                  d(.extra; "")]
+        ]
+        | .[]
+        | .[0] + "\u0000" + (.[1] | tostring) + "\u0000"
     ' "$_rdp_settings"
 }
 
@@ -126,66 +166,105 @@ _rdp_read_settings() {
 # only places a value can remove a flag entirely: no /u: when the profile
 # names no user (FreeRDP prompts instead), no /microphone: when the mic is
 # off, no /dvc:rdpecam when the camera is off.
+#
+# Returns non-zero, with a message someone can act on, for a profile this
+# reader cannot turn into a command line: a record that did not arrive
+# whole, a value with a line break in it, or a password flag. Anything a
+# user can write into the settings file has to come back as an aphotic_err,
+# never as a raw bash error out of the caller's `set -e`.
 _rdp_build_argv() {
-    local -a f
+    local -a rec
     local -a extra
-    IFS=$'\x1f' read -r -a f <<<"$1"
+    local -A f=()
+    local i name value n
 
-    _rdp_argv=("-v:${f[0]}:${f[1]}")
+    mapfile -d '' -t rec < <(_rdp_read_settings)
+    n=${#rec[@]}
 
-    if [[ -n "${f[2]}" ]]; then
-        _rdp_argv+=("/u:${f[2]}")
+    # The record is name/value pairs in the order above, headed by `host`
+    # and tailed by `extra`. Anything else means the record was damaged on
+    # the way here (a NUL inside a value, a read cut short), and refusing
+    # beats guessing at a shape that is already wrong.
+    if (( n < 2 || n % 2 != 0 )) || [[ "${rec[0]}" != "host" || "${rec[n - 2]}" != "extra" ]]; then
+        aphotic_err "cannot read ${_rdp_settings}: it is not a profile this plugin writes"
+        return 1
     fi
 
-    _rdp_argv+=("/sec:${f[3]}")
-    _rdp_argv+=("/cert:${f[4]}")
-    _rdp_argv+=("/size:${f[10]}x${f[11]}")
+    for ((i = 0; i < n; i += 2)); do
+        name="${rec[i]}"
+        value="${rec[i + 1]}"
+        # Every field is a single line, because the pane's inputs are and
+        # FreeRDP has nothing to do with a line break in a host or a flag.
+        # Refusing by name is also what stops a pasted newline from cutting
+        # `extra` short and dropping the flags after it without a word.
+        if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+            aphotic_err "the '${name}' setting has a line break -- fix it in Settings > Network > Remote Desktop"
+            return 1
+        fi
+        f["$name"]="$value"
+    done
 
-    if [[ "${f[9]}" == "dynamic" ]]; then
+    _rdp_argv=("-v:${f[host]:-}:${f[port]:-}")
+
+    if [[ -n "${f[user]:-}" ]]; then
+        _rdp_argv+=("/u:${f[user]}")
+    fi
+
+    _rdp_argv+=("/sec:${f[sec]:-}")
+    _rdp_argv+=("/cert:${f[cert]:-}")
+    _rdp_argv+=("/size:${f[resolution.width]:-}x${f[resolution.height]:-}")
+
+    if [[ "${f[resolution.mode]:-}" == "dynamic" ]]; then
         _rdp_argv+=("/dynamic-resolution")
     fi
 
-    if [[ "${f[8]}" == "true" ]]; then
+    if [[ "${f[camera.enabled]:-}" == "true" ]]; then
         _rdp_argv+=("/dvc:rdpecam")
     fi
 
-    _rdp_argv+=("/gfx:${f[15]}")
+    _rdp_argv+=("/gfx:${f[window.gfx]:-}")
 
-    if [[ -n "${f[7]}" ]]; then
-        _rdp_argv+=("/sound:sys:pulse,dev:${f[7]}")
+    if [[ -n "${f[speaker.device]:-}" ]]; then
+        _rdp_argv+=("/sound:sys:pulse,dev:${f[speaker.device]}")
     else
         _rdp_argv+=("/sound:sys:pulse")
     fi
 
-    if [[ "${f[5]}" == "true" ]]; then
-        if [[ -n "${f[6]}" ]]; then
-            _rdp_argv+=("/microphone:sys:pulse,dev:${f[6]}")
+    if [[ "${f[mic.enabled]:-}" == "true" ]]; then
+        if [[ -n "${f[mic.device]:-}" ]]; then
+            _rdp_argv+=("/microphone:sys:pulse,dev:${f[mic.device]}")
         else
             _rdp_argv+=("/microphone:sys:pulse")
         fi
     fi
 
-    _rdp_argv+=("/wm-class:${f[12]}")
+    _rdp_argv+=("/wm-class:${f[window.class]:-}")
 
-    if [[ "${f[14]}" == "true" ]]; then
+    if [[ "${f[window.auto_reconnect]:-}" == "true" ]]; then
         _rdp_argv+=("/auto-reconnect")
     fi
 
-    if [[ "${f[13]}" == "true" ]]; then
+    if [[ "${f[window.grab_keyboard]:-}" == "true" ]]; then
         _rdp_argv+=("-grab-keyboard")
     fi
 
     # The free-form tail is split once here, never re-expanded, so a value
     # with a quote or a space in it reaches xfreerdp as the user typed it.
-    if [[ -n "${f[18]}" ]]; then
-        read -r -a extra <<<"${f[18]}"
+    if [[ -n "${f[extra]:-}" ]]; then
+        read -r -a extra <<<"${f[extra]}"
+        for word in "${extra[@]}"; do
+            if _rdp_is_secret_flag "$word"; then
+                aphotic_err "the 'extra' setting carries a password ('${word}'): the session asks for it through zenity instead, so it never reaches 'ps' -- remove it in Settings > Network > Remote Desktop"
+                return 1
+            fi
+        done
         _rdp_argv+=("${extra[@]}")
     fi
 
-    _rdp_host="${f[0]}"
-    _rdp_workspace="${f[16]}"
-    _rdp_fullscreen="${f[17]}"
-    _rdp_class_value="${f[12]}"
+    _rdp_host="${f[host]:-}"
+    _rdp_workspace="${f[window.workspace]:-}"
+    _rdp_fullscreen="${f[window.fullscreen]:-}"
+    _rdp_class_value="${f[window.class]:-}"
 }
 
 _rdp_cmd_connect() {
@@ -212,11 +291,8 @@ _rdp_cmd_connect() {
         return 1
     fi
 
-    local line
-    line="$(_rdp_read_settings)" || { aphotic_err "cannot read ${_rdp_settings}"; return 1; }
-
     local -a _rdp_argv
-    _rdp_build_argv "$line"
+    _rdp_build_argv || return 1
 
     # A profile with no host is a pane that was never filled in, not a
     # machine to connect to, and the message names where to go.
