@@ -1,0 +1,20 @@
+{
+  "host": "192.0.2.10",
+  "port": 3389,
+  "user": "EXAMPLE\\user",
+  "sec": "nla",
+  "cert": "ignore",
+  "mic": { "enabled": true, "device": "alsa_input.test.mono-fallback" },
+  "speaker": { "device": "alsa_output.test.analog-stereo" },
+  "camera": { "enabled": true },
+  "resolution": { "mode": "dynamic", "width": 1920, "height": 1080 },
+  "window": {
+    "class": "work-rdp",
+    "grab_keyboard": true,
+    "auto_reconnect": true,
+    "gfx": "AVC420",
+    "workspace": "none",
+    "fullscreen": false
+  },
+  "extra": ""
+}

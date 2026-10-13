@@ -1,0 +1,3 @@
+module qs.modules.plugins.xfreerdp
+singleton RdpSettings 1.0 RdpSettings.qml
+RdpPane 1.0 RdpPane.qml

@@ -1,0 +1,74 @@
+[plugin]
+name = "xfreerdp"
+display_name = "Remote Desktop (xfreerdp)"
+description = "RDP sessions into Windows machines: a profile-driven xfreerdp3 launcher with microphone, camera, resolution and workspace pinning."
+version = "0.1.0"
+author = "T-Crypt"
+category = "productivity"
+capabilities = ["ui-surface", "action", "cli", "keybind"]
+
+# xfreerdp3 is the binary, and it comes from the `freerdp` package. The
+# askpass helper draws its prompt with zenity, which is in neither
+# profiles/base/full.toml nor minimal.toml. Both names have to be listed:
+# a non-empty [requires].packages REPLACES the list core derives from
+# binaries (cmd_plugin.sh's _aphotic_plugin_install_deps), it does not add
+# to it, so declaring packages = ["freerdp"] alone would leave zenity
+# missing and the password prompt would never appear.
+[requires]
+binaries = ["xfreerdp3", "zenity"]
+packages = ["freerdp", "zenity"]
+
+# Docked as a collapsed section in the Network page (config/SettingsCategories.qml),
+# rather than claiming a rail entry: the rail is a fixed length by design.
+# No gate: an RDP client reads nothing a profile layer installs, so a
+# requires_layer here would hide a working tool behind an unrelated
+# opt-in.
+[ui.settings_pane]
+id = "rdp"
+icon = "computer"
+label = "Remote Desktop"
+component = "qml/RdpPane.qml"
+parent = "network"
+
+# An action is a named thing a user can ask for; it turns up in the notch's
+# command palette, over `aphotic` IPC, and through the [keybind] below.
+# Headless component, same shape as a pet_action.
+[action]
+id = "connect"
+icon = "computer"
+label = "Remote Desktop: connect"
+component = "qml/actions/Connect.qml"
+
+[action_2]
+id = "disconnect"
+icon = "link_off"
+label = "Remote Desktop: disconnect"
+component = "qml/actions/Disconnect.qml"
+
+# No `subcommand`: `aphotic xfreerdp connect|status|disconnect` is a top
+# level command this plugin owns. A subcommand only resolves when core
+# ships a cmd_xfreerdp.sh of that name, and no core file ever names a
+# plugin, so a subcommand here would resolve to nothing at all.
+[cli]
+command = "xfreerdp"
+script = "cli/rdp.sh"
+summary = "Remote Desktop sessions: connect, status, disconnect"
+
+# Live only while the shell hosts the keybind capability (Aphotic 2.0.9,
+# ticket 8M406NY) and while this plugin is installed, enabled and past its
+# gate. On an older shell that part stays dark: the plugin is reported as
+# partially hosted and everything else works. `action` names an id this
+# same manifest declares, which is what makes the combo run through the
+# command palette's own path rather than a second way to launch.
+[keybind]
+combo = "SUPER + ALT + P"
+action = "connect"
+description = "Toggle the Remote Desktop session"
+
+[owns]
+# No shell setting is read or written.
+config_keys = []
+# Not a shell setting and not wired by the shell, but it is the one path
+# outside the install directory this plugin writes, the same way
+# game-launcher declares its own.
+external_config = ["~/.config/aphotic/plugins/xfreerdp/"]

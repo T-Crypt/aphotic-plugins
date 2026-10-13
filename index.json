@@ -518,6 +518,37 @@
       "capabilities": [
         "workspace-hook"
       ]
+    },
+    {
+      "name": "xfreerdp",
+      "display_name": "Remote Desktop (xfreerdp)",
+      "description": "RDP sessions into Windows machines: a profile-driven xfreerdp3 launcher with microphone, camera, resolution and workspace pinning.",
+      "version": "0.1.0",
+      "category": "productivity",
+      "capabilities": [
+        "ui-surface",
+        "action",
+        "cli",
+        "keybind"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "settings",
+            "id": "rdp",
+            "icon": "computer",
+            "label": "Remote Desktop",
+            "component": "qml/RdpPane.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "network",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
     }
   ]
 }
