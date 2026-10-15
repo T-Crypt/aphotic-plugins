@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# ios-dev/bin/iosctl -- the engine behind `aphotic ios`.
+#
+# One table of facts drives the doctor, the workspace checklist and setup's
+# step list, so the three cannot disagree about what is installed. The
+# CLI is the only writer of the state file; the QML surfaces are the only
+# readers.
+
+set -euo pipefail
+
+. "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/lib.sh"
+
+usage() {
+    cat <<EOF
+usage: iosctl <command>
+
+  doctor     report every prerequisite and how to fix what is missing
+  setup      install the toolchain, one confirmed step at a time
+  new NAME   scaffold an app that is ready to run on a device
+  run        build, install and launch the app on a connected device
+  stop       stop a detached run
+  devices    list connected devices
+  toolchain  show the installed versions and the Xcode they need
+  status     print the state file the shell reads
+  paths      print every path this plugin uses
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# doctor
+# ---------------------------------------------------------------------------
+
+cmd_doctor() {
+    _ios_load_config
+    local id ok detail fix width=0
+    for id in "${_IOS_CHECK_IDS[@]}"; do
+        [[ "${#id}" -gt "$width" ]] && width="${#id}"
+    done
+
+    printf '%-*s  %s\n' "$width" "CHECK" "STATE"
+    local ready=1
+    for id in "${_IOS_CHECK_IDS[@]}"; do
+        if _ios_check_ok "$id"; then
+            ok="ok"
+        else
+            ok="MISSING"
+            ready=0
+        fi
+        detail="$(_ios_check_detail "$id")"
+        fix="$(_ios_check_fix "$id")"
+        if [[ -n "$detail" ]]; then
+            printf '%-*s  %s (%s)\n' "$width" "$id" "$ok" "$detail"
+        else
+            printf '%-*s  %s\n' "$width" "$id" "$ok"
+        fi
+        [[ "$ok" == "ok" ]] || printf '%-*s  fix: %s\n' "$width" "" "$fix"
+    done
+
+    echo
+    if [[ "$ready" == "1" ]]; then
+        echo "The toolchain is complete."
+        echo "Bring a device in, then: iosctl new MyApp && cd ~/Projects/ios/MyApp && iosctl run"
+    else
+        echo "Something is missing. Start with: iosctl setup"
+        echo "The one step setup cannot finish is the Darwin SDK, which lives inside"
+        echo "Apple's Xcode archive and needs a signed-in browser to download."
+    fi
+    return 0
+}
+
+cmd_toolchain() {
+    _ios_load_config
+    local swift_ver="" sdk_ver="" xcode_need=""
+    if command -v swift >/dev/null 2>&1; then
+        swift_ver="$(swift --version 2>/dev/null | head -n1 || true)"
+        sdk_ver="$(swift sdk list 2>/dev/null | awk '/^darwin/{print $2; exit}' || true)"
+    fi
+    printf '%-14s %s\n' "swift" "${swift_ver:-not installed}"
+    printf '%-14s %s\n' "darwin sdk" "${sdk_ver:-not installed}"
+    printf '%-14s %s\n' "xtool" "$( [[ -x "$_IOS_XTOOL" ]] && "$_IOS_XTOOL" --version 2>/dev/null | head -n1 || echo "not installed")"
+
+    # The pairing is the whole reason a routine update can break every
+    # build at once, so it is printed rather than left to be discovered.
+    case "$swift_ver" in
+        *"6.4"*) xcode_need="Xcode 27" ;;
+        *"6.3"*) xcode_need="Xcode 26" ;;
+        *) xcode_need="the Xcode release whose version matches your Swift" ;;
+    esac
+    echo
+    echo "The SDK must come from ${xcode_need}."
+}
+
+cmd_devices() {
+    _ios_state_refresh
+    _ios_load_config
+    local count
+    count="$(jq -r '.devices | length' "$_IOS_STATE" 2>/dev/null || echo 0)"
+    if [[ "$count" == "0" ]]; then
+        echo "No device connected."
+        return 0
+    fi
+    jq -r '.devices[] | "  \(.name)  \(.udid)  [\(.transport)]"' "$_IOS_STATE"
+}
+
+cmd_status() {
+    _ios_state_refresh
+    cat "$_IOS_STATE"
+}
+
+cmd_paths() {
+    cat <<EOF
+plugin dir    ${_IOS_PLUGIN_DIR}
+xtool         ${_IOS_XTOOL}
+config dir    ${_IOS_CONFIG_DIR}
+config        ${_IOS_CONFIG}
+state         ${_IOS_STATE}
+EOF
+}
+
+# ---------------------------------------------------------------------------
+
+main() {
+    local cmd="${1:-}"
+    [[ -n "$cmd" ]] && shift
+
+    # One gate, here, so the engine cannot be a way past the one the
+    # registry already evaluates for every surface.
+    _ios_require_layer || return 3
+
+    case "$cmd" in
+        doctor) cmd_doctor "$@" ;;
+        toolchain) cmd_toolchain "$@" ;;
+        devices) cmd_devices "$@" ;;
+        status) cmd_status "$@" ;;
+        paths) cmd_paths "$@" ;;
+        setup) "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/ios-setup" "$@" ;;
+        new) "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/ios-new" "$@" ;;
+        run | stop) "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/ios-run" "$cmd" "$@" ;;
+        "" | -h | --help | help) usage ;;
+        *) echo "iosctl: unknown command ${cmd}" >&2; usage >&2; return 2 ;;
+    esac
+}
+
+main "$@"
