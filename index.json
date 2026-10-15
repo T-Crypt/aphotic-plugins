@@ -309,6 +309,65 @@
       ]
     },
     {
+      "name": "ios-dev",
+      "display_name": "iOS Development",
+      "description": "Turn this machine into an iPhone development box, with a toolchain doctor, one key to build and run on the device, and a workspace plane for connected devices and session state.",
+      "version": "1.0.0",
+      "category": "dev",
+      "capabilities": [
+        "ui-surface",
+        "cli",
+        "action",
+        "keybind"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "notch",
+            "id": "ios",
+            "icon": "smartphone",
+            "label": "iOS",
+            "component": "qml/IosNotchTile.qml",
+            "requires_layer": "dev",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "settings",
+            "id": "ios",
+            "icon": "smartphone",
+            "label": "iOS Development",
+            "component": "qml/IosSettingsPane.qml",
+            "requires_layer": "dev",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "workspace",
+            "id": "ios",
+            "icon": "smartphone",
+            "label": "iOS",
+            "component": "qml/IosWorkspace.qml",
+            "requires_layer": "dev",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "live-wallpaper",
       "display_name": "Live Wallpapers",
       "description": "Plays video wallpapers on the desktop background, with the still frame Aphotic already derives its palette from underneath.",

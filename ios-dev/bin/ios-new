@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# ios-dev/bin/ios-new -- scaffold an app that is ready to run on a device.
+#
+# xtool's own generator writes a package that builds. What it does not
+# write is anything that makes the app yours: a bundle ID you control, an
+# editor that knows this is an iOS project, a commit, and an instruction
+# file for whatever coding agent opens the directory next. All four are
+# here, and all four are plain files in the project, so removing this
+# plugin leaves a working app behind.
+
+set -euo pipefail
+
+. "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/lib.sh"
+
+main() {
+    _ios_load_config
+
+    local name="${1:-}"
+    if [[ -z "$name" ]]; then
+        printf 'App name: '
+        read -r name
+    fi
+    [[ -n "$name" ]] || { echo "ios-new: an app name is required" >&2; return 2; }
+
+    if [[ ! -x "$_IOS_XTOOL" ]]; then
+        echo "xtool is not installed. Run: aphotic ios setup" >&2
+        return 1
+    fi
+
+    mkdir -p "$IOS_APPS_DIR"
+    local project="${IOS_APPS_DIR}/${name}"
+    if [[ -e "$project" ]]; then
+        echo "ios-new: ${project} already exists" >&2
+        return 1
+    fi
+
+    (cd "$IOS_APPS_DIR" && "$_IOS_XTOOL" new "$name") >/dev/null
+
+    _ios_write_xtool_yml "$project"
+    _ios_write_vscode "$project"
+    _ios_write_agents "$project"
+    _ios_write_gitignore "$project"
+
+    if command -v git >/dev/null 2>&1; then
+        git -C "$project" init -q
+        git -C "$project" add -A
+        git -C "$project" -c user.name="ios-dev" -c user.email="ios-dev@localhost" \
+            commit -q -m "Start ${name}"
+    fi
+
+    echo
+    echo "Created ${project}"
+    echo "  bundle ID  $(_ios_bundle_id_of "$project")"
+    echo "  run it     cd ${project} && aphotic ios run"
+}
+
+_ios_write_xtool_yml() {
+    local project="$1"
+    cat >"${project}/xtool.yml" <<EOF
+version: 1
+bundleID: $(_ios_bundle_id_of "$project")
+EOF
+}
+
+# Project-local, never the user's global editor settings. A task that
+# runs this plugin's own command keeps one path that decides how the app
+# reaches the device, and a machine-wide keybinding file is never touched.
+_ios_write_vscode() {
+    local project="$1"
+    mkdir -p "${project}/.vscode"
+    cat >"${project}/.vscode/settings.json" <<'EOF'
+{
+  "ios.dev.project": true
+}
+EOF
+    cat >"${project}/.vscode/tasks.json" <<'EOF'
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "iOS: build and run on the device",
+      "type": "shell",
+      "command": "aphotic ios run",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "iOS: run under the debugger",
+      "type": "shell",
+      "command": "aphotic ios debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "iOS: stop the session",
+      "type": "shell",
+      "command": "aphotic ios stop",
+      "problemMatcher": []
+    }
+  ]
+}
+EOF
+}
+
+# An agent opening this directory reads this file. It says the three
+# things an agent gets wrong: how the app reaches a device, that the
+# generated files are generated, and where the settings live.
+_ios_write_agents() {
+    local project="$1"
+    sed -e "s|@BUNDLE_ID@|$(_ios_bundle_id_of "$project")|g" \
+        "${_IOS_PLUGIN_DIR}/templates/AGENTS.md" >"${project}/AGENTS.md"
+}
+
+_ios_write_gitignore() {
+    local project="$1" entry
+    for entry in "/.build" "/xtool" ".DS_Store"; do
+        grep -qxF "$entry" "${project}/.gitignore" 2>/dev/null || echo "$entry" >>"${project}/.gitignore"
+    done
+}
+
+main "$@"

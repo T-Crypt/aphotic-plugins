@@ -1,0 +1,107 @@
+[plugin]
+name = "ios-dev"
+display_name = "iOS Development"
+description = "Turn this machine into an iPhone development box, with a toolchain doctor, one key to build and run on the device, and a workspace plane for connected devices and session state."
+version = "1.0.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["ui-surface", "cli", "action", "keybind"]
+
+# inotify-tools and usbmuxd are the only two dependencies a package
+# repository supplies under a different name than the binary, which is
+# what `packages` is for. Everything else this plugin needs has no such
+# package and belongs to `aphotic ios setup`, which installs it against a
+# pinned checksum and stops where only a browser-authenticated Apple
+# download can continue. Declaring the toolchain binaries here would send
+# core down its `yay -S <binary-name>` path, and no package by those
+# names exists.
+[requires]
+binaries = ["inotifywait", "usbmuxd"]
+packages = ["inotify-tools", "usbmuxd"]
+
+# A finished build and a failed one both matter while the Workspace plane
+# is closed, and the plane is the one place this plugin draws. A
+# notification is how a long build reports back without the user watching.
+[api]
+version = 1
+uses = ["notifications.publish"]
+
+[owns]
+# Nothing outside the install directory is touched, so the pane edits the
+# plugin's own config file and the shell reads nothing from it. Removal
+# therefore leaves no key behind in settings.json.
+config_keys = []
+
+# Every path outside the install directory this plugin writes. The
+# toolchain lives under the install directory because removal should take
+# the binaries with it; the two user paths are the ones `setup` offers
+# explicitly and prints before it touches them.
+external_config = [
+  "~/.local/share/aphotic/plugins/ios-dev/tools/ (xtool and the device bridge, installed by `aphotic ios setup`)",
+  "~/.local/bin/xtool (optional symlink, created only after `aphotic ios setup` asks)",
+  "~/.config/aphotic/plugins/ios-dev/ (config and the session state file)"
+]
+
+# Docked as a collapsed section rather than claiming a rail entry, and it
+# falls back to the Plugins pane because core ships no dev category to
+# parent it to. The rail is a fixed length by design.
+[ui.settings_pane]
+id = "ios"
+icon = "smartphone"
+label = "iOS Development"
+component = "qml/IosSettingsPane.qml"
+requires_layer = "dev"
+
+# The tool needs room. A device list, a toolchain checklist and a session
+# panel are three things at once, which is more than a corner of a surface
+# core already owns. The plane exists only while at least one workspace
+# plugin is enabled, so this adds no window to a machine that never
+# installs it.
+[ui.workspace]
+id = "ios"
+icon = "smartphone"
+label = "iOS"
+component = "qml/IosWorkspace.qml"
+requires_layer = "dev"
+
+[ui.notch_tile]
+id = "ios"
+icon = "smartphone"
+label = "iOS"
+component = "qml/IosNotchTile.qml"
+requires_layer = "dev"
+
+# Headless, the same contract every action has. The work happens in the
+# CLI, so the palette, `aphotic` IPC and the keybind below all run one path
+# rather than three.
+[action]
+id = "run"
+icon = "play_arrow"
+label = "iOS: build and run on the device"
+component = "qml/actions/Run.qml"
+requires_layer = "dev"
+
+[action_2]
+id = "stop"
+icon = "close"
+label = "iOS: stop the running session"
+component = "qml/actions/Stop.qml"
+requires_layer = "dev"
+
+# One combo, because one combo per plugin is the intent today. It runs
+# the first action through the same path the palette uses, so a keybind
+# is never a second way to do the thing. Binding lives in the compositor
+# session and dies with the plugin; no config file is edited.
+[keybind]
+combo = "SUPER + ALT + I"
+action = "run"
+description = "iOS: build and run on the device"
+requires_layer = "dev"
+
+# Top-level rather than a subcommand, because a subcommand only resolves
+# when core ships a command file of that name, and no core file ever names
+# a plugin.
+[cli]
+command = "ios"
+script = "cli/ios.sh"
+summary = "iOS development: doctor, setup, new, run, stop, devices, toolchain, status"

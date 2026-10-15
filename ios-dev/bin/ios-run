@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# ios-dev/bin/ios-run -- put the app on a device, and stop it again.
+#
+# The whole session is one process: `xtool dev run` plans, compiles, signs,
+# installs and launches, and stays attached afterwards. This script starts
+# that process, records that it holds it, and stops it on request. It does
+# not try to parse the build phases out of the output, because xtool does
+# not emit phase boundaries and inventing them would report a state the
+# build is not in.
+
+set -euo pipefail
+
+. "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/lib.sh"
+
+_ios_run_usage() {
+    cat <<EOF
+usage: iosctl run [options]
+  --project DIR       the app directory (default: nearest Package.swift above \$PWD)
+  --configuration C   debug (default) or release
+  --detach            leave it running in the background, so 'iosctl stop' can reach it
+
+usage: iosctl stop
+EOF
+}
+
+_ios_require_device() {
+    local count
+    count="$(jq -r '.devices | length' <<<"$(_ios_devices_json)" 2>/dev/null || echo 0)"
+    if [[ "$count" == "0" ]]; then
+        echo "No device is connected." >&2
+        echo "Plug one in, unlock it and tap Trust, then try again." >&2
+        return 1
+    fi
+    return 0
+}
+
+main() {
+    local action="${1:-run}"
+    shift || true
+
+    case "$action" in
+        run) _ios_run "$@" ;;
+        stop) _ios_stop "$@" ;;
+        *) echo "ios-run: unknown action ${action}" >&2; return 2 ;;
+    esac
+}
+
+_ios_run() {
+    _ios_load_config
+
+    local project="" configuration="debug" detach=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --project) project="${2:-}"; shift 2 ;;
+            --configuration) configuration="${2:-debug}"; shift 2 ;;
+            --detach) detach=1; shift ;;
+            -h | --help) _ios_run_usage; return 0 ;;
+            *) echo "ios-run: unknown option $1" >&2; return 2 ;;
+        esac
+    done
+
+    if [[ ! -x "$_IOS_XTOOL" ]]; then
+        echo "xtool is not installed. Run: aphotic ios setup" >&2
+        return 1
+    fi
+    if ! _ios_toolchain_ready; then
+        echo "The toolchain is not complete. Run: aphotic ios doctor" >&2
+        return 1
+    fi
+    if [[ -z "$project" ]]; then
+        project="$(_ios_find_project)" || {
+            echo "No Package.swift found in this directory or any parent." >&2
+            echo "Start one with: aphotic ios new MyApp" >&2
+            return 1
+        }
+    fi
+    _ios_require_device || return 1
+
+    local bundle project_name
+    project_name="$(basename "$project")"
+    bundle="$(_ios_bundle_id_of "$project")"
+
+    if [[ "$detach" == "1" ]]; then
+        local log="${_IOS_CONFIG_DIR}/session.log"
+        mkdir -p "$_IOS_CONFIG_DIR"
+        : >"$log"
+        (
+            cd "$project" || exit 1
+            printf 'ios-run: %s (%s)\n' "$project_name" "$configuration" >>"$log"
+            "$_IOS_XTOOL" dev run --configuration "$configuration" >>"$log" 2>&1
+            printf '%s' "$?" >>"${_IOS_CONFIG_DIR}/session.rc"
+        ) &
+        local pid=$!
+        _ios_session_set running "$project" "$bundle" "$pid"
+        echo "Running ${bundle} in the background (pid ${pid})."
+        echo "  log     ${log}"
+        echo "  stop    aphotic ios stop"
+        return 0
+    fi
+
+    _ios_session_set running "$project" "$bundle" 0
+    printf 'Running %s (%s)\n' "$bundle" "$configuration"
+    local rc=0
+    (cd "$project" && "$_IOS_XTOOL" dev run --configuration "$configuration") || rc=$?
+    if [[ "$rc" == "0" ]]; then
+        _ios_session_set idle "$project" "" 0
+    else
+        _ios_session_set failed "$project" "xtool dev run exited ${rc}" 0
+    fi
+    return "$rc"
+}
+
+_ios_stop() {
+    _ios_state_init
+    local pid
+    pid="$(jq -r '.session.pid // 0' "$_IOS_STATE" 2>/dev/null || echo 0)"
+    if [[ "$pid" == "0" ]] || ! kill -0 "$pid" 2>/dev/null; then
+        echo "No detached session is running."
+        _ios_session_set idle "" "" 0
+        return 0
+    fi
+    kill "$pid" 2>/dev/null || true
+    echo "Stopped pid ${pid}."
+    _ios_session_set idle "" "" 0
+}
+
+main "$@"
