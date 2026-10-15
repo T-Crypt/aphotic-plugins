@@ -15,9 +15,9 @@ import qs.services
 // with it.
 //
 // No process and no timer. The state file is read through a FileView with
-// watchChanges, so the notch builds every gated-in tile without paying
-// for any of them: one inotify watch on one file, updated when the CLI
-// rewrites it. A tile that ran a scan to open would spend a fork per
+// watchChanges, so the notch builds every gated-in tile without paying for
+// any of them. It costs one inotify watch on one file, updated when the
+// CLI rewrites it. A tile that ran a scan to open would spend a fork per
 // second to learn nothing.
 ColumnLayout {
     id: root

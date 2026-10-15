@@ -1,7 +1,7 @@
 [plugin]
 name = "ios-dev"
 display_name = "iOS Development"
-description = "Turn this machine into an iPhone development box: toolchain doctor, one key to build and run on the device, a debugger attach, and a workspace for devices, projects and session state."
+description = "Turn this machine into an iPhone development box, with a toolchain doctor, one key to build and run on the device, and a workspace plane for connected devices and session state."
 version = "1.0.0"
 author = "T-Crypt"
 category = "dev"
@@ -27,8 +27,9 @@ version = 1
 uses = ["notifications.publish"]
 
 [owns]
-# No shell setting is read or written: the pane edits the plugin's own
-# config file, and the shell reads nothing from it.
+# Nothing outside the install directory is touched, so the pane edits the
+# plugin's own config file and the shell reads nothing from it. Removal
+# therefore leaves no key behind in settings.json.
 config_keys = []
 
 # Every path outside the install directory this plugin writes. The
@@ -51,10 +52,11 @@ label = "iOS Development"
 component = "qml/IosSettingsPane.qml"
 requires_layer = "dev"
 
-# The tool needs room: a device list, a project list and a session panel
-# are three things at once, not a corner of a surface core already owns.
-# The plane exists only while at least one workspace plugin is enabled, so
-# this adds no window to a machine that never installs it.
+# The tool needs room. A device list, a toolchain checklist and a session
+# panel are three things at once, which is more than a corner of a surface
+# core already owns. The plane exists only while at least one workspace
+# plugin is enabled, so this adds no window to a machine that never
+# installs it.
 [ui.workspace]
 id = "ios"
 icon = "smartphone"
@@ -69,9 +71,9 @@ label = "iOS"
 component = "qml/IosNotchTile.qml"
 requires_layer = "dev"
 
-# Headless, the same contract every action has: the work happens in the
-# CLI, so the palette, `aphotic` IPC and the keybind below all run one
-# path rather than three.
+# Headless, the same contract every action has. The work happens in the
+# CLI, so the palette, `aphotic` IPC and the keybind below all run one path
+# rather than three.
 [action]
 id = "run"
 icon = "play_arrow"
@@ -96,9 +98,10 @@ action = "run"
 description = "iOS: build and run on the device"
 requires_layer = "dev"
 
-# Top-level, not a subcommand: a subcommand only resolves when core ships
-# a command file of that name, and no core file ever names a plugin.
+# Top-level rather than a subcommand, because a subcommand only resolves
+# when core ships a command file of that name, and no core file ever names
+# a plugin.
 [cli]
 command = "ios"
 script = "cli/ios.sh"
-summary = "iOS development: doctor, setup, new, run, debug, stop, devices, toolchain, status"
+summary = "iOS development: doctor, setup, new, run, stop, devices, toolchain, status"

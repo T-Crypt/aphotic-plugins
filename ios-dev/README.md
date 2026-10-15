@@ -2,7 +2,7 @@
 
 Build and run iPhone apps from this machine. The toolchain compiles a Swift
 package into an iOS app, signs it, installs it on a phone over USB and
-launches it, all from the shell: a command, a workspace plane, a notch tile,
+launches it. You drive that from a command, a workspace plane, a notch tile,
 and one keybind.
 
 Gated on the `dev` layer. Without that layer the plugin is not offered at
@@ -83,5 +83,5 @@ which stops its five-second timer for free.
 | `~/.config/aphotic/plugins/ios-dev/config` | setup, and you |
 | `~/.config/aphotic/plugins/ios-dev/state.json` | every CLI command |
 
-No shell setting is read or written, so `aphotic plugin remove` leaves
-nothing behind in settings.json.
+The plugin reads and writes no shell setting, so `aphotic plugin remove`
+leaves nothing behind in settings.json.

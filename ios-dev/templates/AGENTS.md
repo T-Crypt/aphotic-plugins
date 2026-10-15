@@ -5,7 +5,6 @@ through `xtool`, which builds the package, signs it and installs it.
 
 - Bundle ID: @BUNDLE_ID@
 - Run it: `aphotic ios run` from this directory, or SUPER + ALT + I
-- Debug it: `aphotic ios debug`
 - Stop a running session: `aphotic ios stop`
 
 ## What not to change
@@ -21,9 +20,9 @@ through `xtool`, which builds the package, signs it and installs it.
 ## What the toolchain needs
 
 iOS refuses to replace a running app, so a run closes the app first. The
-first debug run on a new iOS version copies the phone's symbol cache and
-takes a few minutes. Keep the phone unlocked with the app in front for
-anything that touches the UI.
+first build and install against a new iOS version can take several minutes.
+Keep the phone unlocked with the app in front for anything that touches
+the UI.
 
 If a build fails with "this SDK is not supported by the compiler", the
 Swift toolchain and the installed SDK do not match. Run

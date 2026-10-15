@@ -311,7 +311,7 @@
     {
       "name": "ios-dev",
       "display_name": "iOS Development",
-      "description": "Turn this machine into an iPhone development box: toolchain doctor, one key to build and run on the device, a debugger attach, and a workspace for devices, projects and session state.",
+      "description": "Turn this machine into an iPhone development box, with a toolchain doctor, one key to build and run on the device, and a workspace plane for connected devices and session state.",
       "version": "1.0.0",
       "category": "dev",
       "capabilities": [

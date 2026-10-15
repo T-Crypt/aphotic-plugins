@@ -11,7 +11,7 @@ import qs.services
 
 // The Settings section body. The host wraps this in a SettingsSection, so
 // this is the body of one collapsed expander rather than a pane of its
-// own: plugins never become a rail entry.
+// own. Plugins never become a rail entry.
 //
 // It edits the plugin's own config file and reads no shell setting, so
 // there is nothing here for `aphotic plugin remove` to clean up in

@@ -18,7 +18,8 @@ import qs.services
 //
 // Nothing here polls while the plane is closed. The Loader that hosts a
 // workspace surface tears this whole Item down otherwise, which stops the
-// timer for free. While open: one `iosctl status` every five seconds.
+// timer for free. While open it runs one `iosctl status` every five
+// seconds.
 Item {
     id: root
 

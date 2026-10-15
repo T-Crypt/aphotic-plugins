@@ -51,7 +51,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | [`dev-notch-tile`](dev-notch-tile/) | A notch tile for your open project and what stage it is in. |
 | [`dev-ports`](dev-ports/) | A full-screen list of the dev servers running on your machine. Click one to open it. |
 | [`direnv`](direnv/) | A heads-up when a project you open has an `.envrc` to review. |
-| [`ios-dev`](ios-dev/) | Build and run iPhone apps from this machine: a toolchain doctor, one key to install on the device, a workspace for devices and session state. |
+| [`ios-dev`](ios-dev/) | Build and run iPhone apps from this machine: a toolchain doctor, one key to install on the device, and a workspace plane for devices and session state. |
 
 ### Gaming and everyday
 
