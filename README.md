@@ -40,6 +40,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | [`agent-notch-tile`](agent-notch-tile/) | A notch tile that shows which agent runs, what it is doing, and when it waits for you. |
 | [`agent-graph`](agent-graph/) | A Command Center tab that draws every tool call as your agent makes it, with replay. |
 | [`agent-audit`](agent-audit/) | A full-screen view to step through past and live agent runs, with tool and failure counts. |
+| [`agent-memory`](agent-memory/) | A durable memory folded from those same runs: per-project tool stats, recurring failures as resolve/reopen issues, notes, and a digest you inject into `~/.claude/CLAUDE.md`. |
 | [`llama-swap`](llama-swap/) | A notch tile for your local model server: loaded models, GPU memory, speed, and an unload button. |
 | [`llm-fit`](llm-fit/) | A Settings pane that suggests local models your GPU can run, with one-click download. |
 

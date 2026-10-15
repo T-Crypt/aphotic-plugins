@@ -1,0 +1,3 @@
+module qs.modules.plugins.agentMemory
+singleton MemoryService 1.0 MemoryService.qml
+MemoryWorkspace 1.0 MemoryWorkspace.qml
