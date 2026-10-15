@@ -1,0 +1,9 @@
+{"v":2,"harness":"omp","sessionId":"o1","event":"session_start","status":"running","t":1791397100000,"ts":"2026-10-07T18:31:40Z","cwd":"/repo"}
+{"v":2,"harness":"omp","sessionId":"o1","event":"turn","status":"running","t":1791397100100,"ts":"2026-10-07T18:31:40Z"}
+{not valid json at all
+{"v":2,"harness":"omp","sessionId":"o1","event":"tool_call","tool":"bash","toolId":"c1","toolStatus":"running","t":1791397101000,"ts":"2026-10-07T18:31:41Z"}
+{"v":2,"harness":"omp","sessionId":"o1","event":"tool_call","tool":"bash","toolId":"c1","toolStatus":"completed","t":1791397101500,"ts":"2026-10-07T18:31:41Z","durationMs":400}
+{"v":2,"harness":"omp","sessionId":"o1","event":"tool_call","tool":"bash","toolId":"c2","toolStatus":"running","t":1791397102000,"ts":"2026-10-07T18:31:42Z"}
+{"v":2,"harness":"omp","sessionId":"o1","event":"tool_call","tool":"bash","toolId":"c2","toolStatus":"errored","t":1791397102500,"ts":"2026-10-07T18:31:42Z","error":{"kind":"exit-nonzero","message":"jq: error (at /tmp/x:12): Cannot index string with \"a\""}}
+{"v":2,"harness":"claude","sessionId":"o2","event":"session_start","status":"running","t":1791397200000,"ts":"2026-10-07T18:33:20Z","cwd":"/home/tcrypt/aphotic-plugins"}
+{"v":2,"harness":"claude","sessionId":"o2","event":"session_end","status":"ended","t":1791397300000,"ts":"2026-10-07T18:35:00Z","endReason":"shutdown"}

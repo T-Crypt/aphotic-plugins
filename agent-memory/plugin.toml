@@ -1,0 +1,28 @@
+[plugin]
+name = "agent-memory"
+display_name = "Agent Memory"
+description = "A durable memory folded from local agent session events: per-project tool stats, recurring failure signatures, notes, resolve/reopen issues, and an injectable context digest."
+version = "1.0.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface", "cli"]
+
+[ui.workspace]
+id = "agentMemory"
+icon = "psychology"
+label = "Agent Memory"
+component = "qml/MemoryWorkspace.qml"
+requires_layer = "ai"
+requires_data = "harness"
+
+[cli]
+command = "memory"
+script = "cli/memory.sh"
+summary = "Agent session memory: build, query, note, resolve, context, inject"
+
+[owns]
+config_keys = []
+external_config = [
+    "~/.local/state/aphotic/agent-memory/",
+    "~/.claude/CLAUDE.md (marked agent-memory block only)"
+]

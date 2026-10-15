@@ -71,6 +71,35 @@
       }
     },
     {
+      "name": "agent-memory",
+      "display_name": "Agent Memory",
+      "description": "A durable memory folded from local agent session events: per-project tool stats, recurring failure signatures, notes, resolve/reopen issues, and an injectable context digest.",
+      "version": "1.0.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface",
+        "cli"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "workspace",
+            "id": "agentMemory",
+            "icon": "psychology",
+            "label": "Agent Memory",
+            "component": "qml/MemoryWorkspace.qml",
+            "requires_layer": "ai",
+            "requires_data": "harness",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "agent-notch-tile",
       "display_name": "Agent Notch Tile",
       "description": "Notch tile for AI coding harnesses: waiting-for-input badge, the active harness and phase, a row per other live harness, live subagent count, today's token usage, and the local provider's GPU VRAM claim.",
