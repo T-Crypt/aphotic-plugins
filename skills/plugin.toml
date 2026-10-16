@@ -1,0 +1,71 @@
+[plugin]
+name = "skills"
+display_name = "Skill Manager"
+description = "One library of agent skills, deployed to Claude Code, Codex, OpenCode and any other agent, backed by the skills-manager CLI."
+version = "0.1.0"
+author = "T-Crypt"
+category = "ai"
+capabilities = ["ui-surface", "action", "cli", "keybind"]
+
+# skills-manager-cli is not in any Arch repo or the AUR, and it is not on
+# PATH on a fresh machine. Core's default for a missing binary is
+# `yay -S <name>`, which would find nothing, so the manifest points at our
+# own downloader instead. install-deps.sh is only run because this list is
+# non-empty and the binary is missing; it must be executable or core warns
+# and skips it.
+[requires]
+binaries = ["skills-manager-cli"]
+install_script = "hooks/install-deps.sh"
+
+# The library lives at ~/.skills-manager, which is the CLI's own default and
+# the same directory the upstream desktop app reads. Leaving it there is
+# deliberate: pointing the plugin at a private copy would give the app and
+# Aphotic two libraries that drift. Changing it is a repo-write through
+# `aphotic skills set-path`, not a shell setting, so it is not listed here.
+[ui.workspace]
+id = "skills"
+icon = "extension"
+label = "Skills"
+component = "qml/SkillsWorkspace.qml"
+
+# Docked in the AI page beside Agent Audit and Agent Graph, rather than
+# claiming a slot on the rail. Nothing here needs an AI layer: the CLI is a
+# plain binary and the skill library is just files, so no requires_layer.
+[ui.settings_pane]
+id = "skills"
+icon = "extension"
+label = "Skills"
+component = "qml/SkillsSettings.qml"
+parent = "ai"
+
+# One action, so the palette, IPC and the keybind all run the same path.
+[action]
+id = "openSkills"
+icon = "extension"
+label = "Skills: open the skill manager"
+component = "qml/actions/OpenSkills.qml"
+
+# No `subcommand`: `aphotic skills ...` is a top-level command this plugin
+# owns. A subcommand only resolves when core ships a cmd_skills.sh of that
+# name, and no core file names a plugin, so a subcommand here would resolve
+# to nothing. Nothing in core claims `skills` today, so there is no shadow.
+[cli]
+command = "skills"
+script = "cli/skills.sh"
+summary = "Agent skills: list, deploy, preview and check the shared library"
+
+# Names an action id this same manifest declares, which is what makes the
+# combo go through the command palette's own path rather than a second way
+# to open the same workspace.
+[keybind]
+combo = "SUPER + SHIFT + K"
+action = "openSkills"
+description = "Open the skill manager"
+
+[owns]
+# No shell setting is read or written.
+config_keys = []
+# The one path outside the install directory this plugin writes. The library
+# is the CLI's and predates the plugin; the plugin reads and mutates it
+# through the CLI and never edits it by hand.
+external_config = ["~/.skills-manager/"]

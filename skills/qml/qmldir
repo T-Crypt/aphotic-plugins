@@ -1,0 +1,7 @@
+module qs.modules.plugins.skills
+singleton SkillsService 1.0 SkillsService.qml
+SkillsWorkspace 1.0 SkillsWorkspace.qml
+SkillRow 1.0 SkillRow.qml
+AgentChip 1.0 AgentChip.qml
+SkillPreview 1.0 SkillPreview.qml
+SkillsSettings 1.0 SkillsSettings.qml
