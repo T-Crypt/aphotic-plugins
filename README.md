@@ -36,7 +36,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 
 | Plugin | What you get |
 |---|---|
-| [`claude-hooks`](claude-hooks/), [`codex-hooks`](codex-hooks/), [`opencode-hooks`](opencode-hooks/) | Connect a coding agent so the bar and Command Center can show its sessions live. Install the one for the agent you use. |
+| [`claude-hooks`](claude-hooks/), [`codex-hooks`](codex-hooks/), [`opencode-hooks`](opencode-hooks/), [`pi-hooks`](pi-hooks/) | Connect a coding agent so the bar and Command Center can show its sessions live. Install the one for the agent you use. |
 | [`agent-notch-tile`](agent-notch-tile/) | A notch tile that shows which agent runs, what it is doing, and when it waits for you. |
 | [`agent-graph`](agent-graph/) | A Command Center tab that draws every tool call as your agent makes it, with replay. |
 | [`agent-audit`](agent-audit/) | A full-screen view to step through past and live agent runs, with tool and failure counts. |
