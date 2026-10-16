@@ -556,6 +556,51 @@
       ]
     },
     {
+      "name": "skills",
+      "display_name": "Skill Manager",
+      "description": "One library of agent skills, deployed to Claude Code, Codex, OpenCode and any other agent, backed by the skills-manager CLI.",
+      "version": "0.1.0",
+      "category": "ai",
+      "capabilities": [
+        "ui-surface",
+        "action",
+        "cli",
+        "keybind"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "settings",
+            "id": "skills",
+            "icon": "extension",
+            "label": "Skills",
+            "component": "qml/SkillsSettings.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "ai",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "workspace",
+            "id": "skills",
+            "icon": "extension",
+            "label": "Skills",
+            "component": "qml/SkillsWorkspace.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "visualizer",
       "display_name": "Spectrum",
       "description": "An audio spectrum that sits on the wallpaper, painted in the live theme accent and asleep whenever nothing is playing.",

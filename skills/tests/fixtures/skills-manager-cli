@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# A stand-in for skills-manager-cli, so the plugin's tests can run on a
+# machine that has never downloaded the real binary and without a network.
+#
+# It is not a reimplementation and does not try to be one. It replays the
+# JSON fixtures in ../fixtures, which were captured from skills-manager-cli
+# 1.42.0 (see fixtures/README.md), and it mutates the skills fixture on
+# deploy and undeploy so the plugin's re-read-after-write path is exercised
+# for real. If upstream changes its JSON, the fixtures go stale and the
+# probes keep passing, which is the known limit of a stub.
+#
+# The fixtures name a plausible home (/home/user) so the capture carries no
+# path from the machine that recorded it. Every read rewrites that prefix to
+# $HOME, because a test asserts on the library it actually created.
+set -euo pipefail
+
+_fixtures="${SKILLS_STUB_FIXTURES:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../fixtures" && pwd)}"
+
+_overlay() {
+    jq --arg home "${HOME:?HOME is not set}" \
+        'walk(if type == "string" then gsub("/home/user"; $home) else . end)'
+}
+
+read_fixture() { _overlay < "${_fixtures}/$1"; }
+
+# The deploy/undeploy state is per-run, so it is written to a scratch copy
+# rather than back into the committed fixture. The path is derived from HOME
+# rather than the pid, because the wrapper runs the stub once per fixture
+# inside a single `doctor`: a per-process scratch would lose the mutation
+# between those calls.
+_scratch="${SKILLS_STUB_SCRATCH:-${HOME:?HOME is not set}/.skills-manager/.stub-scratch}"
+mkdir -p "$_scratch"
+if [[ ! -f "${_scratch}/skills.json" ]]; then
+    cp "${_fixtures}/skills.json" "${_scratch}/skills.json"
+fi
+
+# The wrapper passes the global --json through; the stub answers JSON either
+# way, so it is dropped rather than parsed.
+args=()
+for arg in "$@"; do
+    [[ "$arg" == "--json" ]] && continue
+    args+=("$arg")
+done
+
+# deploy/undeploy NAME --agent KEY --agent KEY ...
+skills_pair() {
+    local verb="$1" name="$2"; shift 2
+    local agents=()
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == "--agent" ]]; then agents+=("$2"); shift 2; continue; fi
+        shift
+    done
+
+    if [[ "$verb" == "deploy" && "${SKILLS_STUB_CONFLICT:-0}" == "1" ]]; then
+        read_fixture conflict.json >&2
+        exit 1
+    fi
+
+    local list="[]"
+    if ((${#agents[@]})); then
+        list="$(printf '%s\n' "${agents[@]}" | jq -R . | jq -s .)"
+    fi
+    local updated
+    updated="$(jq --arg n "$name" --argjson a "$list" --arg v "$verb" '
+        map(if .name == $n then
+              .deployed_to = (if $v == "deploy"
+                then ((.deployed_to + $a) | unique)
+                else [.deployed_to[] | select(. as $x | $a | index($x) | not)]
+                end)
+            else . end)' "${_scratch}/skills.json")"
+    printf '%s\n' "$updated" > "${_scratch}/skills.json"
+    jq -cn --arg action "$verb" --arg name "$name" --argjson agents "${list}" \
+        '{ok: true, action: $action, agents: $agents, dry_run: false,
+          skill_count: 1, pair_count: ($agents | length),
+          changed_pairs: ($agents | length), skills: [$name]}'
+}
+
+# tag add|remove NAME [TAG...]
+tag_pair() {
+    local verb="$1" name="$2"; shift 2
+    local tags=("$@")
+    ((${#tags[@]})) || return 0
+    local list updated
+    list="$(printf '%s\n' "${tags[@]}" | jq -R . | jq -s .)"
+    updated="$(jq --arg n "$name" --argjson t "$list" --arg v "$verb" '
+        map(if .name == $n then
+              .tags = (if $v == "add"
+                then ((.tags + $t) | unique)
+                else [.tags[] | select(. as $x | $t | index($x) | not)]
+                end)
+            else . end)' "${_scratch}/skills.json")"
+    printf '%s\n' "$updated" > "${_scratch}/skills.json"
+    jq -cn --arg action "tag $verb" --arg name "$name" --argjson tags "$list" \
+        '{ok: true, action: $action, skills: [$name], tags: $tags}'
+}
+
+case "${args[0]:-} ${args[1]:-}" in
+    "--version ")      echo "skills-manager-cli 1.42.0" ;;
+    "repo status")     read_fixture repo-status.json ;;
+    "repo set-path")   jq -cn --arg d "${args[2]:-}" '{ok: true, base_dir: $d}' ;;
+    "repo reset-path") read_fixture repo-status.json ;;
+    "agents list")     read_fixture agents.json ;;
+    "presets list")    read_fixture presets.json ;;
+    "skills list")     _overlay < "${_scratch}/skills.json" ;;
+    "skills show")     read_fixture show.json ;;
+    "skills status")   read_fixture status.json ;;
+    "skills check")    echo '[]' ;;
+    "skills adopt")    jq -cn '{ok: true, adopted: [], skipped: []}' ;;
+    "skills tag")      tag_pair "${args[2]:-}" "${args[3]:-}" "${args[@]:4}" ;;
+    "presets deploy")   jq -cn --arg n "${args[2]:-}" '{ok: true, action: "deploy", preset: $n}' ;;
+    "presets undeploy") jq -cn --arg n "${args[2]:-}" '{ok: true, action: "undeploy", preset: $n}' ;;
+    "skills deploy")   skills_pair deploy "${args[2]:-}" "${args[@]:3}" ;;
+    "skills undeploy") skills_pair undeploy "${args[2]:-}" "${args[@]:3}" ;;
+    *)
+        jq -cn --arg a "${args[*]}" \
+            '{ok: false, code: "STUB_UNHANDLED", message: ("stub does not handle: " + $a)}' >&2
+        exit 1 ;;
+esac
