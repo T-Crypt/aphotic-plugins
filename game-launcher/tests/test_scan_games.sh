@@ -275,6 +275,29 @@ echo "$OUT" | jq -e '.clients.heroic != ""' >/dev/null || fail "heroic client no
 echo "$OUT" | jq -e '.clients.cartridges == ""' >/dev/null || fail "cartridges must be empty"
 echo "$OUT" | jq -e '.big_picture == true' >/dev/null || fail "big_picture follows the steam client"
 
+# Bottles and RetroArch are launch clients only: neither feeds the game
+# list, and both degrade to empty when nothing is present.
+echo "$OUT" | jq -e '.clients.retroarch == ""' >/dev/null || fail "retroarch must be empty when absent"
+# A host may carry the bottles flatpak system-wide, so it may resolve
+# from there; any other resolution is a bug.
+echo "$OUT" | jq -e '(.clients.bottles == "" or .clients.bottles == "flatpak run com.usebottles.bottles")' >/dev/null || fail "bottles resolved from somewhere other than the flatpak"
+echo "$OUT" | jq -e '[.games[] | select(.source == "bottles" or .source == "retroarch")] | length == 0' >/dev/null || fail "launch clients leaked into the game list"
+
+# A flatpak presence in the user base resolves both, mixed-case ids.
+mkdir -p "$HOME/.local/share/flatpak/app/com.usebottles.bottles" "$HOME/.local/share/flatpak/app/org.libretro.RetroArch"
+OUTC="$(python3 "$SCAN" --clients-only 2>>"$FIX/err.log")"
+echo "$OUTC" | jq -e '.clients.bottles == "flatpak run com.usebottles.bottles"' >/dev/null || fail "bottles not resolved from the flatpak"
+echo "$OUTC" | jq -e '.clients.retroarch == "flatpak run org.libretro.RetroArch"' >/dev/null || fail "retroarch not resolved from the flatpak"
+echo "$OUTC" | jq -e '.games | length == 0' >/dev/null || fail "clients-only scan must not list games"
+
+# A stub on PATH wins over the flatpak, the same order as the others.
+printf '#!/bin/sh\nexit 0\n' > "$FIX/bin/bottles"
+printf '#!/bin/sh\nexit 0\n' > "$FIX/bin/retroarch"
+chmod +x "$FIX/bin/bottles" "$FIX/bin/retroarch"
+OUTD="$(python3 "$SCAN" --clients-only 2>>"$FIX/err.log")"
+echo "$OUTD" | jq -e --arg stub "$FIX/bin/bottles" '.clients.bottles == $stub' >/dev/null || fail "bottles PATH stub must win over the flatpak"
+echo "$OUTD" | jq -e --arg stub "$FIX/bin/retroarch" '.clients.retroarch == $stub' >/dev/null || fail "retroarch PATH stub must win over the flatpak"
+
 
 # Installed games only, tools excluded, playtime attached.
 echo "$OUT" | jq -e '[.games[] | select(.appid == "730" or .appid == "550")] | map(.name) | sort == ["Counter-Strike 2", "Left 4 Dead 2"]' >/dev/null || fail "steam library list wrong: $OUT"

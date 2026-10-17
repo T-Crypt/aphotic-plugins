@@ -20,7 +20,7 @@ ColumnLayout {
     spacing: Tokens.spacing.small
     visible: GameLauncherService.settings.tile_enabled
 
-    readonly property var clientNames: ["steam", "lutris", "heroic", "cartridges"]
+    readonly property var clientNames: ["steam", "lutris", "heroic", "cartridges", "bottles", "retroarch"]
 
     readonly property var presentClients: root.clientNames.filter(
         name => typeof GameLauncherService.clients[name] === "string"
@@ -93,14 +93,15 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.presentClients.length === 0
         horizontalAlignment: Text.AlignHCenter
-        text: qsTr("No store clients found. Steam, Lutris, Heroic or Cartridges will appear here once installed.")
+        text: qsTr("No store clients found. Steam, Lutris, Heroic, Cartridges, Bottles or RetroArch will appear here once installed.")
         wrapMode: Text.Wrap
         font: Tokens.font.label.small
         color: Colours.palette.m3onSurfaceVariant
     }
 
     function _clientLabel(name) {
-        const labels = ({ steam: "Steam", lutris: "Lutris", heroic: "Heroic", cartridges: "Cartridges" });
+        const labels = ({ steam: "Steam", lutris: "Lutris", heroic: "Heroic",
+            cartridges: "Cartridges", bottles: "Bottles", retroarch: "RetroArch" });
         return labels[name] ?? name;
     }
 }

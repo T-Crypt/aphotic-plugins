@@ -78,12 +78,25 @@ def detect_clients():
         or _flatpak("com.heroicgameslauncher.hgl")
     )
     cartridges = shutil.which("cartridges") or _flatpak("page.kramo.Cartridges")
+    bottles = (
+        shutil.which("bottles")
+        or _appimage("*ottles*.AppImage", appimage_dirs)
+        or _flatpak("com.usebottles.bottles")
+    )
+    # RetroArch is camel case, so a lowercase suffix glob would miss it.
+    retroarch = (
+        shutil.which("retroarch")
+        or _appimage("*[Rr]etro[Aa]rch*.AppImage", appimage_dirs)
+        or _flatpak("org.libretro.RetroArch")
+    )
 
     return {
         "steam": steam or "",
         "lutris": lutris or "",
         "heroic": heroic or "",
         "cartridges": cartridges or "",
+        "bottles": bottles or "",
+        "retroarch": retroarch or "",
     }
 
 
