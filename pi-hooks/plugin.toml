@@ -2,7 +2,7 @@
 name = "pi-hooks"
 display_name = "Pi Agent Hooks"
 description = "Wires Pi and Oh My Pi (OMP) into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard: model, per-response tokens, context-window fill, and provider rate-limit windows on OMP."
-version = "1.0.0"
+version = "1.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["harness-hook"]
@@ -24,3 +24,13 @@ external_config = [
 [harness]
 wire = "hooks/wire.sh"
 unwire = "hooks/unwire.sh"
+
+[harness.pi]
+label = "Pi"
+usage = "stream"
+context = "stream"
+
+[harness.omp]
+label = "Oh My Pi"
+usage = "stream"
+context = "stream"

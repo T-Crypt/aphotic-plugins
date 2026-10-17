@@ -2,7 +2,7 @@
 name = "opencode-hooks"
 display_name = "OpenCode Agent Hooks"
 description = "Wires OpenCode into Aphotic's v2 agent-hook contract for live per-session tracking in the bar/dashboard, same contract as Claude Code. Needs opencode >= 2.0.14."
-version = "2.0.0"
+version = "2.1.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["harness-hook"]
@@ -19,3 +19,10 @@ external_config = [
 [harness]
 wire = "hooks/wire.sh"
 unwire = "hooks/unwire.sh"
+
+[harness.opencode]
+label = "OpenCode"
+match = "opencode"
+launch = ["opencode"]
+usage = "stream"
+context = "stream"
