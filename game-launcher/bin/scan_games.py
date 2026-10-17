@@ -71,13 +71,13 @@ def detect_clients():
     appimage_dirs = (h / "Applications", h / "Downloads", h / ".local/bin", Path("/opt"), h)
 
     steam = shutil.which("steam") or _appimage("*team*.AppImage", appimage_dirs)
-    lutris = shutil.which("lutris") or _flatpak("org.lutris.Lutris")
+    lutris = shutil.which("lutris") or _flatpak("net.lutris.Lutris")
     heroic = (
         shutil.which("heroic")
         or _appimage("*eroic*.AppImage", appimage_dirs)
         or _flatpak("com.heroicgameslauncher.hgl")
     )
-    cartridges = shutil.which("cartridges") or _flatpak("page.kramo.cartridges")
+    cartridges = shutil.which("cartridges") or _flatpak("page.kramo.Cartridges")
 
     return {
         "steam": steam or "",
@@ -321,9 +321,14 @@ def scan_lutris(lutris_command):
     games = []
     if not lutris_command:
         return games
-    db = home() / ".local/share/lutris/pga.db"
-    if not db.is_file():
+    data_dir = next(
+        (d for d in (home() / ".local/share/lutris", home() / ".var/app/net.lutris.Lutris/data/lutris")
+         if (d / "pga.db").is_file()),
+        None,
+    )
+    if data_dir is None:
         return games
+    db = data_dir / "pga.db"
     try:
         import sqlite3
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
@@ -335,7 +340,7 @@ def scan_lutris(lutris_command):
     except Exception as exc:  # a corrupt DB degrades to no lutris games
         warn(f"lutris: {exc}")
         return games
-    coverart = home() / ".local/share/lutris/coverart"
+    coverart = data_dir / "coverart"
     for slug, name, lastplayed in rows:
         cover = ""
         for ext in ("jpg", "jpeg", "png"):
@@ -438,7 +443,7 @@ def _cartridges_dirs():
     h = home()
     return (
         h / ".local/share/cartridges",
-        h / ".var/app/page.kramo.cartridges/data/cartridges",
+        h / ".var/app/page.kramo.Cartridges/data/cartridges",
     )
 
 
