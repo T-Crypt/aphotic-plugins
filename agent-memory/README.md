@@ -29,8 +29,9 @@ so the next session starts knowing what broke last time.
 ## What it collects
 
 The same tool-call metadata the hooks plugins already write: a tool name, a
-duration, a harness name, a working directory, an error kind and an error
-message, plus the notes you add yourself. It never reads a prompt, a
+duration, a harness name, a working directory, and for a failed call the
+command's first word, its exit code and one scrubbed error line. Add the
+notes and rules you write yourself. It never reads a prompt, a
 response, a transcript or a file diff, and nothing leaves the machine.
 
 ## The store
@@ -69,7 +70,37 @@ aphotic memory reopen ab12          # open it again
 aphotic memory context [--project P]  # the digest
 aphotic memory stats                # totals
 aphotic memory inject --status       # enabled or disabled
+aphotic memory candidates           # repeated failures with no rule yet
+aphotic memory promote ab12 "rule"  # write a rule for one of them
+aphotic memory promote i3f9…        # pin an imported lesson as a rule
+aphotic memory lessons              # every rule, most broken first
+aphotic memory retire l2            # remove a rule
 ```
+
+## Lessons
+
+A failure that comes back three times across two sessions becomes a
+candidate. The plugin never writes a rule on its own: you promote a
+candidate with one line saying what to do instead. That rule leads the
+digest. Each later failure with the same signature counts as a hit, so a
+rule agents keep breaking rises to the top.
+
+Lessons can also come from notes you already keep. List them in
+`~/.config/aphotic/agent-memory/sources.toml`:
+
+```toml
+[[source]]
+kind = "claude-memory"        # *.md files with type: feedback or project
+path = "~/.claude/projects/*/memory"
+
+[[source]]
+kind = "rule-lines"           # lines starting **Rule:** or **Lesson:**
+path = "~/notes/incidents.md"
+label = "Incidents"
+```
+
+Sources are read on every build and never written. An imported lesson stays
+out of the digest until you pin it with `promote`.
 
 ## Injecting into Claude Code
 

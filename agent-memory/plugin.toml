@@ -18,11 +18,12 @@ requires_data = "harness"
 [cli]
 command = "memory"
 script = "cli/memory.sh"
-summary = "Agent session memory: build, query, note, resolve, context, inject"
+summary = "Agent session memory: build, query, note, resolve, lessons, context, inject"
 
 [owns]
 config_keys = []
 external_config = [
     "~/.local/state/aphotic/agent-memory/",
-    "~/.claude/CLAUDE.md (marked agent-memory block only)"
+    "~/.claude/CLAUDE.md (marked agent-memory block only)",
+    "~/.config/aphotic/agent-memory/sources.toml (read only)"
 ]

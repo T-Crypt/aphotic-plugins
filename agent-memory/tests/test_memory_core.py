@@ -417,3 +417,110 @@ if __name__ == "__main__":
             else:
                 function()
         print(f"PASS: {name}")
+
+
+# --- lessons --------------------------------------------------------------
+
+def _repeated(times, sessions=2, t0=1791397101000):
+    lines = [base(event="session_start", status="running", t=1791397100000 + n, cwd="/repo",
+                  sessionId=f"o{1 + n}") for n in range(sessions)]
+    for n in range(times):
+        lines.append(base(event="tool_call", tool="Bash", toolId=f"r{n}", toolStatus="errored",
+                          sessionId=f"o{1 + n % sessions}", t=t0 + n * 1000,
+                          error={"cmd": "jq", "exit": 127, "head": "jq: command not found"}))
+    return lines
+
+
+def test_a_failure_becomes_a_candidate_after_three_hits_in_two_sessions(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path, "\n".join(_repeated(2)) + "\n")
+    assert core["main"](["build"]) == 0
+    assert core["candidates"](core["load_store"]()) == []
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    found = core["candidates"](core["load_store"]())
+    assert [e["cmd"] for e in found] == ["jq"]
+
+
+def test_promote_writes_a_rule_and_later_failures_count_as_hits(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    sig = core["candidates"](core["load_store"]())[0]["sig"]
+    assert core["main"](["promote", sig[:6], "Hosts .25 and .30 have no jq; parse on this machine"]) == 0
+    store = store_of(tmp_path)
+    assert store["lessons"][0]["sig"] == sig and store["lessons"][0]["project"] == "/repo"
+    assert core["candidates"](core["load_store"]()) == []
+    later = _repeated(5, t0=9_000_000_000_000)[-2:]
+    write_events(tmp_path, "\n".join(_repeated(3) + later) + "\n")
+    assert core["main"](["build"]) == 0
+    assert store_of(tmp_path)["lessons"][0]["hits"] == 2
+    digest = (tmp_path / "aphotic" / "agent-memory" / "context.md").read_text(encoding="utf-8")
+    lines = digest.splitlines()
+    assert lines[1].startswith("Rules learned from past failures")
+    assert "Hosts .25 and .30 have no jq; parse on this machine [repo] (broken 2x since written)" in digest
+
+
+def test_promote_refuses_an_unknown_signature_and_empty_text(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    assert core["main"](["promote", "zzzzzz", "x"]) == 2
+    assert core["main"](["promote", "-", ""]) == 2
+    assert core["main"](["promote", "-", "Always run the tests"]) == 0
+    assert store_of(tmp_path)["lessons"][0]["project"] == ""
+
+
+def test_retire_removes_only_that_lesson(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    core["main"](["promote", "-", "one"])
+    core["main"](["promote", "-", "two"])
+    assert core["main"](["retire", "l1"]) == 0
+    assert [l["text"] for l in store_of(tmp_path)["lessons"]] == ["two"]
+    assert core["main"](["retire", "l9"]) == 2
+
+
+def test_sources_import_memory_files_and_rule_lines_read_only(tmp_path):
+    memory = tmp_path / "mem"
+    memory.mkdir()
+    (memory / "MEMORY.md").write_text("- index\n", encoding="utf-8")
+    (memory / "a.md").write_text("---\nname: no-jq\ndescription: Hosts .25/.30 have no jq\n"
+                                 "metadata:\n  type: feedback\n---\n\nUse python.\n**Why:** PVE minimal.\n",
+                                 encoding="utf-8")
+    (memory / "b.md").write_text("---\nname: who\ndescription: The user is an operator\ntype: user\n---\n",
+                                 encoding="utf-8")
+    incidents = tmp_path / "incidents.md"
+    incidents.write_text("# Incidents\n\n## 2026-10-03 build froze the box\n**Rule:** no heavy build while "
+                         "the engine is resident.\n", encoding="utf-8")
+    before = {p: p.read_bytes() for p in [incidents, *memory.iterdir()]}
+    config = tmp_path / "cfg" / "aphotic" / "agent-memory"
+    config.mkdir(parents=True)
+    (config / "sources.toml").write_text(
+        f'[[source]]\nkind = "claude-memory"\npath = "{memory}"\n\n'
+        f'[[source]]\nkind = "rule-lines"\npath = "{incidents}"\nlabel = "incidents"\n', encoding="utf-8")
+    os.environ["XDG_CONFIG_HOME"] = str(tmp_path / "cfg")
+    try:
+        core = load_core(tmp_path)
+        write_events(tmp_path)
+        assert core["main"](["build"]) == 0
+    finally:
+        del os.environ["XDG_CONFIG_HOME"]
+    imported = store_of(tmp_path)["imported"]
+    assert sorted(i["text"] for i in imported) == [
+        "Hosts .25/.30 have no jq", "no heavy build while the engine is resident."]
+    rule = next(i for i in imported if i["kind"] == "rule")
+    assert rule["why"] == "2026-10-03 build froze the box" and rule["label"] == "incidents"
+    assert next(i for i in imported if i["kind"] == "feedback")["why"] == "PVE minimal."
+    assert {p: p.read_bytes() for p in before} == before
+    # A pinned import becomes a lesson that keeps its source.
+    assert core["main"](["promote", rule["id"]]) == 0
+    assert store_of(tmp_path)["lessons"][0]["source"] == str(incidents)
+
+
+def test_missing_sources_file_imports_nothing(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    assert store_of(tmp_path)["imported"] == []

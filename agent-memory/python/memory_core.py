@@ -32,8 +32,10 @@ DATA_DIR = os.path.join(STATE, "agent-memory")
 STORE_PATH = os.path.join(DATA_DIR, "store.json")
 CONTEXT_PATH = os.path.join(DATA_DIR, "context.md")
 CLAUDE_MD = os.path.expanduser("~/.claude/CLAUDE.md")
+SOURCES_PATH = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                            "aphotic", "agent-memory", "sources.toml")
 
-STORE_VERSION = 1
+STORE_VERSION = 2
 MARKER_START = "<!-- aphotic:agent-memory:start -->"
 MARKER_END = "<!-- aphotic:agent-memory:end -->"
 EMPTY_DIGEST = "# agent memory -- no sessions recorded yet"
@@ -49,6 +51,13 @@ MAX_KNOWN_SESSIONS = 500
 MAX_DIGEST_LINES = 40
 MAX_DIGEST_SECTIONS = 8
 MAX_LIST_LINES = 100
+MAX_LESSONS = 200
+MAX_IMPORTED = 400
+MAX_IMPORT_FILES = 200
+CANDIDATE_COUNT = 3
+CANDIDATE_SESSIONS = 2
+MAX_DIGEST_RULES = 12
+MAX_DIGEST_CANDIDATES = 8
 
 
 # --- store ----------------------------------------------------------------
@@ -79,6 +88,9 @@ def load_store():
         "errors": [],
         "nextNoteId": 0,
         "notes": [],
+        "nextLessonId": 0,
+        "lessons": [],
+        "imported": [],
     }
     try:
         with open(STORE_PATH, "r", encoding="utf-8") as handle:
@@ -142,6 +154,27 @@ def load_store():
                 "text": str(entry.get("text") or ""),
                 "created": _int(entry.get("created")),
             })
+    store["nextLessonId"] = _int(data.get("nextLessonId"))
+    lessons = data.get("lessons")
+    if isinstance(lessons, list):
+        for entry in lessons:
+            if not isinstance(entry, dict) or not entry.get("id") or not entry.get("text"):
+                continue
+            store["lessons"].append({
+                "id": str(entry["id"]),
+                "text": str(entry["text"]),
+                "why": str(entry.get("why") or ""),
+                "project": str(entry.get("project") or ""),
+                "sig": str(entry.get("sig") or ""),
+                "source": str(entry.get("source") or ""),
+                "created": _int(entry.get("created")),
+                "hits": _int(entry.get("hits")),
+                "lastHit": _int(entry.get("lastHit")),
+            })
+    imported = data.get("imported")
+    if isinstance(imported, list):
+        store["imported"] = [entry for entry in imported
+                             if isinstance(entry, dict) and entry.get("id") and entry.get("text")]
     return store
 
 
@@ -229,7 +262,9 @@ def record_error(store, project, tool, kind, message, at, session_id, cmd=""):
         if session_id and session_id not in entry["sessions"]:
             entry["sessions"].append(session_id)
             del entry["sessions"][:-MAX_SESSIONS_PER_ERROR]
+        count_hit(store, sig, project, at)
         return
+    count_hit(store, sig, project, at)
     store["errors"].append({
         "sig": sig,
         "project": project,
@@ -243,6 +278,18 @@ def record_error(store, project, tool, kind, message, at, session_id, cmd=""):
         "sessions": [session_id] if session_id else [],
         "resolved": False,
     })
+
+
+def count_hit(store, sig, project, at):
+    """A failure the user already wrote a rule for. The rule is not reaching
+    the agent, and the hit count is how that shows."""
+    for lesson in store["lessons"]:
+        if lesson["sig"] != sig or at <= lesson["created"]:
+            continue
+        if lesson["project"] and lesson["project"] != project:
+            continue
+        lesson["hits"] += 1
+        lesson["lastHit"] = max(lesson["lastHit"], at)
 
 
 def fold(store):
@@ -377,11 +424,131 @@ def prune(store):
         store["projects"] = dict(ranked[:MAX_PROJECTS])
 
     store["notes"] = sorted(store["notes"], key=lambda n: (n["created"], n["id"]))[-MAX_NOTES:]
+    store["lessons"] = sorted(store["lessons"], key=lambda n: (n["created"], n["id"]))[-MAX_LESSONS:]
+    store["imported"] = store["imported"][:MAX_IMPORTED]
     store["recent"] = store["recent"][-MAX_RECENT:]
     known = store["sessions"]
     if len(known) > MAX_KNOWN_SESSIONS:
         for stale in list(known)[:len(known) - MAX_KNOWN_SESSIONS]:
             del known[stale]
+
+
+# --- lessons --------------------------------------------------------------
+
+def candidates(store):
+    """Open issues that keep coming back with no rule written for them."""
+    ruled = {lesson["sig"] for lesson in store["lessons"] if lesson["sig"]}
+    found = [e for e in open_issues(store)
+             if e["sig"] not in ruled and e["count"] >= CANDIDATE_COUNT
+             and len(e["sessions"]) >= CANDIDATE_SESSIONS]
+    return sorted(found, key=lambda e: (-e["count"], -e["last"], e["sig"]))
+
+
+def read_sources():
+    """The user's sources file. A missing or unreadable file is no sources."""
+    try:
+        import tomllib
+        with open(SOURCES_PATH, "rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return []
+    out = []
+    for entry in data.get("source") or []:
+        if isinstance(entry, dict) and entry.get("kind") in ("claude-memory", "rule-lines") and entry.get("path"):
+            out.append({"kind": entry["kind"], "path": str(entry["path"]),
+                        "label": str(entry.get("label") or entry["path"])})
+    return out
+
+
+def _source_files(source):
+    import glob
+    pattern = os.path.expanduser(source["path"])
+    if source["kind"] == "claude-memory":
+        pattern = os.path.join(pattern, "*.md") if not pattern.endswith(".md") else pattern
+    files = sorted(f for f in glob.glob(pattern) if os.path.isfile(f))
+    return files[:MAX_IMPORT_FILES]
+
+
+def _frontmatter(text):
+    if not text.startswith("---"):
+        return {}, text
+    end = text.find("\n---", 3)
+    if end < 0:
+        return {}, text
+    fields = {}
+    for line in text[3:end].splitlines():
+        match = re.match(r"^\s*([A-Za-z_]+):\s*(.*)$", line)
+        if match:
+            fields[match.group(1)] = match.group(2).strip().strip('"').strip("'")
+    return fields, text[end + 4:]
+
+
+def _import_id(path, text):
+    return "i" + hashlib.sha1(f"{path}|{text}".encode("utf-8")).hexdigest()[:10]
+
+
+def read_claude_memory(path, label):
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            text = handle.read(16384)
+    except OSError:
+        return []
+    fields, body = _frontmatter(text)
+    if os.path.basename(path) == "MEMORY.md" or fields.get("type") not in ("feedback", "project"):
+        return []
+    rule = fields.get("description") or ""
+    if not rule:
+        return []
+    why = re.search(r"\*\*Why:\*\*\s*(.+)", body)
+    return [{"id": _import_id(path, rule), "text": clean_message(rule),
+             "why": clean_message(why.group(1)) if why else "",
+             "kind": fields.get("type"), "name": fields.get("name") or os.path.basename(path),
+             "source": path, "label": label}]
+
+
+def read_rule_lines(path, label):
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            lines = handle.read(262144).splitlines()
+    except OSError:
+        return []
+    out = []
+    heading = ""
+    for line in lines:
+        if line.startswith("#"):
+            heading = line.lstrip("#").strip()
+            continue
+        match = re.match(r"^\s*\*\*(Rule|Lesson):\*\*\s*(.+)$", line)
+        if match:
+            rule = clean_message(match.group(2))
+            out.append({"id": _import_id(path, rule), "text": rule, "why": clean_message(heading),
+                        "kind": match.group(1).lower(), "name": heading, "source": path, "label": label})
+    return out
+
+
+def import_sources(store):
+    """Mirror every declared source. Nothing here writes to a source file."""
+    found = []
+    for source in read_sources():
+        reader = read_claude_memory if source["kind"] == "claude-memory" else read_rule_lines
+        for path in _source_files(source):
+            found.extend(reader(path, source["label"]))
+    seen = set()
+    unique = []
+    for entry in found:
+        if entry["id"] not in seen:
+            seen.add(entry["id"])
+            unique.append(entry)
+    store["imported"] = unique[:MAX_IMPORTED]
+
+
+def add_lesson(store, text, why="", project="", sig="", source=""):
+    store["nextLessonId"] += 1
+    lesson = {"id": f"l{store['nextLessonId']}", "text": clean_message(text), "why": clean_message(why),
+              "project": project, "sig": sig, "source": source, "created": now_ms(),
+              "hits": 0, "lastHit": 0}
+    store["lessons"].append(lesson)
+    return lesson
 
 
 # --- digest ---------------------------------------------------------------
@@ -417,6 +584,22 @@ def digest(store, project=None, max_lines=MAX_DIGEST_LINES):
         return EMPTY_DIGEST
 
     out = [("fixed", f"# agent memory -- generated {utc_date(now_ms())}")]
+    rules = sorted((l for l in store["lessons"] if project is None or l["project"] in ("", project)),
+                   key=lambda l: (-l["hits"], -l["created"], l["id"]))[:MAX_DIGEST_RULES]
+    if rules:
+        out.append(("fixed", "Rules learned from past failures. Follow them before running the command:"))
+        for lesson in rules:
+            where = f" [{os.path.basename(lesson['project'])}]" if lesson["project"] else ""
+            hits = f" (broken {lesson['hits']}x since written)" if lesson["hits"] else ""
+            out.append(("rule", f"- {lesson['text']}{where}{hits}"))
+    repeat = [e for e in candidates(store) if project is None or e["project"] == project][:MAX_DIGEST_CANDIDATES]
+    if repeat:
+        out.append(("fixed", "Failing repeatedly with no rule yet. Check before you run these:"))
+        for entry in repeat:
+            cmd = f" `{entry['cmd']}`" if entry.get("cmd") else ""
+            out.append(("candidate", f"- {entry['tool']}{cmd}: {entry['message'] or entry['kind']} "
+                                     f"(x{entry['count']}, {len(entry['sessions'])} sessions, "
+                                     f"{os.path.basename(entry['project'])})"))
     if project is None:
         out.append(("fixed", f"projects={len(projects)} open_issues={len(open_issues(store))} "
                              f"notes={len(scope)}"))
@@ -568,11 +751,13 @@ def cmd_build(args):
     started = now_ms()
     store = load_store()
     fold(store)
+    import_sources(store)
     save_store(store)
     write_context(store)
     elapsed = now_ms() - started
     print(f"ok projects={len(store['projects'])} errors={len(store['errors'])} "
-          f"notes={len(store['notes'])} ms={elapsed}")
+          f"notes={len(store['notes'])} lessons={len(store['lessons'])} "
+          f"imported={len(store['imported'])} ms={elapsed}")
     return 0
 
 
@@ -805,6 +990,81 @@ def cmd_inject(args):
     return 0
 
 
+def cmd_lessons(args):
+    store = load_store()
+    rows = sorted(store["lessons"], key=lambda l: (-l["hits"], -l["created"], l["id"]))
+    if args.json:
+        print(json.dumps({"lessons": rows, "candidates": candidates(store),
+                          "imported": store["imported"], "sources": read_sources()}, indent=1))
+        return 0
+    if not rows:
+        print("no lessons yet; promote a repeated failure with `memory promote <sig> \"rule\"`")
+    for lesson in rows[:MAX_LIST_LINES]:
+        where = lesson["project"] or "global"
+        print(f"{lesson['id']} hits={lesson['hits']} {where} :: {lesson['text']}")
+    return 0
+
+
+def cmd_candidates(args):
+    store = load_store()
+    rows = candidates(store)
+    if args.json:
+        print(json.dumps(rows, indent=1))
+        return 0
+    for entry in rows[:MAX_LIST_LINES]:
+        print(f"{entry['sig']} x{entry['count']} sessions={len(entry['sessions'])} "
+              f"{entry['tool']} {entry.get('cmd') or ''} :: {entry['message']}")
+    return 0
+
+
+def cmd_promote(args):
+    """Write a rule. A signature ties it to a failure so later hits count;
+    an imported lesson id pins that lesson; neither makes a free rule."""
+    store = load_store()
+    text = clean_message(args.text or "")
+    project = ""
+    sig = ""
+    source = ""
+    why = args.why or ""
+    target = args.target
+    imported = next((e for e in store["imported"] if e["id"] == target), None)
+    if imported is not None:
+        text = text or imported["text"]
+        why = why or imported["why"]
+        source = imported["source"]
+    elif target != "-":
+        matches = _match_signature(store, target)
+        if len(matches) != 1:
+            print(f"agent-memory: {target!r} matches {len(matches)} signatures", file=sys.stderr)
+            return 2
+        sig = matches[0]["sig"]
+        project = matches[0]["project"]
+    if args.everywhere:
+        project = ""
+    if not text:
+        print("agent-memory: a rule needs text", file=sys.stderr)
+        return 2
+    lesson = add_lesson(store, text, why, project, sig, source)
+    prune(store)
+    save_store(store)
+    write_context(store)
+    print(lesson["id"])
+    return 0
+
+
+def cmd_retire(args):
+    store = load_store()
+    kept = [l for l in store["lessons"] if l["id"] != args.id]
+    if len(kept) == len(store["lessons"]):
+        print(f"agent-memory: no lesson {args.id!r}", file=sys.stderr)
+        return 2
+    store["lessons"] = kept
+    save_store(store)
+    write_context(store)
+    print(f"retired {args.id}")
+    return 0
+
+
 def _project_error(name, matches):
     print(f"agent-memory: no project {name!r} recorded", file=sys.stderr)
     for match in matches:
@@ -851,6 +1111,22 @@ def build_parser():
     stats = verbs.add_parser("stats", help="totals across every project")
     stats.add_argument("--json", action="store_true")
 
+    lessons = verbs.add_parser("lessons", help="rules written from past failures")
+    lessons.add_argument("--json", action="store_true",
+                         help="lessons, candidates, imported lessons and sources")
+
+    cands = verbs.add_parser("candidates", help="repeated failures with no rule yet")
+    cands.add_argument("--json", action="store_true")
+
+    promote = verbs.add_parser("promote", help="write a rule for a failure or pin an imported lesson")
+    promote.add_argument("target", help="a failure signature, an imported lesson id, or - for a free rule")
+    promote.add_argument("text", nargs="?", default="")
+    promote.add_argument("--why", default="")
+    promote.add_argument("--everywhere", action="store_true", help="not only in the failure's project")
+
+    retire = verbs.add_parser("retire", help="remove a lesson by id")
+    retire.add_argument("id")
+
     inject = verbs.add_parser("inject", help="manage the CLAUDE.md marker block")
     group = inject.add_mutually_exclusive_group(required=True)
     group.add_argument("--enable", action="store_true")
@@ -871,6 +1147,10 @@ HANDLERS = {
     "context": cmd_context,
     "stats": cmd_stats,
     "inject": cmd_inject,
+    "lessons": cmd_lessons,
+    "candidates": cmd_candidates,
+    "promote": cmd_promote,
+    "retire": cmd_retire,
 }
 
 
