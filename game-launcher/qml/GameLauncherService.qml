@@ -39,7 +39,8 @@ Singleton {
         close_on_launch: true,
         tile_enabled: true,
         favorites: [],
-        manual: []
+        manual: [],
+        recent: []
     })
 
     property var settings: root.defaultSettings
@@ -52,6 +53,42 @@ Singleton {
     property string lastError: ""
     property var lastScanned: null
 
+    // Launch history, newest first, capped at 12. Only the launch time is
+    // recorded here; the game itself is resolved from the last scan when
+    // a surface draws the list, so an uninstalled game drops out on its
+    // own instead of lingering as a dead tile.
+    readonly property var recent: root.settings.recent ?? []
+
+    readonly property var recentGames: root._resolveRecent()
+    readonly property var favoriteGames: root.games.filter(game => game.favorite)
+
+    function _resolveRecent() {
+        const resolved = [];
+        for (const entry of root.recent) {
+            const game = root.games.find(g => g.name === entry.name && g.source === entry.source);
+            if (game)
+                resolved.push(game);
+            if (resolved.length === 4)
+                break;
+        }
+        return resolved;
+    }
+
+    // Which surfaces are on screen. The tile registers itself, so a read
+    // that would otherwise keep changing can follow the registration
+    // rather than a clock of this plugin's own.
+    property var _visibleOwners: ({})
+    readonly property bool surfacesVisible: Object.keys(root._visibleOwners).length > 0
+
+    function setSurfaceVisible(owner: string, on: bool): void {
+        const next = Object.assign({}, root._visibleOwners);
+        if (on)
+            next[owner] = true;
+        else
+            delete next[owner];
+        root._visibleOwners = next;
+    }
+
     // ── Settings ────────────────────────────────────────────────────────
 
     function _merge(data) {
@@ -63,6 +100,10 @@ Singleton {
                 continue;
             if (key === "sources" || key === "sgdb")
                 merged[key] = Object.assign({}, merged[key], data[key]);
+            else if (key === "recent")
+                merged[key] = Array.isArray(data[key])
+                    ? data[key].filter(e => e && typeof e.name === "string").slice(0, 12)
+                    : merged[key];
             else
                 merged[key] = data[key];
         }
@@ -174,15 +215,34 @@ Singleton {
 
     // ── Launching ───────────────────────────────────────────────────────
 
-    function launch(game) {
+    // `screenState` is the caller's own, and only decides where
+    // close-on-launch applies: a launch from the tile closes the plane,
+    // and a launch from the plane closes the plane it came from.
+    function launch(game, screenState) {
         if (!game || !game.exec)
             return;
+        root._recordRecent(game);
         // setsid reparents the game away from the shell: the spawn
         // returns immediately, so a crash or a ten-hour session never
         // sits in the shell's process table.
         Quickshell.execDetached(["sh", "-c", `setsid ${game.exec} >/dev/null 2>&1 &`]);
-        if (root.settings.close_on_launch)
-            Actions.invoke("workspace", {});
+        if (root.settings.close_on_launch && screenState)
+            screenState.workspace = false;
+    }
+
+    function _recordRecent(game) {
+        const entry = { name: game.name, source: game.source ?? "", at: Date.now() };
+        const recent = root.recent.filter(r => !(r.name === entry.name && r.source === entry.source));
+        recent.unshift(entry);
+        root.setSetting("recent", recent.slice(0, 12));
+    }
+
+    // Opening the plugin's own workspace plane, the same way the shell's
+    // own action does it: the plane's flag lives on the per-screen state,
+    // so the tile hands over the state its window carries.
+    function openLibrary(screenState) {
+        if (screenState)
+            Actions.invoke("workspace.open", { screenState: screenState });
     }
 
     function launchClient(name) {
