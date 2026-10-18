@@ -440,6 +440,7 @@ def test_a_failure_becomes_a_candidate_after_three_hits_in_two_sessions(tmp_path
     assert core["main"](["build"]) == 0
     found = core["candidates"](core["load_store"]())
     assert [e["cmd"] for e in found] == ["jq"]
+    assert [e["candidate"] for e in store_of(tmp_path)["errors"]] == [True]
 
 
 def test_promote_writes_a_rule_and_later_failures_count_as_hits(tmp_path):

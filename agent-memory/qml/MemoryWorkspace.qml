@@ -1,8 +1,8 @@
 pragma ComponentBehavior: Bound
 
 // The memory workstation: pick a project on the left, read its failures,
-// notes and tool balance in the middle, read the digest it would inject on
-// the right.
+// rules, notes and tool balance in the middle, and choose on the right which
+// harnesses get the rules injected.
 //
 // Everything here comes from the fold's own store: a signature, a count, a
 // tool name, a timestamp, a note. No prompt, response or transcript text
@@ -14,6 +14,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Io
 import qs.components
 import qs.config
@@ -64,11 +65,11 @@ Item {
     readonly property var issueRows: root.activeProject.length > 0 ? MemoryService.errorsFor(root.activeProject) : []
     readonly property var noteRows: root.activeProject.length > 0 ? MemoryService.notesFor(root.activeProject) : []
     readonly property var toolRows: root.activeProject.length > 0 ? MemoryService.toolsFor(root.activeProject) : []
+    readonly property var lessonRows: MemoryService.lessonsFor(root.activeProject)
+    readonly property var importedRows: MemoryService.importedLessons()
+    readonly property int candidateCount: root.issueRows.filter(row => row.candidate && !row.resolved).length
     readonly property var activeEntry: root.projectRows.find(row => row.path === root.activeProject) ?? null
 
-    readonly property string injectionState: (MemoryService.lastOutput === "enabled" || MemoryService.lastOutput === "disabled")
-        ? MemoryService.lastOutput
-        : "unknown"
 
     readonly property int busiestTool: root.toolRows.reduce((most, row) => Math.max(most, row.calls), 0)
 
@@ -77,11 +78,9 @@ Item {
     // answers "what did this session actually do".
     readonly property bool empty: root.projectRows.length === 0
 
-    // The first read happens on open; the injection read is chained to it
-    // by the service because both share one runner.
     Component.onCompleted: {
-        MemoryService.injectStatus();
         MemoryService.build();
+        MemoryService.refreshTargets();
     }
 
     function agoLabel(ms: var): string {
@@ -231,9 +230,11 @@ Item {
         required property var issueData
 
         readonly property color tone: issueRow.issueData.resolved ? root.statusPass : root.statusFail
+        readonly property bool repeats: (issueRow.issueData.candidate ?? false) && !issueRow.issueData.resolved
+        property bool writing: false
 
         width: ListView.view.width
-        implicitHeight: 74
+        implicitHeight: issueRow.writing ? 112 : 74
         radius: Tokens.rounding.small
         color: root.insetColour
         border.width: 1
@@ -266,6 +267,23 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: Tokens.spacing.small
+
+                    StyledRect {
+                        visible: issueRow.repeats
+                        implicitWidth: repeatLabel.implicitWidth + Tokens.padding.small * 2
+                        implicitHeight: 18
+                        radius: Tokens.rounding.full
+                        color: Qt.alpha(root.statusWarn, 0.16)
+
+                        StyledText {
+                            id: repeatLabel
+
+                            anchors.centerIn: parent
+                            text: qsTr("REPEATS")
+                            color: root.statusWarn
+                            font: Tokens.font.label.small
+                        }
+                    }
 
                     StyledText {
                         text: (issueRow.issueData.tool.length > 0 ? issueRow.issueData.tool : "no tool")
@@ -311,6 +329,15 @@ Item {
                     }
 
                     ActionButton {
+                        visible: !issueRow.issueData.resolved
+                        implicitWidth: 84
+                        label: issueRow.writing ? qsTr("Cancel") : qsTr("Write rule")
+                        accent: root.accentNote
+                        onActivated: issueRow.writing = !issueRow.writing
+                    }
+
+                    ActionButton {
+                        implicitWidth: 72
                         label: issueRow.issueData.resolved ? qsTr("Reopen") : qsTr("Resolve")
                         accent: issueRow.tone
                         onActivated: MemoryService.act(
@@ -319,6 +346,110 @@ Item {
                         )
                     }
                 }
+
+                TextField {
+                    id: ruleInput
+
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    visible: issueRow.writing
+                    placeholderText: qsTr("what an agent should do instead, in one line")
+                    placeholderTextColor: root.textMuted
+                    color: root.textPrimary
+                    selectByMouse: true
+                    font: Tokens.font.mono.small
+                    leftPadding: Tokens.padding.medium
+                    rightPadding: Tokens.padding.medium
+                    topPadding: 0
+                    bottomPadding: 0
+
+                    background: StyledRect {
+                        radius: Tokens.rounding.full
+                        color: root.panelColour
+                        border.width: 1
+                        border.color: ruleInput.activeFocus ? root.accentNote : root.hairline
+                    }
+
+                    onVisibleChanged: if (visible) forceActiveFocus()
+                    onAccepted: {
+                        const rule = text.trim();
+                        if (rule.length === 0)
+                            return;
+                        MemoryService.act("promote", [issueRow.issueData.sig, rule, "--project", root.activeProject]);
+                        text = "";
+                        issueRow.writing = false;
+                    }
+                }
+            }
+        }
+    }
+
+    component LessonDelegate: StyledRect {
+        id: lessonRow
+
+        required property var lessonData
+        // An imported lesson waits to be pinned; a rule can be retired.
+        required property bool pinned
+
+        width: ListView.view.width
+        implicitHeight: 62
+        radius: Tokens.rounding.small
+        color: root.insetColour
+        border.width: 1
+        border.color: lessonRow.pinned && lessonRow.lessonData.hits > 0 ? Qt.alpha(root.statusWarn, 0.42) : root.hairline
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: Tokens.padding.small
+            spacing: Tokens.spacing.small
+
+            StyledRect {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: Tokens.rounding.small
+                color: Qt.alpha(lessonRow.pinned ? root.accentTool : root.textMuted, 0.15)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: lessonRow.pinned ? "rule" : "bookmark"
+                    color: lessonRow.pinned ? root.accentTool : root.textMuted
+                    fontStyle: Tokens.font.icon.small
+                    fill: 1
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: lessonRow.lessonData.text
+                    color: root.textPrimary
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    font: Tokens.font.body.small
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: lessonRow.pinned
+                        ? [lessonRow.lessonData.hits > 0 ? qsTr("broken %1x since written").arg(lessonRow.lessonData.hits) : qsTr("not broken since written"),
+                           lessonRow.lessonData.project.length > 0 ? MemoryService.projectName(lessonRow.lessonData.project) : qsTr("every project"),
+                           lessonRow.lessonData.why].filter(part => part.length > 0).join(" · ")
+                        : [lessonRow.lessonData.label, lessonRow.lessonData.kind, lessonRow.lessonData.why].filter(part => (part ?? "").length > 0).join(" · ")
+                    color: lessonRow.pinned && lessonRow.lessonData.hits > 0 ? root.statusWarn : root.textMuted
+                    elide: Text.ElideRight
+                    font: Tokens.font.label.small
+                }
+            }
+
+            ActionButton {
+                implicitWidth: 64
+                label: lessonRow.pinned ? qsTr("Retire") : qsTr("Pin")
+                accent: lessonRow.pinned ? root.textMuted : root.accentTool
+                onActivated: MemoryService.act(lessonRow.pinned ? "retire" : "promote", [lessonRow.lessonData.id])
             }
         }
     }
@@ -520,6 +651,13 @@ Item {
             }
 
             StyledText {
+                visible: root.candidateCount > 0
+                text: qsTr("%1 repeating").arg(root.candidateCount)
+                color: root.statusWarn
+                font: Tokens.font.mono.small
+            }
+
+            StyledText {
                 text: `${root.projectRows.length} projects`
                 color: root.textMuted
                 font: Tokens.font.mono.small
@@ -658,6 +796,10 @@ Item {
                         font: Tokens.font.label.medium
                     }
                     TabButton {
+                        text: qsTr("Lessons") + ` (${root.lessonRows.length})`
+                        font: Tokens.font.label.medium
+                    }
+                    TabButton {
                         text: qsTr("Notes") + ` (${root.noteRows.length})`
                         font: Tokens.font.label.medium
                     }
@@ -744,6 +886,51 @@ Item {
                                     onActivated: root.addNote()
                                 }
                             }
+                        }
+                    }
+
+                    // --- Lessons ----------------------------------------
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+
+                        ListView {
+                            anchors.fill: parent
+                            clip: true
+                            spacing: 2
+                            model: root.lessonRows.concat(root.importedRows)
+
+                            delegate: LessonDelegate {
+                                required property var modelData
+                                required property int index
+
+                                lessonData: modelData
+                                pinned: index < root.lessonRows.length
+                            }
+
+                            header: StyledText {
+                                width: ListView.view.width
+                                bottomPadding: Tokens.spacing.small
+                                text: root.lessonRows.length > 0
+                                    ? qsTr("Rules lead every injected block. A rule agents keep breaking rises to the top.")
+                                    : qsTr("No rules yet. On the Issues tab, a failure marked REPEATS takes one line: what an agent should do instead.")
+                                color: root.textMuted
+                                wrapMode: Text.Wrap
+                                font: Tokens.font.label.small
+                            }
+
+                            footer: StyledText {
+                                width: ListView.view.width
+                                topPadding: Tokens.spacing.small
+                                visible: root.importedRows.length === 0
+                                text: qsTr("Add sources in ~/.config/aphotic/agent-memory/sources.toml to import lessons you already keep. Pin one to make it a rule.")
+                                color: root.textMuted
+                                wrapMode: Text.Wrap
+                                font: Tokens.font.label.small
+                            }
+
+                            ScrollBar.vertical: ScrollBar {}
                         }
                     }
 
@@ -849,8 +1036,10 @@ Item {
                     }
 
                     StyledText {
-                        text: root.injectionState === "enabled" ? qsTr("INJECTED") : qsTr("NOT INJECTED")
-                        color: root.injectionState === "enabled" ? root.statusPass : root.statusWarn
+                        readonly property int on: MemoryService.injectTargets.filter(target => target.enabled).length
+
+                        text: qsTr("IN %1 OF %2").arg(on).arg(MemoryService.injectTargets.length)
+                        color: on > 0 ? root.statusPass : root.textMuted
                         font: Tokens.font.label.small
                     }
                 }
@@ -888,27 +1077,73 @@ Item {
                     }
                 }
 
+                SectionLabel {
+                    text: qsTr("INJECT INTO")
+                }
+
+                Repeater {
+                    model: MemoryService.injectTargets
+
+                    delegate: RowLayout {
+                        id: targetRow
+
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        spacing: Tokens.spacing.small
+
+                        StyledRect {
+                            Layout.preferredWidth: 8
+                            Layout.preferredHeight: 8
+                            radius: Tokens.rounding.full
+                            color: targetRow.modelData.enabled ? root.statusPass : root.hairline
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            StyledText {
+                                text: targetRow.modelData.label
+                                color: root.textPrimary
+                                font: Tokens.font.label.medium
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: String(targetRow.modelData.path).replace(Quickshell.env("HOME"), "~")
+                                color: root.textMuted
+                                elide: Text.ElideMiddle
+                                font: Tokens.font.mono.small
+                            }
+                        }
+
+                        ActionButton {
+                            implicitWidth: 64
+                            label: targetRow.modelData.enabled ? qsTr("Remove") : qsTr("Inject")
+                            accent: targetRow.modelData.enabled ? root.statusFail : root.statusPass
+                            onActivated: MemoryService.act("inject", [
+                                targetRow.modelData.enabled ? "--disable" : "--enable",
+                                "--harness", targetRow.modelData.id
+                            ])
+                        }
+                    }
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Tokens.spacing.small
 
                     ActionButton {
+                        implicitWidth: 80
                         label: qsTr("Rebuild")
                         accent: root.accentTool
                         onActivated: MemoryService.build()
-                    }
-
-                    ActionButton {
-                        Layout.fillWidth: true
-                        label: root.injectionState === "enabled" ? qsTr("Remove from ~/.claude/CLAUDE.md") : qsTr("Inject into ~/.claude/CLAUDE.md")
-                        accent: root.injectionState === "enabled" ? root.statusFail : root.statusPass
-                        onActivated: MemoryService.act("inject", [root.injectionState === "enabled" ? "--disable" : "--enable"])
                     }
                 }
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: qsTr("Injection writes this digest between HTML comment markers in ~/.claude/CLAUDE.md, so the next Claude Code session starts knowing what broke before. Removing it takes the markers with it and leaves every other line alone.")
+                    text: qsTr("Injection writes the rules and the failures that keep coming back between comment markers in that harness's rules file. Its next session starts with them. Removing it restores the file exactly.")
                     color: root.textMuted
                     wrapMode: Text.Wrap
                     font: Tokens.font.label.small

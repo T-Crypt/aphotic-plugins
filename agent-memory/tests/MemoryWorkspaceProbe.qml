@@ -45,7 +45,7 @@ ShellRoot {
 
         onTriggered: {
             root.ticks += 1;
-            if (root.plane.projectRows.length === 0 && root.ticks < 150)
+            if ((root.plane.projectRows.length === 0 || MemoryService.injectTargets.length === 0) && root.ticks < 150)
                 return;
             if (root.plane.projectRows.length === 0) {
                 root.fail("the plane never read the folded store");
@@ -64,6 +64,14 @@ ShellRoot {
                 root.pass("the selected project lists its tools");
             else
                 root.fail("the selected project lists no tools");
+            if (MemoryService.injectTargets.length > 0 && MemoryService.injectTargets[0].id === "claude")
+                root.pass("the plane lists the harnesses it can inject into");
+            else
+                root.fail("the plane lists no injection targets");
+            if (Array.isArray(root.plane.lessonRows) && Array.isArray(root.plane.importedRows))
+                root.pass("the plane reads lessons and imports");
+            else
+                root.fail("the plane cannot read lessons");
             running = false;
             Qt.callLater(Qt.quit);
         }

@@ -63,7 +63,8 @@ output="$(
 )" || true
 
 for line in "the workspace plane instantiated" "the plane read the folded store" \
-            "the plane's palette resolved" "the selected project lists its tools"; do
+            "the plane's palette resolved" "the selected project lists its tools" \
+            "the plane lists the harnesses it can inject into" "the plane reads lessons and imports"; do
     grep -qF "PASS: $line" <<<"$output" || { printf '%s\n' "$output"; fail "expected a PASS for: $line"; }
 done
 grep -qF "FAIL:" <<<"$output" && { printf '%s\n' "$output"; fail "the probe reported a failure"; }

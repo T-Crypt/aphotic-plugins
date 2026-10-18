@@ -192,6 +192,9 @@ def _int(value):
 
 
 def save_store(store):
+    marked = {entry["sig"] + entry["project"] for entry in candidates(store)}
+    for entry in store["errors"]:
+        entry["candidate"] = entry["sig"] + entry["project"] in marked
     os.makedirs(DATA_DIR, exist_ok=True)
     atomic_write(STORE_PATH, json.dumps(store, indent=1, sort_keys=False) + "\n")
 
@@ -1093,7 +1096,13 @@ def cmd_promote(args):
         why = why or imported["why"]
         source = imported["source"]
     elif target != "-":
-        matches = _match_signature(store, target)
+        scope = None
+        if args.project:
+            try:
+                scope = resolve_project(store, args.project)
+            except ProjectNotFound as miss:
+                return _project_error(miss.name, miss.candidates)
+        matches = _match_signature(store, target, scope)
         if len(matches) != 1:
             print(f"agent-memory: {target!r} matches {len(matches)} signatures", file=sys.stderr)
             return 2
@@ -1183,6 +1192,7 @@ def build_parser():
     promote.add_argument("text", nargs="?", default="")
     promote.add_argument("--why", default="")
     promote.add_argument("--everywhere", action="store_true", help="not only in the failure's project")
+    promote.add_argument("--project", help="pick the failure in this project when the signature repeats")
 
     retire = verbs.add_parser("retire", help="remove a lesson by id")
     retire.add_argument("id")
