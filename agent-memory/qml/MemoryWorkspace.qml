@@ -268,7 +268,8 @@ Item {
                     spacing: Tokens.spacing.small
 
                     StyledText {
-                        text: issueRow.issueData.tool.length > 0 ? issueRow.issueData.tool : "no tool"
+                        text: (issueRow.issueData.tool.length > 0 ? issueRow.issueData.tool : "no tool")
+                            + ((issueRow.issueData.cmd ?? "").length > 0 ? ` · ${issueRow.issueData.cmd}` : "")
                         color: root.textPrimary
                         font: Tokens.font.label.medium
                     }

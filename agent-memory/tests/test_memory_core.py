@@ -177,6 +177,46 @@ def test_signature_separates_tools(tmp_path):
     assert normalize("bash failed at /tmp/x:12") != normalize("sed failed at /tmp/x:12")
 
 
+def test_hook_failures_split_by_command_and_line(tmp_path):
+    core = load_core(tmp_path)
+    fail = lambda t, tid, err: base(event="tool_call", tool="Bash", toolId=tid,
+                                    toolStatus="errored", t=t, error=err)
+    lines = [
+        base(event="session_start", status="running", t=1791397100000, cwd="/repo"),
+        fail(1791397101000, "a", {"cmd": "jq", "exit": 127, "head": "bash: line 1: jq: command not found"}),
+        fail(1791397102000, "b", {"cmd": "jq", "exit": 127, "head": "bash: line 3: jq: command not found"}),
+        fail(1791397103000, "c", {"cmd": "git", "exit": 1, "head": "! [rejected] main -> main (fetch first)"}),
+        fail(1791397104000, "d", {"cmd": "sleep", "interrupt": True}),
+        fail(1791397105000, "e", {}),
+    ]
+    write_events(tmp_path, "\n".join(lines) + "\n")
+    assert core["main"](["build"]) == 0
+    store = store_of(tmp_path)
+    by_cmd = {e["cmd"]: e for e in store["errors"]}
+    assert by_cmd["jq"]["count"] == 2
+    assert by_cmd["jq"]["kind"] == "exit-127"
+    assert by_cmd["jq"]["message"] == "bash: line 1: jq: command not found"
+    assert by_cmd["git"]["kind"] == "exit-1"
+    assert by_cmd["sleep"]["kind"] == "interrupted"
+    assert by_cmd[""]["kind"] == "exit-nonzero"
+    assert len(store["errors"]) == 4
+    digest = (tmp_path / "aphotic" / "agent-memory" / "context.md").read_text(encoding="utf-8")
+    assert "tool=Bash cmd=jq kind=exit-127 count=2" in digest
+
+
+def test_store_without_cmd_loads(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    path = tmp_path / "aphotic" / "agent-memory" / "store.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for entry in data["errors"]:
+        entry.pop("cmd", None)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    store = core["load_store"]()
+    assert all(entry["cmd"] == "" for entry in store["errors"])
+
+
 def test_project_without_a_session_start_is_unattributed(tmp_path):
     core = load_core(tmp_path)
     write_events(tmp_path, base(event="tool_call", tool="bash", toolId="z1",

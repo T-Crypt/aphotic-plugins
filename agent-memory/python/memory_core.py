@@ -124,6 +124,7 @@ def load_store():
                 "tool": str(entry.get("tool") or ""),
                 "kind": str(entry.get("kind") or ""),
                 "message": str(entry.get("message") or ""),
+                "cmd": str(entry.get("cmd") or ""),
                 "count": max(1, _int(entry.get("count"))),
                 "first": _int(entry.get("first")),
                 "last": _int(entry.get("last")),
@@ -197,8 +198,10 @@ def clean_message(message):
     return re.sub(r"\s+", " ", text).strip()[:200]
 
 
-def signature(kind, tool, message):
+def signature(kind, tool, message, cmd=""):
     raw = f"{kind}|{tool}|{normalize_message(message)}"
+    if cmd:
+        raw += f"|{cmd}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
 
@@ -212,8 +215,9 @@ def project_slot(store, key, at):
     return entry
 
 
-def record_error(store, project, tool, kind, message, at, session_id):
-    sig = signature(kind, tool, message)
+def record_error(store, project, tool, kind, message, at, session_id, cmd=""):
+    cmd = clean_message(cmd)[:40]
+    sig = signature(kind, tool, message, cmd)
     message = clean_message(message)
     for entry in store["errors"]:
         if entry["sig"] != sig or entry["project"] != project:
@@ -232,6 +236,7 @@ def record_error(store, project, tool, kind, message, at, session_id):
         "tool": tool,
         "kind": kind,
         "message": message,
+        "cmd": cmd,
         "count": 1,
         "first": at,
         "last": at,
@@ -312,7 +317,15 @@ def fold_v2(store, sessions, record, event, at, session_id):
             slot["failures"] += 1
             entry["failureCount"] += 1
             error = record.get("error") if isinstance(record.get("error"), dict) else {}
-            record_error(store, key, tool, "exit-nonzero", error.get("message") or "", at, session_id)
+            code = error.get("exit")
+            if error.get("interrupt") is True:
+                kind = "interrupted"
+            elif isinstance(code, int) and not isinstance(code, bool):
+                kind = f"exit-{code}"
+            else:
+                kind = "exit-nonzero"
+            message = error.get("head") or error.get("message") or ""
+            record_error(store, key, tool, kind, message, at, session_id, str(error.get("cmd") or ""))
         return
     if event == "error":
         error = record.get("error") if isinstance(record.get("error"), dict) else {}
@@ -418,7 +431,8 @@ def digest(store, project=None, max_lines=MAX_DIGEST_LINES):
             # The normalized message, not the raw one: the digest is the
             # shared shape of the failure, and the exact string is already
             # in the store for anyone who wants it.
-            out.append(("issue", f"  issue {issue['sig']} tool={issue['tool'] or 'none'} "
+            cmd = f" cmd={issue['cmd']}" if issue.get("cmd") else ""
+            out.append(("issue", f"  issue {issue['sig']} tool={issue['tool'] or 'none'}{cmd} "
                                  f"kind={issue['kind']} count={issue['count']} "
                                  f"last={utc_date(issue['last'])} :: "
                                  f"{normalize_message(issue['message'])}"))
