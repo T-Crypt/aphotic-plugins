@@ -54,6 +54,12 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | [`direnv`](direnv/) | A heads-up when a project you open has an `.envrc` to review. |
 | [`ios-dev`](ios-dev/) | Build and run iPhone apps from this machine: a toolchain doctor, one key to install on the device, and a workspace plane for devices and session state. |
 
+### Security
+
+| Plugin | What you get |
+|---|---|
+| [`security-notch-tile`](security-notch-tile/) | Notch tile for posture, exposure, VPN, firewall, sessions, advisories and engagement control. |
+
 ### Gaming and everyday
 
 | Plugin | What you get |
