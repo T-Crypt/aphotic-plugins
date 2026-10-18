@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -54,7 +55,7 @@ Item {
 
     function launchSelected(game) {
         if (game)
-            GameLauncherService.launch(game);
+            GameLauncherService.launch(game, QsWindow.window?.screenState ?? null);
     }
 
     // Keyboard walk, one handler for every key: the root holds focus
@@ -76,7 +77,7 @@ Item {
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             const game = root.visibleGames[root.selectedIndex]
             if (game)
-                GameLauncherService.launch(game)
+                root.launchSelected(game)
         } else if (event.key === Qt.Key_F) {
             if (root.bigPictureMode === "grid")
                 root.bigPictureMode = "bigpicture"

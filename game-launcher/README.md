@@ -16,8 +16,11 @@ while you play.
   Lutris, Heroic (Epic, GOG, Amazon and sideloaded), Cartridges, .desktop
   files on the Desktop, and a manual list you keep in Settings.
 - Launches each game with its own command, detached from the shell.
-- Shows a Games tile in the notch with one quick-launch button per
-  installed store client.
+- Shows a Games tile in the notch: a now-playing block while a game runs
+  (game name, elapsed time, and chips for game mode, do-not-disturb and
+  the VRAM the gaming profile freed), otherwise the last four launches as
+  cover tiles and your pinned favorites, plus one quick-launch button per
+  installed store client and buttons for the library and big picture.
 - A Settings section under Power and Security: per-source toggles,
   the manual game list, cover options (a box-art directory; SteamGridDB
   is opt-in and the only network this plugin makes), sort order,
@@ -45,7 +48,10 @@ plugin is disabled or removed.
 - Rescan from the plane header or the Settings section whenever you
   install or uninstall something: the scan runs once at shell start and
   only on those explicit triggers, never on a timer.
-- The notch tile's buttons open the store clients themselves.
+- The notch tile's buttons open the store clients themselves; Library
+  opens the plugin's plane and Big Picture appears when the service found
+  a Steam client. Recent play times are recorded on the way through
+  launch, from the plane or the tile alike.
 
 While a game runs, the Gaming profile takes the plugin's surfaces off
 screen as part of its frame shelter; they come back when the game exits.
@@ -64,5 +70,6 @@ directory to clear them.
 One small notch tile (when the tile is enabled and the gaming layer is
 on) and one completed scan in memory. No timers, no file watches on
 external data, no network unless the SteamGridDB opt-in is enabled and
-a rescan runs. While a game runs, the plugin's surfaces are sheltered
-away entirely.
+a rescan runs. The tile's elapsed clock follows the shell's own clock and
+stops updating while the tile is off screen. While a game runs, the
+plugin's surfaces are sheltered away entirely.
