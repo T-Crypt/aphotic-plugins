@@ -1,0 +1,45 @@
+shelter = "unload"
+
+[plugin]
+name = "widgets"
+display_name = "Desktop Widgets"
+description = "Transparent Signal-style widgets on the desktop: clocks, calendars, media, system meters, weather, timers, notes and more. Drag, resize and configure each one; the desktop between them still takes clicks."
+version = "1.0.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["ui-surface", "action", "keybind"]
+
+# One free overlay per screen holds every widget placed on that screen.
+# The overlay hands core a mask made of one region per widget, so the
+# empty desktop between widgets keeps its own clicks and menu.
+[ui.overlay]
+id = "widgets"
+component = "qml/WidgetsLayer.qml"
+icon = "widgets"
+label = "Desktop Widgets"
+anchor = "free"
+
+[ui.settings_pane]
+id = "widgetsSettings"
+icon = "widgets"
+label = "Desktop Widgets"
+component = "qml/WidgetsPane.qml"
+parent = "appearance"
+
+[action]
+id = "edit"
+icon = "dashboard_customize"
+label = "Edit desktop widgets"
+component = "qml/actions/ToggleEdit.qml"
+
+[keybind]
+combo = "SUPER + ALT + W"
+action = "edit"
+description = "Edit desktop widgets"
+
+[owns]
+# Layout, per-widget settings and notes live in the plugin's own folder.
+external_config = ["~/.config/aphotic/plugins/widgets/"]
+
+[requires]
+binaries = ["notify-send"]

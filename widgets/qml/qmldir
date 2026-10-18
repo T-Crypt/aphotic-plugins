@@ -1,0 +1,7 @@
+module qs.modules.plugins.widgets
+singleton WidgetsStore 1.0 WidgetsStore.qml
+WidgetsLayer 1.0 WidgetsLayer.qml
+WidgetsPane 1.0 WidgetsPane.qml
+WidgetFrame 1.0 WidgetFrame.qml
+WidgetConfig 1.0 WidgetConfig.qml
+CatalogPanel 1.0 CatalogPanel.qml
