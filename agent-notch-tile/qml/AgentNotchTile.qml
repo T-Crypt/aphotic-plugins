@@ -28,7 +28,12 @@ ColumnLayout {
     // what puts a badge on the collapsed pill.
     readonly property bool attention: AgentEvents.anyWaiting
 
-    readonly property var session: AgentEvents.activeSession
+    // A chip click pins its session to the header until that session
+    // ends; otherwise the header follows the shared pick.
+    property string pinnedId: ""
+    readonly property var pinned: AgentEvents.liveSessions.find(s => s.id === root.pinnedId) ?? null
+    readonly property var session: root.pinned ?? AgentEvents.activeSession
+    readonly property string sessionHarness: root.session?.harness ?? ""
     readonly property int waitingCount: AgentEvents.waitingSessions.length
 
     function labelFor(harnessId: string): string {
@@ -37,31 +42,42 @@ ColumnLayout {
         return AgentRoles.entries.find(e => e.id === harnessId)?.label ?? harnessId;
     }
 
-    readonly property string harnessLabel: root.labelFor(AgentEvents.activeHarness)
+    readonly property string harnessLabel: root.labelFor(root.sessionHarness)
 
-    // The harnesses beside the header's, one compact row each: which
-    // agents a machine runs at once is what the one-line readout above
-    // cannot say. One row per harness (its newest live session), the
-    // harness owning the header excluded, newest first.
-    readonly property var harnessRows: {
-        const byHarness = {};
-        for (const s of AgentEvents.liveSessions) {
-            if (!s.harness || s.harness === AgentEvents.activeHarness)
-                continue;
-            const current = byHarness[s.harness];
-            if (!current || s.updatedAt > current.updatedAt)
-                byHarness[s.harness] = s;
-        }
-        return Object.values(byHarness)
-            .sort((a, b) => b.updatedAt - a.updatedAt)
-            .map(s => ({
-                label: root.labelFor(s.harness),
-                icon: root.iconFor(s.harness),
-                status: s.status,
-                tool: s.tool,
-                subagents: (s.subagents ?? []).length
-            }));
+    // Every live session, in the order it started, so a chip never moves
+    // because another session reported something.
+    readonly property var switcher: AgentEvents.liveSessions.slice().sort((a, b) => (a.startedAt - b.startedAt) || (a.id < b.id ? -1 : 1))
+
+    function placeOf(session: var): string {
+        const cwd = session?.cwd ?? "";
+        if (cwd)
+            return cwd.replace(/\/+$/, "").split("/").pop() || cwd;
+        return (session?.id ?? "").slice(0, 8);
     }
+
+    function statusColour(status: string): color {
+        if (status === "waiting")
+            return Colours.signal;
+        if (status === "running" || status === "compacting")
+            return Colours.palette.m3primary;
+        return Colours.palette.m3outline;
+    }
+
+    function selectSession(session: var): void {
+        root.pinnedId = session.id;
+        AgentWindowFocus.focusByCwd(session.cwd ?? "");
+    }
+
+    function formatDuration(fromMs: int): string {
+        if (!(fromMs > 0))
+            return "";
+        const minutes = Math.max(0, Math.floor((root.now * 1000 - fromMs) / 60000));
+        if (minutes < 60)
+            return qsTr("%1m").arg(minutes);
+        return qsTr("%1h %2m").arg(Math.floor(minutes / 60)).arg(minutes % 60);
+    }
+
+    readonly property int sessionTokens: (root.session?.inputTokens ?? 0) + (root.session?.outputTokens ?? 0)
 
     // The bar's per-harness icons double as the row's; a harness the
     // bar does not list (no uiMeta entry, or its plugin off) falls
@@ -73,11 +89,13 @@ ColumnLayout {
     }
 
     readonly property string phaseLabel: {
-        if (root.waitingCount > 0)
-            return qsTr("waiting for input");
-        switch (AgentEvents.phase) {
+        switch (root.session?.status ?? "") {
         case "running":
             return qsTr("running");
+        case "compacting":
+            return qsTr("compacting");
+        case "waiting":
+            return qsTr("waiting for input");
         case "idle":
             return qsTr("idle");
         default:
@@ -85,13 +103,13 @@ ColumnLayout {
         }
     }
 
-    readonly property var subagents: AgentEvents.activeSubagents
+    readonly property var subagents: root.session?.subagents ?? []
 
     // Usage for whichever harness is actually running, not a fixed
     // provider id: `usageOf` answers for any of them and returns zeros
     // for one with no transcripts on disk, which hides the row below
     // rather than showing a false zero.
-    readonly property var usage: AgentProviders.usageOf(AgentEvents.activeHarness || "claude")
+    readonly property var usage: AgentProviders.usageOf(root.sessionHarness)
     readonly property bool hasUsage: root.usage.availability === "available" && root.usage.todayTokens > 0
     readonly property string topModel: root.usage.tokensByModel?.[0]?.model ?? ""
 
@@ -99,7 +117,7 @@ ColumnLayout {
     // only rewritten while a harness session is live, so an old one is
     // unknown rather than zero -- and a window whose reset has already
     // passed rolled over without anyone writing the new figure.
-    readonly property var quota: AgentProviders.quotaOf(AgentEvents.activeHarness || "claude")
+    readonly property var quota: AgentProviders.quotaOf(root.sessionHarness)
     readonly property bool quotaFresh: AgentProviders.quotaCapturedAt > 0 && (root.now - AgentProviders.quotaCapturedAt) < AgentProviders.quotaMaxAgeSeconds
 
     readonly property var quotaBars: {
@@ -260,49 +278,112 @@ ColumnLayout {
         }
     }
 
-    // The rest of the stack: one compact row per live harness other
-    // than the header's, so a machine running several agents at once
-    // reads out all of them. Not actionable -- focus-and-copy belongs
-    // to the waiting rows below, and a harness that is merely working
-    // or idle does not need the terminal forward.
-    Repeater {
-        model: root.harnessRows
+    // What the header session has done so far. Each figure shows only
+    // when its harness reports it, so a quieter harness gets a shorter
+    // line rather than zeros.
+    Flow {
+        Layout.fillWidth: true
+        spacing: Tokens.spacing.small
+        visible: root.session !== null
 
-        RowLayout {
-            id: harnessRow
+        Repeater {
+            model: [
+                { icon: "neurology", text: root.session?.model ?? "" },
+                { icon: "build", text: root.session?.tool ?? "" },
+                { icon: "schedule", text: root.formatDuration(root.session?.startedAt ?? 0) },
+                { icon: "token", text: root.sessionTokens > 0 ? qsTr("%1 in · %2 out").arg(root.formatTokens(root.session.inputTokens)).arg(root.formatTokens(root.session.outputTokens)) : "" },
+                { icon: "payments", text: (root.session?.cost ?? 0) > 0 ? qsTr("$%1").arg(root.session.cost.toFixed(root.session.cost < 1 ? 3 : 2)) : "" },
+                { icon: "repeat", text: (root.session?.steps ?? 0) > 0 ? qsTr("%1 steps").arg(root.session.steps) : "" }
+            ].filter(f => f.text !== "")
 
-            required property var modelData
+            RowLayout {
+                id: fact
 
-            Layout.fillWidth: true
-            spacing: Tokens.spacing.small
+                required property var modelData
 
-            MaterialIcon {
-                text: harnessRow.modelData.icon
-                color: Colours.palette.m3onSurfaceVariant
-                fontStyle: Tokens.font.icon.small
+                spacing: Tokens.spacing.extraSmall
+
+                MaterialIcon {
+                    text: fact.modelData.icon
+                    color: Colours.palette.m3onSurfaceVariant
+                    fontStyle: Tokens.font.icon.small
+                }
+
+                StyledText {
+                    text: fact.modelData.text
+                    color: Colours.palette.m3onSurface
+                    font: Tokens.font.mono.small
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: 220
+                }
             }
+        }
+    }
 
-            StyledText {
-                text: qsTr("%1 — %2").arg(harnessRow.modelData.label).arg(harnessRow.modelData.status)
-                color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.label.medium
-                elide: Text.ElideRight
-            }
+    // One chip per live session, idle or busy. A click pins that session
+    // to the header and brings its window forward.
+    Flow {
+        Layout.fillWidth: true
+        Layout.topMargin: Tokens.spacing.extraSmall
+        spacing: Tokens.spacing.extraSmall
+        visible: root.switcher.length > 1
 
-            StyledText {
-                Layout.fillWidth: true
-                visible: harnessRow.modelData.tool !== ""
-                text: harnessRow.modelData.tool
-                color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.label.small
-                elide: Text.ElideMiddle
-            }
+        Repeater {
+            model: root.switcher
 
-            StyledText {
-                visible: harnessRow.modelData.subagents > 0
-                text: qsTr("%1 subagents").arg(harnessRow.modelData.subagents)
-                color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.label.small
+            StyledRect {
+                id: chip
+
+                required property var modelData
+                readonly property bool current: chip.modelData.id === root.session?.id
+
+                implicitWidth: chipRow.implicitWidth + Tokens.padding.small * 2
+                implicitHeight: 26
+                radius: Tokens.rounding.full
+                color: chip.current ? Colours.palette.m3surfaceContainerHigh : "transparent"
+                border.width: 1
+                border.color: chip.modelData.status === "waiting" ? Colours.signal : Colours.signalStyle.hairline
+
+                StateLayer {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    onClicked: root.selectSession(chip.modelData)
+                }
+
+                RowLayout {
+                    id: chipRow
+
+                    anchors.centerIn: parent
+                    spacing: Tokens.spacing.extraSmall
+
+                    StyledRect {
+                        implicitWidth: 6
+                        implicitHeight: 6
+                        radius: 3
+                        color: root.statusColour(chip.modelData.status)
+                    }
+
+                    MaterialIcon {
+                        text: root.iconFor(chip.modelData.harness)
+                        color: chip.current ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
+                        fontStyle: Tokens.font.icon.small
+                    }
+
+                    StyledText {
+                        text: root.placeOf(chip.modelData)
+                        color: chip.current ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.label.small
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 120
+                    }
+
+                    StyledText {
+                        visible: (chip.modelData.subagents ?? []).length > 0
+                        text: qsTr("+%1").arg((chip.modelData.subagents ?? []).length)
+                        color: Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.mono.small
+                    }
+                }
             }
         }
     }

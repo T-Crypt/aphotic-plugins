@@ -102,8 +102,8 @@
     {
       "name": "agent-notch-tile",
       "display_name": "Agent Notch Tile",
-      "description": "Notch tile for AI coding harnesses: waiting-for-input badge, the active harness and phase, a row per other live harness, live subagent count, today's token usage, and the local provider's GPU VRAM claim.",
-      "version": "1.2.0",
+      "description": "Notch tile for AI coding harnesses: a steady header for the session in focus with its model, tool, time, tokens and cost, a chip per live session that brings its window forward, waiting-for-input rows, quota bars, and the local provider's GPU VRAM claim.",
+      "version": "1.3.0",
       "category": "ai",
       "capabilities": [
         "ui-surface"
