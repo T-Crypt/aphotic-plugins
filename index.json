@@ -643,6 +643,50 @@
       }
     },
     {
+      "name": "widgets",
+      "display_name": "Desktop Widgets",
+      "description": "Transparent Signal-style widgets on the desktop: clocks, calendars, media, system meters, weather, timers, notes and more. Drag, resize and configure each one; the desktop between them still takes clicks.",
+      "version": "1.0.0",
+      "category": "theming",
+      "capabilities": [
+        "ui-surface",
+        "action",
+        "keybind"
+      ],
+      "ui": {
+        "surfaces": [
+          {
+            "surface": "settings",
+            "id": "widgetsSettings",
+            "icon": "widgets",
+            "label": "Desktop Widgets",
+            "component": "qml/WidgetsPane.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "appearance",
+            "anchor": "",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          },
+          {
+            "surface": "overlay",
+            "id": "widgets",
+            "icon": "widgets",
+            "label": "Desktop Widgets",
+            "component": "qml/WidgetsLayer.qml",
+            "requires_layer": "",
+            "requires_data": "",
+            "parent": "",
+            "anchor": "free",
+            "width": 0,
+            "height": 0,
+            "trigger": ""
+          }
+        ]
+      }
+    },
+    {
       "name": "workspace-session-log",
       "display_name": "Workspace Session Log",
       "description": "Keeps a local, timestamped log of when each Workspace Profile is launched.",

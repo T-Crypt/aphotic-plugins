@@ -37,7 +37,12 @@ whichever `capabilities` your plugin actually implements:
   budget core sizes that window from once and never renegotiates. The
   window is masked to your item, so the declared box is also the region
   that stops taking the desktop's clicks: ask for what you draw in.
-  `pet/` is the worked example.
+  `pet/` is the worked example. Two optional properties on your root
+  item go further: `maskRegion`, a `Region` of your own with child
+  regions, replaces the single-item mask so a surface that draws several
+  separate things keeps the gaps between them clickable; `wantsKeyboard`,
+  while true, lets the window take keyboard focus for a text field.
+  `widgets/` uses both.
 - `[ui.workspace]` is the near-full-screen plane, for a tool that needs
   room to work rather than a corner of a surface core already owns. Takes
   an `id`, a `label`, an `icon` and a `component`; there is no geometry

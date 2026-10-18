@@ -1,0 +1,15 @@
+module qs.modules.plugins.widgets.parts
+WidgetBase 1.0 WidgetBase.qml
+WText 1.0 WText.qml
+Ring 1.0 Ring.qml
+Meter 1.0 Meter.qml
+Spark 1.0 Spark.qml
+IconButton 1.0 IconButton.qml
+Toggle 1.0 Toggle.qml
+Segmented 1.0 Segmented.qml
+Stepper 1.0 Stepper.qml
+Field 1.0 Field.qml
+Ticker 1.0 Ticker.qml
+MediaControls 1.0 MediaControls.qml
+Art 1.0 Art.qml
+RingStat 1.0 RingStat.qml

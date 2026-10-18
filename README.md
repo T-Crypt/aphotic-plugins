@@ -26,6 +26,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 
 | Plugin | What you get |
 |---|---|
+| [`widgets`](widgets/) | Transparent desktop widgets in the Signal style: clocks, calendars, media, system meters, weather, timers, notes, agents and more. Drag, resize and set up each one; press SUPER+ALT+W to edit. |
 | [`pet`](pet/) | A small creature on your desktop. Drag it anywhere; it wanders nearby and wears your theme colours. Bring your own sprite sheet if you like. |
 | [`visualizer`](visualizer/) | An audio spectrum drawn on your wallpaper in your theme colour. It sleeps when nothing plays. |
 | [`live-wallpaper`](live-wallpaper/) | Video wallpapers. Your theme colours still come from a still frame. |
