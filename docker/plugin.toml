@@ -1,0 +1,18 @@
+[plugin]
+name = "docker"
+display_name = "Docker"
+description = "Notch tile for Docker: daemon state, containers grouped by compose project with live CPU and memory for running ones, start/stop and restart, project start/stop, logs and shell in a terminal, disk use, and a prune behind a second confirming click."
+version = "1.0.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["ui-surface"]
+
+[ui.notch_tile]
+id = "docker"
+icon = "deployed_code"
+label = "Docker"
+component = "qml/DockerNotchTile.qml"
+requires_layer = "dev"
+
+[requires]
+binaries = ["docker"]
