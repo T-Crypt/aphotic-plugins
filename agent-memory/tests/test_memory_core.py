@@ -177,6 +177,46 @@ def test_signature_separates_tools(tmp_path):
     assert normalize("bash failed at /tmp/x:12") != normalize("sed failed at /tmp/x:12")
 
 
+def test_hook_failures_split_by_command_and_line(tmp_path):
+    core = load_core(tmp_path)
+    fail = lambda t, tid, err: base(event="tool_call", tool="Bash", toolId=tid,
+                                    toolStatus="errored", t=t, error=err)
+    lines = [
+        base(event="session_start", status="running", t=1791397100000, cwd="/repo"),
+        fail(1791397101000, "a", {"cmd": "jq", "exit": 127, "head": "bash: line 1: jq: command not found"}),
+        fail(1791397102000, "b", {"cmd": "jq", "exit": 127, "head": "bash: line 3: jq: command not found"}),
+        fail(1791397103000, "c", {"cmd": "git", "exit": 1, "head": "! [rejected] main -> main (fetch first)"}),
+        fail(1791397104000, "d", {"cmd": "sleep", "interrupt": True}),
+        fail(1791397105000, "e", {}),
+    ]
+    write_events(tmp_path, "\n".join(lines) + "\n")
+    assert core["main"](["build"]) == 0
+    store = store_of(tmp_path)
+    by_cmd = {e["cmd"]: e for e in store["errors"]}
+    assert by_cmd["jq"]["count"] == 2
+    assert by_cmd["jq"]["kind"] == "exit-127"
+    assert by_cmd["jq"]["message"] == "bash: line 1: jq: command not found"
+    assert by_cmd["git"]["kind"] == "exit-1"
+    assert by_cmd["sleep"]["kind"] == "interrupted"
+    assert by_cmd[""]["kind"] == "exit-nonzero"
+    assert len(store["errors"]) == 4
+    digest = (tmp_path / "aphotic" / "agent-memory" / "context.md").read_text(encoding="utf-8")
+    assert "tool=Bash cmd=jq kind=exit-127 count=2" in digest
+
+
+def test_store_without_cmd_loads(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    path = tmp_path / "aphotic" / "agent-memory" / "store.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for entry in data["errors"]:
+        entry.pop("cmd", None)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    store = core["load_store"]()
+    assert all(entry["cmd"] == "" for entry in store["errors"])
+
+
 def test_project_without_a_session_start_is_unattributed(tmp_path):
     core = load_core(tmp_path)
     write_events(tmp_path, base(event="tool_call", tool="bash", toolId="z1",
@@ -377,3 +417,168 @@ if __name__ == "__main__":
             else:
                 function()
         print(f"PASS: {name}")
+
+
+# --- lessons --------------------------------------------------------------
+
+def _repeated(times, sessions=2, t0=1791397101000):
+    lines = [base(event="session_start", status="running", t=1791397100000 + n, cwd="/repo",
+                  sessionId=f"o{1 + n}") for n in range(sessions)]
+    for n in range(times):
+        lines.append(base(event="tool_call", tool="Bash", toolId=f"r{n}", toolStatus="errored",
+                          sessionId=f"o{1 + n % sessions}", t=t0 + n * 1000,
+                          error={"cmd": "jq", "exit": 127, "head": "jq: command not found"}))
+    return lines
+
+
+def test_a_failure_becomes_a_candidate_after_three_hits_in_two_sessions(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path, "\n".join(_repeated(2)) + "\n")
+    assert core["main"](["build"]) == 0
+    assert core["candidates"](core["load_store"]()) == []
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    found = core["candidates"](core["load_store"]())
+    assert [e["cmd"] for e in found] == ["jq"]
+    assert [e["candidate"] for e in store_of(tmp_path)["errors"]] == [True]
+
+
+def test_promote_writes_a_rule_and_later_failures_count_as_hits(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    sig = core["candidates"](core["load_store"]())[0]["sig"]
+    assert core["main"](["promote", sig[:6], "Hosts .25 and .30 have no jq; parse on this machine"]) == 0
+    store = store_of(tmp_path)
+    assert store["lessons"][0]["sig"] == sig and store["lessons"][0]["project"] == "/repo"
+    assert core["candidates"](core["load_store"]()) == []
+    later = _repeated(5, t0=9_000_000_000_000)[-2:]
+    write_events(tmp_path, "\n".join(_repeated(3) + later) + "\n")
+    assert core["main"](["build"]) == 0
+    assert store_of(tmp_path)["lessons"][0]["hits"] == 2
+    digest = (tmp_path / "aphotic" / "agent-memory" / "context.md").read_text(encoding="utf-8")
+    lines = digest.splitlines()
+    assert lines[1].startswith("Rules learned from past failures")
+    assert "Hosts .25 and .30 have no jq; parse on this machine [repo] (broken 2x since written)" in digest
+
+
+def test_promote_refuses_an_unknown_signature_and_empty_text(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    assert core["main"](["promote", "zzzzzz", "x"]) == 2
+    assert core["main"](["promote", "-", ""]) == 2
+    assert core["main"](["promote", "-", "Always run the tests"]) == 0
+    assert store_of(tmp_path)["lessons"][0]["project"] == ""
+
+
+def test_retire_removes_only_that_lesson(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    core["main"](["promote", "-", "one"])
+    core["main"](["promote", "-", "two"])
+    assert core["main"](["retire", "l1"]) == 0
+    assert [l["text"] for l in store_of(tmp_path)["lessons"]] == ["two"]
+    assert core["main"](["retire", "l9"]) == 2
+
+
+def test_sources_import_memory_files_and_rule_lines_read_only(tmp_path):
+    memory = tmp_path / "mem"
+    memory.mkdir()
+    (memory / "MEMORY.md").write_text("- index\n", encoding="utf-8")
+    (memory / "a.md").write_text("---\nname: no-jq\ndescription: Hosts .25/.30 have no jq\n"
+                                 "metadata:\n  type: feedback\n---\n\nUse python.\n**Why:** PVE minimal.\n",
+                                 encoding="utf-8")
+    (memory / "b.md").write_text("---\nname: who\ndescription: The user is an operator\ntype: user\n---\n",
+                                 encoding="utf-8")
+    incidents = tmp_path / "incidents.md"
+    incidents.write_text("# Incidents\n\n## 2026-10-03 build froze the box\n**Rule:** no heavy build while "
+                         "the engine is resident.\n", encoding="utf-8")
+    before = {p: p.read_bytes() for p in [incidents, *memory.iterdir()]}
+    config = tmp_path / "cfg" / "aphotic" / "agent-memory"
+    config.mkdir(parents=True)
+    (config / "sources.toml").write_text(
+        f'[[source]]\nkind = "claude-memory"\npath = "{memory}"\n\n'
+        f'[[source]]\nkind = "rule-lines"\npath = "{incidents}"\nlabel = "incidents"\n', encoding="utf-8")
+    os.environ["XDG_CONFIG_HOME"] = str(tmp_path / "cfg")
+    try:
+        core = load_core(tmp_path)
+        write_events(tmp_path)
+        assert core["main"](["build"]) == 0
+    finally:
+        del os.environ["XDG_CONFIG_HOME"]
+    imported = store_of(tmp_path)["imported"]
+    assert sorted(i["text"] for i in imported) == [
+        "Hosts .25/.30 have no jq", "no heavy build while the engine is resident."]
+    rule = next(i for i in imported if i["kind"] == "rule")
+    assert rule["why"] == "2026-10-03 build froze the box" and rule["label"] == "incidents"
+    assert next(i for i in imported if i["kind"] == "feedback")["why"] == "PVE minimal."
+    assert {p: p.read_bytes() for p in before} == before
+    # A pinned import becomes a lesson that keeps its source.
+    assert core["main"](["promote", rule["id"]]) == 0
+    assert store_of(tmp_path)["lessons"][0]["source"] == str(incidents)
+
+
+def test_missing_sources_file_imports_nothing(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    assert store_of(tmp_path)["imported"] == []
+
+
+# --- injection into every harness -------------------------------------------
+
+def _registry(tmp_path, *entries):
+    path = state_dir(tmp_path) / "harnesses.json"
+    path.write_text(json.dumps({"schemaVersion": 1, "harnesses": list(entries)}), encoding="utf-8")
+
+
+def test_targets_come_from_the_registry_with_claude_as_the_floor(tmp_path):
+    core = load_core(tmp_path)
+    _registry(tmp_path, {"id": "codex", "label": "Codex", "instructions": ".codex/AGENTS.md"},
+              {"id": "omp", "label": "Oh My Pi", "instructions": ""},
+              {"id": "bad", "instructions": "/etc/passwd"})
+    targets = core["injection_targets"]()
+    assert [t["id"] for t in targets] == ["claude", "codex"]
+    assert targets[1]["path"] == str(tmp_path / ".codex" / "AGENTS.md")
+
+
+def test_inject_one_harness_and_build_refreshes_only_enabled_files(tmp_path):
+    core = load_core(tmp_path)
+    _registry(tmp_path, {"id": "codex", "label": "Codex", "instructions": ".codex/AGENTS.md"})
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    agents = tmp_path / ".codex" / "AGENTS.md"
+    agents.parent.mkdir(parents=True)
+    agents.write_text("# codex rules\n", encoding="utf-8")
+    assert core["main"](["inject", "--enable", "--harness", "codex"]) == 0
+    text = agents.read_text(encoding="utf-8")
+    assert text.startswith("# codex rules\n")
+    assert "Failing repeatedly with no rule yet" in text and "project /repo" not in text
+    assert not claude_md(tmp_path).exists()
+    sig = core["candidates"](core["load_store"]())[0]["sig"]
+    assert core["main"](["promote", sig, "Use python for JSON on the PVE hosts"]) == 0
+    assert core["main"](["build"]) == 0
+    assert "Use python for JSON on the PVE hosts" in agents.read_text(encoding="utf-8")
+    assert not claude_md(tmp_path).exists()
+    assert core["main"](["inject", "--disable", "--harness", "codex"]) == 0
+    assert agents.read_text(encoding="utf-8") == "# codex rules\n"
+
+
+def test_inject_an_unknown_harness_is_an_error(tmp_path):
+    core = load_core(tmp_path)
+    assert core["main"](["inject", "--enable", "--harness", "nope"]) == 2
+
+
+def test_disable_restores_the_file_byte_for_byte(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    target = claude_md(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for original in ("# a\n", "# a\n\n", "# a\n\nb\n\n\n"):
+        target.write_text(original, encoding="utf-8")
+        assert core["main"](["inject", "--enable"]) == 0
+        assert core["main"](["inject", "--disable"]) == 0
+        assert target.read_text(encoding="utf-8") == original

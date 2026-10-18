@@ -30,3 +30,4 @@ launch = ["codex"]
 usage = "scan"
 scan = ".codex/sessions/*.jsonl"
 context = "stream"
+instructions = ".codex/AGENTS.md"

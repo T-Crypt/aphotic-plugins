@@ -46,7 +46,7 @@ Singleton {
     property string contextText: ""
     property string lastOutput: ""
     property bool busy: false
-    property bool _rebuildAfterStatus: false
+    property var injectTargets: []
 
     readonly property int projectCap: 100
     readonly property int issueCap: 200
@@ -74,14 +74,11 @@ Singleton {
         cliRunner.running = true;
     }
 
-    // One runner, one busy flag: asking for the injection state and then
-    // building in the same turn would silently drop the build, so this
-    // chains it instead of racing it.
-    function injectStatus(): void {
-        if (root.busy)
-            return;
-        root._rebuildAfterStatus = true;
-        root.act("inject", ["--status"]);
+    // Which harnesses name a rules file, and which carry the block. Its own
+    // runner, so asking never drops a build queued on the main one.
+    function refreshTargets(): void {
+        targetsRunner.running = false;
+        targetsRunner.running = true;
     }
 
     function reload(): void {
@@ -129,7 +126,8 @@ Singleton {
             return [];
         return root.store.errors
             .filter(entry => entry.project === path)
-            .sort((a, b) => (Number(a.resolved) - Number(b.resolved)) || (b.count - a.count) || (b.last - a.last))
+            .sort((a, b) => (Number(a.resolved) - Number(b.resolved)) || (Number(b.candidate ?? false) - Number(a.candidate ?? false))
+                || (b.count - a.count) || (b.last - a.last))
             .slice(0, root.issueCap);
     }
 
@@ -140,6 +138,23 @@ Singleton {
             .filter(note => note.project === path)
             .sort((a, b) => b.created - a.created)
             .slice(0, root.noteCap);
+    }
+
+    // A rule written for this project, or for every project.
+    function lessonsFor(path: string): var {
+        if (!root.store || !root.store.lessons)
+            return [];
+        return root.store.lessons
+            .filter(lesson => lesson.project === "" || lesson.project === path)
+            .sort((a, b) => (b.hits - a.hits) || (b.created - a.created));
+    }
+
+    // Imported lessons not yet pinned as rules.
+    function importedLessons(): var {
+        if (!root.store || !root.store.imported)
+            return [];
+        const pinned = new Set((root.store.lessons ?? []).map(lesson => `${lesson.source}|${lesson.text}`));
+        return root.store.imported.filter(entry => !pinned.has(`${entry.source}|${entry.text}`));
     }
 
     function toolsFor(path: string): var {
@@ -165,14 +180,28 @@ Singleton {
             onStreamFinished: {
                 root.lastOutput = text.trim();
                 root.busy = false;
-                if (root._rebuildAfterStatus) {
-                    root._rebuildAfterStatus = false;
-                    root.build();
-                    return;
-                }
                 // Every verb either writes the store or answers from it, so
                 // re-reading is always right and never a wasted read.
                 root.reload();
+                root.refreshTargets();
+            }
+        }
+    }
+
+    Process {
+        id: targetsRunner
+
+        command: ["aphotic", root.cliPrefix, "inject", "--status", "--json"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let rows = [];
+                try {
+                    rows = JSON.parse(text);
+                } catch (error) {
+                    rows = [];
+                }
+                root.injectTargets = Array.isArray(rows) ? rows : [];
             }
         }
     }

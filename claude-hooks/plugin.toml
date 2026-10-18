@@ -27,3 +27,4 @@ usage = "scan"
 scan = ".claude/projects/*/*.jsonl"
 context = "statusline"
 chat = true
+instructions = ".claude/CLAUDE.md"

@@ -29,6 +29,7 @@ unwire = "hooks/unwire.sh"
 label = "Pi"
 usage = "stream"
 context = "stream"
+instructions = ".pi/agent/AGENTS.md"
 
 [harness.omp]
 label = "Oh My Pi"
