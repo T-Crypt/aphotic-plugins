@@ -1,0 +1,3 @@
+module qs.modules.plugins.securityNotchTile
+singleton SecurityService 1.0 SecurityService.qml
+SecurityNotchTile 1.0 SecurityNotchTile.qml

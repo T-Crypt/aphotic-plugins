@@ -1,0 +1,18 @@
+[plugin]
+name = "security-notch-tile"
+display_name = "Security Notch Tile"
+description = "Notch tile for the Security layer: posture, exposure, VPN, firewall, sessions, advisories and engagement control."
+version = "1.0.0"
+author = "T-Crypt"
+category = "security"
+capabilities = ["ui-surface"]
+
+[ui.notch_tile]
+id = "security"
+icon = "shield"
+label = "Security"
+component = "qml/SecurityNotchTile.qml"
+requires_layer = "security"
+
+[requires]
+binaries = ["ss"]
