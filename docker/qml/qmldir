@@ -1,0 +1,3 @@
+module qs.modules.plugins.docker
+singleton DockerService 1.0 DockerService.qml
+DockerNotchTile 1.0 DockerNotchTile.qml

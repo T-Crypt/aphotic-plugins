@@ -51,6 +51,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | Plugin | What you get |
 |---|---|
 | [`dev-notch-tile`](dev-notch-tile/) | A notch tile for your open project and what stage it is in. |
+| [`docker`](docker/) | A notch tile for Docker: every container by compose project with its state, ports and live CPU and memory; start, stop, restart, logs and a shell in one click; disk use and a two-click prune. |
 | [`dev-ports`](dev-ports/) | A full-screen list of the dev servers running on your machine. Click one to open it. |
 | [`direnv`](direnv/) | A heads-up when a project you open has an `.envrc` to review. |
 | [`ios-dev`](ios-dev/) | Build and run iPhone apps from this machine: a toolchain doctor, one key to install on the device, and a workspace plane for devices and session state. |
