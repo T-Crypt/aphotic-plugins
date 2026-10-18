@@ -44,6 +44,12 @@ aphotic skills undeploy <name> <agent>...
 aphotic skills tag add <name> <tag>
 aphotic skills presets deploy <name>
 aphotic skills presets undeploy <name>
+aphotic skills set list
+aphotic skills set on <name> [--agent A]
+aphotic skills set off <name> [--agent A]
+aphotic skills set new <name> [--description D]
+aphotic skills set add <name> <skill>...
+aphotic skills set remove <name> <skill>...
 aphotic skills adopt              # import what the agents already have
 aphotic skills doctor             # binary, version, library and counts
 aphotic skills path --set DIR     # move the library
@@ -58,6 +64,13 @@ directories are scanned, duplicates are removed by realpath, and
 
 From the shell: `SUPER + SHIFT + K`, or the command palette action
 "Skills: open the skill manager".
+
+## Sets
+
+A set is a named group of skills you turn on for a session, such as a UI
+set or a Code set. Turning one on leaves the others as they are. The Sets
+strip above the skill list lights a set once every skill in it is deployed,
+and a click turns it on or off. Each skill row has an Add to set menu.
 
 ## Where the library lives
 

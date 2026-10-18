@@ -4,6 +4,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.config
 import qs.components
@@ -136,6 +137,28 @@ StyledRect {
                         color: Colours.palette.m3onSurfaceVariant
                         font: Tokens.font.label.small
                     }
+                }
+            }
+
+            ComboBox {
+                visible: (SkillsService.presets ?? []).length > 0
+                Layout.preferredWidth: 110
+                Layout.preferredHeight: 24
+                model: (SkillsService.presets ?? []).map(s => s.name ?? "")
+                currentIndex: -1
+                displayText: qsTr("Add to set")
+                font: Tokens.font.label.small
+                onActivated: (index) => {
+                    const name = (SkillsService.presets ?? [])[index]?.name ?? "";
+                    if (name.length > 0 && (row.skill?.name ?? "").length > 0)
+                        SkillsService.addToSet(name, row.skill.name);
+                    currentIndex = -1;
+                }
+                background: StyledRect {
+                    radius: Tokens.rounding.full
+                    color: Colours.palette.m3surfaceContainer
+                    border.width: 1
+                    border.color: Colours.signalStyle.hairline
                 }
             }
 

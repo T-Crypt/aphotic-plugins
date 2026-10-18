@@ -160,6 +160,28 @@ Singleton {
         root._mutate(`undeploy preset ${name}`, ["presets", "undeploy", name]);
     }
 
+    // A set (a preset) is on when every skill in it is deployed somewhere.
+    // Read from the library itself, so the strip survives a reopen.
+    function presetDeployed(preset): bool {
+        const members = root.skills.filter(skill => (skill.preset_ids ?? []).includes(preset?.id));
+        return members.length > 0 && members.every(skill => (skill.deployed_to ?? []).length > 0);
+    }
+
+    function addToSet(set, skill): void {
+        root._mutate(`add to set ${set} ${skill}`, ["presets", "add-skill", set, skill]);
+    }
+
+    function removeFromSet(set, skill): void {
+        root._mutate(`remove from set ${set} ${skill}`, ["presets", "remove-skill", set, skill]);
+    }
+
+    function createSet(name, description): void {
+        let args = ["presets", "create", name];
+        if (description !== undefined && description !== null && description.length > 0)
+            args = args.concat(["--description", description]);
+        root._mutate(`create set ${name}`, args);
+    }
+
     // The preview reads one skill's SKILL.md through `skills show`. It is a
     // separate process from refresh because it is only requested when a row
     // is selected, and the CLI returns the file body alongside the metadata.

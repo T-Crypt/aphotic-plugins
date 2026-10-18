@@ -24,6 +24,8 @@ Item {
     property string searchText: ""
     property string tagFilter: ""
     property string sourceFilter: ""
+    property bool newSetOpen: false
+    property string newSetName: ""
 
     readonly property var selectedSkill: SkillsService.skillNamed(root.selectedName)
     readonly property var tagOptions: root._distinct(skill => skill.tags ?? [])
@@ -293,8 +295,97 @@ Item {
                 }
             }
 
-            // ── Library ─────────────────────────────────────────────
+            // ── Sets ────────────────────────────────────────────────
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Tokens.spacing.extraSmall
+                visible: SkillsService.presets.length > 0 || root.newSetOpen
 
+                Repeater {
+                    model: SkillsService.presets
+
+                    StyledRect {
+                        required property var modelData
+
+                        readonly property bool on: SkillsService.presetDeployed(modelData)
+                        implicitWidth: setLabel.implicitWidth + Tokens.padding.medium * 2
+                        implicitHeight: 28
+                        radius: Tokens.rounding.full
+                        color: on ? Qt.alpha(Colours.palette.m3primary, 0.16) : Colours.palette.m3surfaceContainer
+                        border.width: 1
+                        border.color: on ? Colours.palette.m3primary : Colours.signalStyle.hairline
+                        opacity: SkillsService.busy ? 0.6 : 1
+
+                        StyledText {
+                            id: setLabel
+                            anchors.centerIn: parent
+                            text: `${modelData.name ?? ""} · ${modelData.skill_count ?? 0}`
+                            color: on ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                            font: Tokens.font.label.small
+                        }
+
+                        StateLayer {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            disabled: SkillsService.busy
+                            onClicked: parent.on
+                                ? SkillsService.undeployPreset(parent.modelData.name)
+                                : SkillsService.deployPreset(parent.modelData.name)
+                        }
+                    }
+                }
+
+                StyledRect {
+                    implicitWidth: newSetLabel.implicitWidth + Tokens.padding.medium * 2
+                    implicitHeight: 28
+                    radius: Tokens.rounding.full
+                    color: Colours.palette.m3surfaceContainer
+                    border.width: 1
+                    border.color: Colours.signalStyle.hairline
+
+                    StyledText {
+                        id: newSetLabel
+                        anchors.centerIn: parent
+                        text: qsTr("+ New set")
+                        color: Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.label.small
+                    }
+
+                    StateLayer {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        onClicked: root.newSetOpen = true
+                    }
+                }
+
+                TextField {
+                    visible: root.newSetOpen
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 28
+                    placeholderText: qsTr("Set name")
+                    text: root.newSetName
+                    font: Tokens.font.label.small
+                    color: Colours.palette.m3onSurface
+                    onTextChanged: root.newSetName = text
+                    onAccepted: {
+                        const n = root.newSetName.trim();
+                        if (n.length > 0)
+                            SkillsService.createSet(n, "");
+                        root.newSetName = "";
+                        root.newSetOpen = false;
+                    }
+                    background: StyledRect {
+                        radius: Tokens.rounding.full
+                        color: Colours.palette.m3surfaceContainer
+                        border.width: 1
+                        border.color: parent.activeFocus ? Colours.palette.m3primary : Colours.signalStyle.hairline
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            // ── Library ─────────────────────────────────────────────
             ListView {
                 id: skillList
 

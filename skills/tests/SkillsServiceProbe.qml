@@ -167,6 +167,26 @@ ShellRoot {
         if (!root.checkEqual(SkillsService.presets.length, 1, "preset count after a preset deploy"))
             return;
 
+        // A set is on only when every member is deployed: the fixture's
+        // Default set has no members, so it reads off.
+        const preset = SkillsService.presets[0];
+        if (!root.checkEqual(SkillsService.presetDeployed(preset), false, "an empty set reads off"))
+            return;
+        const saved = SkillsService.skills;
+        SkillsService.skills = [
+            { name: "a", preset_ids: [preset.id], deployed_to: ["claude_code"] },
+            { name: "b", preset_ids: [preset.id], deployed_to: [] }
+        ];
+        const partly = SkillsService.presetDeployed(preset);
+        SkillsService.skills[1] = { name: "b", preset_ids: [preset.id], deployed_to: ["codex"] };
+        SkillsService.skills = SkillsService.skills.slice();
+        const fully = SkillsService.presetDeployed(preset);
+        SkillsService.skills = saved;
+        if (!root.checkEqual(partly, false, "a partly deployed set reads off"))
+            return;
+        if (!root.checkEqual(fully, true, "a fully deployed set reads on"))
+            return;
+
         SkillsService.showSkill("demo-skill");
         root.after(root.previewed);
     }

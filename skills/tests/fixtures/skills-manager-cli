@@ -34,13 +34,25 @@ if [[ ! -f "${_scratch}/skills.json" ]]; then
     cp "${_fixtures}/skills.json" "${_scratch}/skills.json"
 fi
 
-# The wrapper passes the global --json through; the stub answers JSON either
-# way, so it is dropped rather than parsed.
+# The wrapper passes the global --json and --skills-root through; the stub
+# answers JSON either way, so they are dropped rather than parsed.
 args=()
+skip_next=false
 for arg in "$@"; do
-    [[ "$arg" == "--json" ]] && continue
-    args+=("$arg")
+    if $skip_next; then skip_next=false; continue; fi
+    case "$arg" in
+        --json) continue ;;
+        --skills-root) skip_next=true; continue ;;
+        *) args+=("$arg") ;;
+    esac
 done
+
+# Record every call so tests can prove a verb reached the stub with the
+# right argv, the same way the mutating verbs leave their mark on the
+# scratch files.
+_scratch="${SKILLS_STUB_SCRATCH:-${HOME:?HOME is not set}/.skills-manager/.stub-scratch}"
+mkdir -p "$_scratch"
+printf '%s\n' "${args[*]}" >> "${_scratch}/calls"
 
 # deploy/undeploy NAME --agent KEY --agent KEY ...
 skills_pair() {
@@ -101,6 +113,82 @@ case "${args[0]:-} ${args[1]:-}" in
     "repo reset-path") read_fixture repo-status.json ;;
     "agents list")     read_fixture agents.json ;;
     "presets list")    read_fixture presets.json ;;
+    "presets deploy")
+        name="${args[2]:-}"
+        agents=()
+        i=3
+        while (( i < ${#args[@]} )); do
+            if [[ "${args[$i]}" == "--agent" ]]; then
+                agents+=("${args[$((i+1))]}")
+                i=$((i+2))
+                continue
+            fi
+            i=$((i+1))
+        done
+        if ((${#agents[@]} == 0)); then
+            agents_json="$(jq -r '[.[] | select(.installed == true) | .key]' "${_fixtures}/agents.json")"
+        else
+            agents_json="$(printf '%s\n' "${agents[@]}" | jq -R . | jq -s .)"
+        fi
+        jq -cn --arg n "$name" --argjson a "$agents_json" \
+            '{ok: true, action: "deploy", preset: $n, preset_name: $n, preset_id: "stub-preset", agents: $a, dry_run: false, skill_count: 0, pair_count: ($a | length), changed_pairs: ($a | length)}'
+        ;;
+    "presets undeploy")
+        name="${args[2]:-}"
+        agents=()
+        i=3
+        while (( i < ${#args[@]} )); do
+            if [[ "${args[$i]}" == "--agent" ]]; then
+                agents+=("${args[$((i+1))]}")
+                i=$((i+2))
+                continue
+            fi
+            i=$((i+1))
+        done
+        if ((${#agents[@]} == 0)); then
+            agents_json="$(jq -r '[.[] | select(.installed == true) | .key]' "${_fixtures}/agents.json")"
+        else
+            agents_json="$(printf '%s\n' "${agents[@]}" | jq -R . | jq -s .)"
+        fi
+        jq -cn --arg n "$name" --argjson a "$agents_json" \
+            '{ok: true, action: "undeploy", preset: $n, preset_name: $n, preset_id: "stub-preset", agents: $a, dry_run: false, skill_count: 0, pair_count: ($a | length), changed_pairs: ($a | length)}'
+        ;;
+    "presets create")
+        name="${args[2]:-}"
+        desc=""
+        i=3
+        while (( i < ${#args[@]} )); do
+            case "${args[$i]}" in
+                --description) desc="${args[$((i+1))]}"; i=$((i+2)); continue ;;
+                --icon) i=$((i+2)); continue ;;
+            esac
+            i=$((i+1))
+        done
+        jq -cn --arg name "$name" --arg desc "$desc" \
+            '{id: "stub-preset", name: $name, description: $desc, icon: null, sort_order: 0, skill_count: 0, active: false}'
+        ;;
+    "presets add-skill")
+        preset="${args[2]:-}"
+        skills=("${args[@]:3}")
+        if ((${#skills[@]})); then
+            list="$(printf '%s\n' "${skills[@]}" | jq -R . | jq -s .)"
+        else
+            list='[]'
+        fi
+        jq -cn --arg p "$preset" --argjson s "$list" \
+            '{preset_id: "stub-preset", preset_name: $p, added: $s, removed: [], missing: []}'
+        ;;
+    "presets remove-skill")
+        preset="${args[2]:-}"
+        skills=("${args[@]:3}")
+        if ((${#skills[@]})); then
+            list="$(printf '%s\n' "${skills[@]}" | jq -R . | jq -s .)"
+        else
+            list='[]'
+        fi
+        jq -cn --arg p "$preset" --argjson s "$list" \
+            '{preset_id: "stub-preset", preset_name: $p, added: [], removed: $s, missing: []}'
+        ;;
     "skills list")     _overlay < "${_scratch}/skills.json" ;;
     "skills show")     read_fixture show.json ;;
     "skills status")   read_fixture status.json ;;

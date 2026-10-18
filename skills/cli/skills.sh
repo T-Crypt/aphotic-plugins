@@ -205,6 +205,121 @@ _sk_cmd_presets() {
     } | _sk_columns
 }
 
+# `set` is the additive preset workflow under a friendlier name: a named group
+# of skills you turn on for a session. It is a thin pass-through to `presets`.
+_sk_cmd_set() {
+    local sub="${1:-list}"
+    shift || true
+    local cli
+    case "$sub" in
+        list)
+            local json="false"
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --json) json="true" ;;
+                    *) _sk_err "set list: unknown option '$1'"; return 2 ;;
+                esac
+                shift
+            done
+            cli="$(_sk_cli)" || return 1
+            if [[ "$json" == "true" ]]; then
+                exec "$cli" --json presets list
+            fi
+            local rows
+            rows="$("$cli" --json presets list)" || return 1
+            if ! command -v jq >/dev/null 2>&1; then printf '%s\n' "$rows"; return 0; fi
+            {
+                printf 'NAME\tSKILLS\tDESCRIPTION\n'
+                jq -r '.[] | [.name, (.skill_count|tostring), (.description // "")] | @tsv' <<<"$rows"
+            } | _sk_columns
+            ;;
+        on|off)
+            local name="${1:-}"; shift || true
+            [[ -n "$name" ]] || { _sk_err "set $sub: name a set"; return 2; }
+            local action="deploy"
+            [[ "$sub" == "off" ]] && action="undeploy"
+            local json="false"
+            local -a agents=()
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --json) json="true" ;;
+                    --agent)
+                        [[ -n "${2:-}" ]] || { _sk_err "set $sub: --agent needs a value"; return 2; }
+                        agents+=("$2"); shift ;;
+                    *) _sk_err "set $sub: unknown option '$1'"; return 2 ;;
+                esac
+                shift
+            done
+            cli="$(_sk_cli)" || return 1
+            local -a args=()
+            [[ "$json" == "true" ]] && args+=(--json)
+            args+=(presets "$action" "$name")
+            local agent
+            for agent in "${agents[@]:-}"; do
+                [[ -n "$agent" ]] && args+=(--agent "$agent")
+            done
+            exec "$cli" "${args[@]}"
+            ;;
+        new)
+            local name="${1:-}"; shift || true
+            [[ -n "$name" ]] || { _sk_err "set new: name a set"; return 2; }
+            local json="false"
+            local description=""
+            local icon=""
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --json) json="true" ;;
+                    --description)
+                        [[ -n "${2:-}" ]] || { _sk_err "set new: --description needs a value"; return 2; }
+                        description="$2"; shift ;;
+                    --icon)
+                        [[ -n "${2:-}" ]] || { _sk_err "set new: --icon needs a value"; return 2; }
+                        icon="$2"; shift ;;
+                    *) _sk_err "set new: unknown option '$1'"; return 2 ;;
+                esac
+                shift
+            done
+            cli="$(_sk_cli)" || return 1
+            local -a args=()
+            [[ "$json" == "true" ]] && args+=(--json)
+            args+=(presets create "$name")
+            [[ -n "$description" ]] && args+=(--description "$description")
+            [[ -n "$icon" ]] && args+=(--icon "$icon")
+            exec "$cli" "${args[@]}"
+            ;;
+        add|remove)
+            local name="${1:-}"; shift || true
+            [[ -n "$name" ]] || { _sk_err "set $sub: name a set"; return 2; }
+            if [[ $# -eq 0 ]]; then
+                _sk_err "set $sub: name at least one skill"
+                return 2
+            fi
+            local json="false"
+            local -a skills=()
+            local arg
+            for arg in "$@"; do
+                if [[ "$arg" == "--json" ]]; then
+                    json="true"
+                else
+                    skills+=("$arg")
+                fi
+            done
+            cli="$(_sk_cli)" || return 1
+            local action="add-skill"
+            [[ "$sub" == "remove" ]] && action="remove-skill"
+            local -a args=()
+            [[ "$json" == "true" ]] && args+=(--json)
+            args+=(presets "$action" "$name")
+            args+=("${skills[@]}")
+            exec "$cli" "${args[@]}"
+            ;;
+        *)
+            _sk_err "set: unknown subcommand '$sub'"
+            _sk_usage
+            return 2 ;;
+    esac
+}
+
 # Every folder Adopt scans: the shipped list, each installed agent's folder as
 # the CLI reports it, and the user's drop-in. Only existing folders count, and
 # two paths that resolve to one folder count once.
@@ -312,6 +427,12 @@ aphotic skills -- the shared agent-skill library
   status <skill> [--json]       per-agent state for one skill
   agents [--json]               the agents the CLI knows about
   presets [--json]              the presets and what is in them
+  set list [--json]             list sets
+  set on <name> [--agent A]     turn a set on
+  set off <name> [--agent A]    turn a set off
+  set new <name> [--description D]
+  set add <name> <skill>...     add skills to a set
+  set remove <name> <skill>...  remove skills from a set
   adopt-paths [--json]          discover skill directories to scan
   adopt [--json] [--dry-run]    import skills found in agent directories
   check <skill>|--all           report skills whose source moved on
@@ -344,6 +465,7 @@ main() {
             exec "$cli" skills status "$1" ;;
         agents)            _sk_cmd_agents "$@" ;;
         presets)           _sk_cmd_presets "$@" ;;
+        set)               _sk_cmd_set "$@" ;;
         adopt)
             local cli; cli="$(_sk_cli)" || return 1
             local json="false" dry_run="false"
