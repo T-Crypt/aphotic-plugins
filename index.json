@@ -397,9 +397,9 @@
     },
     {
       "name": "llama-swap",
-      "display_name": "llama-swap",
-      "description": "Notch tile for llama-swap reachability, loaded models, measured GPU memory, live generation stats, inference mode, and model unload controls.",
-      "version": "1.0.0",
+      "display_name": "AI Notch Tile",
+      "description": "Notch tile for every local inference engine: which one is in use, each engine's loaded models and measured GPU memory, plus llama-swap's live generation stats, inference mode and unload controls.",
+      "version": "1.1.0",
       "category": "ai",
       "capabilities": [
         "ui-surface"

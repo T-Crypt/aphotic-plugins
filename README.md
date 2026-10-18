@@ -41,7 +41,7 @@ If a plugin needs a program you don't have, installing the plugin installs that 
 | [`agent-graph`](agent-graph/) | A Command Center tab that draws every tool call as your agent makes it, with replay. |
 | [`agent-audit`](agent-audit/) | A full-screen view to step through past and live agent runs, with tool and failure counts. |
 | [`agent-memory`](agent-memory/) | A durable memory folded from those same runs: per-project tool stats, recurring failures as resolve/reopen issues, notes, and a digest you inject into `~/.claude/CLAUDE.md`. |
-| [`llama-swap`](llama-swap/) | A notch tile for your local model server: loaded models, GPU memory, speed, and an unload button. |
+| [`llama-swap`](llama-swap/) | The AI Notch Tile: every local engine on your machine (Ollama, llama.cpp, vLLM, SGLang and any OpenAI-compatible server), which one is in use, its models and GPU memory, and unload controls for llama-swap. |
 | [`llm-fit`](llm-fit/) | A Settings pane that suggests local models your GPU can run, with one-click download. |
 | [`skills`](skills/) | One library of agent skills shared by every agent on this machine, with workspace and Settings panes. |
 
