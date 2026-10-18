@@ -1,13 +1,9 @@
 #!/usr/bin/env bash
 # The plane's state holder, driven headlessly.
 #
-# The plane itself cannot be instantiated by a bare `qs -p` probe: it imports
-# qs.config and qs.components, whose `qs` prefix maps to the installed shell's
-# own directory, and pulling the shell's service graph up offscreen dies
-# inside the notification history. So the check is the repo's own working
-# pattern instead (llm-fit/tests/test_llmfit_service.sh, xfreerdp/tests/
-# test_rdp_settings.sh): one headless singleton, probed on its own, offscreen,
-# under a throwaway state directory.
+# The state holder on its own, offscreen, under a throwaway state directory.
+# The plane is instantiated separately by test_memory_workspace.sh, which
+# needs the core shell's modules on its import path.
 set -euo pipefail
 
 fail() { echo "FAIL: $1"; exit 1; }

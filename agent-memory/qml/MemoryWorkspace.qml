@@ -17,6 +17,7 @@ import QtQuick.Layouts
 import Quickshell.Io
 import qs.components
 import qs.config
+import qs.services
 import qs.modules.plugins.agentMemory
 
 Item {
@@ -649,6 +650,7 @@ Item {
 
                     Layout.fillWidth: true
                     currentIndex: root.tab
+                    onCurrentIndexChanged: root.tab = currentIndex
 
                     TabButton {
                         text: qsTr("Issues") + ` (${root.issueRows.length})`
