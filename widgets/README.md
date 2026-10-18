@@ -39,5 +39,5 @@ leaves that file; delete it to start over.
 ## Needs
 
 Core's overlay `maskRegion` and `wantsKeyboard` support. On an older shell
-the widgets still draw, but the mask covers their bounding area and notes
-cannot take typing.
+the widgets still draw and edit mode works, but outside edit mode they take
+no clicks and notes cannot take typing.

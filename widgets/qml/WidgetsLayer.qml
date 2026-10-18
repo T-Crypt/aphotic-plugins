@@ -57,6 +57,14 @@ Item {
         item: root
     }
 
+    // For a shell without `maskRegion`: the whole screen while editing,
+    // nothing otherwise, so the desktop never loses its clicks.
+    readonly property Item maskItem: root.editing ? root : noInput
+
+    Item {
+        id: noInput
+    }
+
     // Editing dims the desktop a little and draws the grid widgets snap to.
     Rectangle {
         anchors.fill: parent
