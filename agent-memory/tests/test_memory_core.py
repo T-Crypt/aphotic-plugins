@@ -524,3 +524,60 @@ def test_missing_sources_file_imports_nothing(tmp_path):
     write_events(tmp_path)
     assert core["main"](["build"]) == 0
     assert store_of(tmp_path)["imported"] == []
+
+
+# --- injection into every harness -------------------------------------------
+
+def _registry(tmp_path, *entries):
+    path = state_dir(tmp_path) / "harnesses.json"
+    path.write_text(json.dumps({"schemaVersion": 1, "harnesses": list(entries)}), encoding="utf-8")
+
+
+def test_targets_come_from_the_registry_with_claude_as_the_floor(tmp_path):
+    core = load_core(tmp_path)
+    _registry(tmp_path, {"id": "codex", "label": "Codex", "instructions": ".codex/AGENTS.md"},
+              {"id": "omp", "label": "Oh My Pi", "instructions": ""},
+              {"id": "bad", "instructions": "/etc/passwd"})
+    targets = core["injection_targets"]()
+    assert [t["id"] for t in targets] == ["claude", "codex"]
+    assert targets[1]["path"] == str(tmp_path / ".codex" / "AGENTS.md")
+
+
+def test_inject_one_harness_and_build_refreshes_only_enabled_files(tmp_path):
+    core = load_core(tmp_path)
+    _registry(tmp_path, {"id": "codex", "label": "Codex", "instructions": ".codex/AGENTS.md"})
+    write_events(tmp_path, "\n".join(_repeated(3)) + "\n")
+    assert core["main"](["build"]) == 0
+    agents = tmp_path / ".codex" / "AGENTS.md"
+    agents.parent.mkdir(parents=True)
+    agents.write_text("# codex rules\n", encoding="utf-8")
+    assert core["main"](["inject", "--enable", "--harness", "codex"]) == 0
+    text = agents.read_text(encoding="utf-8")
+    assert text.startswith("# codex rules\n")
+    assert "Failing repeatedly with no rule yet" in text and "project /repo" not in text
+    assert not claude_md(tmp_path).exists()
+    sig = core["candidates"](core["load_store"]())[0]["sig"]
+    assert core["main"](["promote", sig, "Use python for JSON on the PVE hosts"]) == 0
+    assert core["main"](["build"]) == 0
+    assert "Use python for JSON on the PVE hosts" in agents.read_text(encoding="utf-8")
+    assert not claude_md(tmp_path).exists()
+    assert core["main"](["inject", "--disable", "--harness", "codex"]) == 0
+    assert agents.read_text(encoding="utf-8") == "# codex rules\n"
+
+
+def test_inject_an_unknown_harness_is_an_error(tmp_path):
+    core = load_core(tmp_path)
+    assert core["main"](["inject", "--enable", "--harness", "nope"]) == 2
+
+
+def test_disable_restores_the_file_byte_for_byte(tmp_path):
+    core = load_core(tmp_path)
+    write_events(tmp_path)
+    assert core["main"](["build"]) == 0
+    target = claude_md(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for original in ("# a\n", "# a\n\n", "# a\n\nb\n\n\n"):
+        target.write_text(original, encoding="utf-8")
+        assert core["main"](["inject", "--enable"]) == 0
+        assert core["main"](["inject", "--disable"]) == 0
+        assert target.read_text(encoding="utf-8") == original

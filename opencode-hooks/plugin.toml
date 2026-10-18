@@ -26,3 +26,4 @@ match = "opencode"
 launch = ["opencode"]
 usage = "stream"
 context = "stream"
+instructions = ".config/opencode/AGENTS.md"

@@ -676,44 +676,93 @@ def strip_block(text):
     return "\n".join(out)
 
 
-def inject_enabled():
+def injection_targets():
+    """Every harness that names its global rules file in the registry, plus
+    Claude Code's own file, which the plugin has always known."""
+    targets = []
     try:
-        with open(CLAUDE_MD, "r", encoding="utf-8") as handle:
+        with open(os.path.join(STATE, "harnesses.json"), "r", encoding="utf-8") as handle:
+            registry = json.load(handle)
+        harnesses = registry.get("harnesses") if isinstance(registry, dict) else []
+    except (OSError, ValueError):
+        harnesses = []
+    home = os.path.expanduser("~")
+    for entry in harnesses or []:
+        if not isinstance(entry, dict):
+            continue
+        rel = entry.get("instructions")
+        hid = entry.get("id")
+        if not isinstance(rel, str) or not rel or not isinstance(hid, str):
+            continue
+        if rel.startswith("/") or ".." in rel:
+            continue
+        targets.append({"id": hid, "label": str(entry.get("label") or hid), "path": os.path.join(home, rel)})
+    if not any(t["id"] == "claude" for t in targets):
+        targets.insert(0, {"id": "claude", "label": "Claude Code", "path": CLAUDE_MD})
+    return targets
+
+
+def target_for(harness):
+    return next((t for t in injection_targets() if t["id"] == harness), None)
+
+
+def agent_digest(store):
+    """What a harness reads at session start: rules first, then the failures
+    that keep coming back without one. Project tallies stay in the plane."""
+    full = digest(store).split("\n")
+    keep = [line for line in full if line.startswith(("# agent memory", "Rules learned", "Failing repeatedly", "- "))]
+    if len(keep) <= 1:
+        keep.append("No repeated failures on record.")
+    return "\n".join(keep[:MAX_DIGEST_LINES])
+
+
+def inject_enabled(path=None):
+    try:
+        with open(path or CLAUDE_MD, "r", encoding="utf-8") as handle:
             return MARKER_START in handle.read()
     except OSError:
         return False
 
 
-def inject_enable(store):
-    body = digest(store) + "\n"
+def inject_enable(store, path=None):
+    path = path or CLAUDE_MD
+    body = agent_digest(store) + "\n"
     block = f"{MARKER_START}\n{body}{MARKER_END}\n"
     try:
-        with open(CLAUDE_MD, "r", encoding="utf-8") as handle:
+        with open(path, "r", encoding="utf-8") as handle:
             existing = handle.read()
     except OSError:
         existing = ""
     base = strip_block(existing)
-    if base and not base.endswith("\n\n"):
+    if base and not base.endswith("\n"):
         base += "\n"
     updated = base + block
     if updated == existing:
         return False
-    os.makedirs(os.path.dirname(CLAUDE_MD), exist_ok=True)
-    atomic_write(CLAUDE_MD, updated)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    atomic_write(path, updated)
     return True
 
 
-def inject_disable():
+def inject_disable(path=None):
+    path = path or CLAUDE_MD
     try:
-        with open(CLAUDE_MD, "r", encoding="utf-8") as handle:
+        with open(path, "r", encoding="utf-8") as handle:
             existing = handle.read()
     except OSError:
         return False
     updated = strip_block(existing)
     if updated == existing:
         return False
-    atomic_write(CLAUDE_MD, updated)
+    atomic_write(path, updated)
     return True
+
+
+def refresh_injections(store):
+    """Rewrite the block only where the user already turned it on."""
+    for target in injection_targets():
+        if inject_enabled(target["path"]):
+            inject_enable(store, target["path"])
 
 
 # --- commands -------------------------------------------------------------
@@ -754,6 +803,7 @@ def cmd_build(args):
     import_sources(store)
     save_store(store)
     write_context(store)
+    refresh_injections(store)
     elapsed = now_ms() - started
     print(f"ok projects={len(store['projects'])} errors={len(store['errors'])} "
           f"notes={len(store['notes'])} lessons={len(store['lessons'])} "
@@ -973,20 +1023,30 @@ def cmd_stats(args):
 
 
 def cmd_inject(args):
+    if args.status and args.json:
+        rows = [dict(t, enabled=inject_enabled(t["path"])) for t in injection_targets()]
+        print(json.dumps(rows, indent=1))
+        return 0
+    target = target_for(args.harness)
+    if target is None:
+        print(f"agent-memory: no harness {args.harness!r} names an instructions file", file=sys.stderr)
+        return 2
+    path = target["path"]
     if args.enable:
         store = load_store()
         fold(store)
+        import_sources(store)
         save_store(store)
         write_context(store)
-        changed = inject_enable(store)
-        print(f"injected {CLAUDE_MD}" if changed else f"already current in {CLAUDE_MD}")
+        changed = inject_enable(store, path)
+        print(f"injected {path}" if changed else f"already current in {path}")
         return 0
     if args.disable:
-        changed = inject_disable()
-        print(f"removed the agent-memory block from {CLAUDE_MD}" if changed
-              else f"no agent-memory block in {CLAUDE_MD}")
+        changed = inject_disable(path)
+        print(f"removed the agent-memory block from {path}" if changed
+              else f"no agent-memory block in {path}")
         return 0
-    print("enabled" if inject_enabled() else "disabled")
+    print("enabled" if inject_enabled(path) else "disabled")
     return 0
 
 
@@ -1127,11 +1187,13 @@ def build_parser():
     retire = verbs.add_parser("retire", help="remove a lesson by id")
     retire.add_argument("id")
 
-    inject = verbs.add_parser("inject", help="manage the CLAUDE.md marker block")
+    inject = verbs.add_parser("inject", help="manage the marker block in a harness's rules file")
     group = inject.add_mutually_exclusive_group(required=True)
     group.add_argument("--enable", action="store_true")
     group.add_argument("--disable", action="store_true")
     group.add_argument("--status", action="store_true")
+    inject.add_argument("--harness", default="claude", help="harness id from the registry")
+    inject.add_argument("--json", action="store_true", help="with --status: every harness and its state")
     return parser
 
 
