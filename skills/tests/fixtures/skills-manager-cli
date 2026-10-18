@@ -105,7 +105,19 @@ case "${args[0]:-} ${args[1]:-}" in
     "skills show")     read_fixture show.json ;;
     "skills status")   read_fixture status.json ;;
     "skills check")    echo '[]' ;;
-    "skills adopt")    jq -cn '{ok: true, adopted: [], skipped: []}' ;;
+    "skills adopt")
+        dry_run=false
+        paths=()
+        for a in "${args[@]:2}"; do
+            if [[ "$a" == "--dry-run" ]]; then dry_run=true; else paths+=("$a"); fi
+        done
+        if ((${#paths[@]} == 0)); then
+            jq -cn '{ok: false, error: "provide at least one path to scan"}'
+            exit 1
+        fi
+        jq -cn --argjson dr "$dry_run" --argjson n "${#paths[@]}" \
+            '{ok: true, dry_run: $dr, adopted: [], candidates: $n, skipped: []}'
+        ;;
     "skills tag")      tag_pair "${args[2]:-}" "${args[3]:-}" "${args[@]:4}" ;;
     "presets deploy")   jq -cn --arg n "${args[2]:-}" '{ok: true, action: "deploy", preset: $n}' ;;
     "presets undeploy") jq -cn --arg n "${args[2]:-}" '{ok: true, action: "undeploy", preset: $n}' ;;

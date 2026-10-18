@@ -205,6 +205,102 @@ _sk_cmd_presets() {
     } | _sk_columns
 }
 
+# Every folder Adopt scans: the shipped list, each installed agent's folder as
+# the CLI reports it, and the user's drop-in. Only existing folders count, and
+# two paths that resolve to one folder count once.
+_sk_adopt_paths=()
+_sk_adopt_seen=()
+
+# shellcheck disable=SC2088
+_sk_adopt_add() {
+    local raw="$1"
+    local p="$raw"
+    p="${p#"${p%%[![:space:]]*}"}"
+    p="${p%"${p##*[![:space:]]}"}"
+    [[ -z "$p" ]] && return 0
+    case "$p" in \#*) return 0 ;; esac
+    p="${p%%#*}"
+    p="${p#"${p%%[![:space:]]*}"}"
+    p="${p%"${p##*[![:space:]]}"}"
+    [[ -z "$p" ]] && return 0
+    if [[ "$p" == "~" ]]; then
+        p="$HOME"
+    elif [[ "${p:0:2}" == "~/" ]]; then
+        p="$HOME/${p:2}"
+    fi
+    [[ -d "$p" ]] || return 0
+    local rp
+    rp="$(realpath -- "$p" 2>/dev/null)" || rp="$p"
+    local s
+    for s in "${_sk_adopt_seen[@]:-}"; do
+        [[ "$s" == "$rp" ]] && return 0
+    done
+    _sk_adopt_seen+=("$rp")
+    _sk_adopt_paths+=("$p")
+}
+
+_sk_adopt_read_file() {
+    local file="$1"
+    [[ -r "$file" ]] || return 0
+    local line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        _sk_adopt_add "$line"
+    done < "$file"
+}
+
+_sk_cmd_adopt_paths() {
+    local json="false"
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json) json="true" ;;
+            *) _sk_err "adopt-paths: unknown option '$1'"; return 2 ;;
+        esac
+        shift
+    done
+
+    _sk_adopt_paths=()
+    _sk_adopt_seen=()
+
+    local plugin_dir
+    plugin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    _sk_adopt_read_file "$plugin_dir/data/known-dirs.txt"
+
+    local cli=""
+    cli="$(_sk_cli 2>/dev/null)" || cli=""
+    if [[ -n "$cli" ]]; then
+        local agents_json=""
+        agents_json="$("$cli" --json agents list 2>/dev/null)" || agents_json=""
+        if [[ -n "$agents_json" ]] && command -v jq >/dev/null 2>&1; then
+            local d
+            while IFS= read -r d; do
+                [[ -n "$d" ]] && _sk_adopt_add "$d"
+            done < <(jq -r '.[] | select(.installed == true) | .skills_dir' <<<"$agents_json" 2>/dev/null)
+        fi
+    fi
+
+    local dropin="${XDG_CONFIG_HOME:-$HOME/.config}/aphotic/skills/dirs.txt"
+    _sk_adopt_read_file "$dropin"
+
+    if ((${#_sk_adopt_paths[@]} == 0)); then
+        if [[ "$json" == "true" ]]; then
+            printf '%s\n' '{"paths":[]}'
+        fi
+        return 0
+    fi
+
+    if [[ "$json" == "true" ]]; then
+        if command -v jq >/dev/null 2>&1; then
+            printf '%s\n' "${_sk_adopt_paths[@]}" | jq -R . | jq -s '{paths: .}'
+        else
+            _sk_err "adopt-paths --json needs jq"
+            return 1
+        fi
+    else
+        printf '%s\n' "${_sk_adopt_paths[@]}"
+    fi
+    return 0
+}
+
 _sk_usage() {
     cat <<'EOF'
 aphotic skills -- the shared agent-skill library
@@ -216,7 +312,8 @@ aphotic skills -- the shared agent-skill library
   status <skill> [--json]       per-agent state for one skill
   agents [--json]               the agents the CLI knows about
   presets [--json]              the presets and what is in them
-  adopt [--json]                import skills found in agent directories
+  adopt-paths [--json]          discover skill directories to scan
+  adopt [--json] [--dry-run]    import skills found in agent directories
   check <skill>|--all           report skills whose source moved on
   path [--set DIR|--reset]      where the library lives
   doctor [--json]               binary, version, library and counts
@@ -249,8 +346,31 @@ main() {
         presets)           _sk_cmd_presets "$@" ;;
         adopt)
             local cli; cli="$(_sk_cli)" || return 1
-            if [[ "${1:-}" == "--json" ]]; then exec "$cli" --json skills adopt; fi
-            exec "$cli" skills adopt ;;
+            local json="false" dry_run="false"
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --json) json="true" ;;
+                    --dry-run) dry_run="true" ;;
+                    *) _sk_err "adopt: unknown option '$1'"; return 2 ;;
+                esac
+                shift
+            done
+            local -a path_args=()
+            local line
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && path_args+=("$line")
+            done < <(_sk_cmd_adopt_paths)
+            if ((${#path_args[@]} == 0)); then
+                _sk_err "adopt: no skill directories found"
+                return 2
+            fi
+            local args=()
+            [[ "$json" == "true" ]] && args+=(--json)
+            args+=(skills adopt)
+            [[ "$dry_run" == "true" ]] && args+=(--dry-run)
+            args+=("${path_args[@]}")
+            exec "$cli" "${args[@]}" ;;
+        adopt-paths)    _sk_cmd_adopt_paths "$@" ;;
         check)
             local cli; cli="$(_sk_cli)" || return 1
             if [[ "${1:-}" == "--all" || "${1:-}" == "--json" ]]; then

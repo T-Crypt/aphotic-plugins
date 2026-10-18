@@ -49,6 +49,13 @@ aphotic skills doctor             # binary, version, library and counts
 aphotic skills path --set DIR     # move the library
 ```
 
+Adopt discovers skill directories from `skills/data/known-dirs.txt`, every
+installed agent's `skills_dir` reported by the CLI, and an optional drop-in
+file at `${XDG_CONFIG_HOME:-~/.config}/aphotic/skills/dirs.txt` (same
+format: one path per line, `~` allowed, `#` comments). Only existing
+directories are scanned, duplicates are removed by realpath, and
+`adopt --dry-run` previews the import without writing.
+
 From the shell: `SUPER + SHIFT + K`, or the command palette action
 "Skills: open the skill manager".
 
