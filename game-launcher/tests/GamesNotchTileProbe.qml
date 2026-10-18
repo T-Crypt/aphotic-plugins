@@ -268,11 +268,11 @@ ShellRoot {
             return;
         if (!root.checkEqual(root.tile.runningName, "Portal", "the claim's process name matches a scanned game"))
             return;
-        if (!root.checkEqual(root.tile.vramChip, "VRAM freed: 6.0 GB", "the claim's memory is named in gigabytes"))
+        if (!root.checkEqual(root.tile.vramChip, "Game VRAM: 6.0 GB", "the claim's memory is named in gigabytes"))
             return;
         if (!root.check(root.hasVisibleLabel("Game mode"), "the game mode chip is shown while the profile runs"))
             return;
-        if (!root.check(root.hasVisibleLabel("VRAM freed: 6.0 GB"), "the VRAM chip is shown while the claim exists"))
+        if (!root.check(root.hasVisibleLabel("Game VRAM: 6.0 GB"), "the VRAM chip is shown while the claim exists"))
             return;
         console.log(`DEBUG heights recents=${root.tile.implicitHeight}`);
         if (!root.check(root.tile.implicitHeight <= 260,
