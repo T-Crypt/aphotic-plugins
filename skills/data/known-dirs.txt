@@ -1,0 +1,17 @@
+~/.agents/skills
+~/.agents/skills-disabled
+~/.claude/skills
+~/.codex/skills
+~/.config/opencode/skills
+~/.omp/agent/skills
+~/.pi/agent/skills
+~/.gemini/skills
+~/.cursor/skills
+~/.copilot/skills
+~/.qwen/skills
+~/.qoder/skills
+~/.dsh/skills
+~/.factory/skills
+~/.config/crush/skills
+~/.windsurf/skills
+~/.config/goose/skills
