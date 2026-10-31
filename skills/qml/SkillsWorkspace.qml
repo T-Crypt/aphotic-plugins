@@ -101,7 +101,7 @@ Item {
                     StyledText {
                         text: SkillsService.available
                             ? qsTr("%1 skills · %2 agents · %3").arg(SkillsService.skillCount).arg(SkillsService.installedAgents.length).arg(SkillsService.libraryPath)
-                            : qsTr("skills-manager-cli is not available")
+                            : qsTr("Agent skills, shared across harnesses")
                         font: Tokens.font.label.small
                         color: Colours.palette.m3onSurfaceVariant
                     }
@@ -116,14 +116,18 @@ Item {
 
                     Layout.preferredWidth: 220
                     Layout.preferredHeight: 34
+                    visible: SkillsService.available
+                    leftPadding: Tokens.padding.medium
+                    rightPadding: Tokens.padding.medium
                     placeholderText: qsTr("Search")
+                    placeholderTextColor: Colours.palette.m3onSurfaceVariant
                     text: root.searchText
                     font: Tokens.font.label.medium
                     color: Colours.palette.m3onSurface
                     onTextChanged: root.searchText = searchField.text
                     background: StyledRect {
                         radius: Tokens.rounding.full
-                        color: Colours.palette.m3surfaceContainer
+                        color: Qt.alpha(Colours.palette.m3onSurface, 0.06)
                         border.width: 1
                         border.color: searchField.activeFocus ? Colours.palette.m3primary : Colours.signalStyle.hairline
                     }
@@ -236,15 +240,6 @@ Item {
             }
 
             // ── Status ──────────────────────────────────────────────
-
-            StyledText {
-                Layout.fillWidth: true
-                visible: !SkillsService.available && SkillsService.hint.length > 0
-                wrapMode: Text.Wrap
-                text: SkillsService.hint
-                color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.label.small
-            }
 
             StyledText {
                 Layout.fillWidth: true
@@ -410,15 +405,77 @@ Item {
             StyledText {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: root.visibleSkills.length === 0
+                visible: SkillsService.available && root.visibleSkills.length === 0
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                text: SkillsService.available
-                    ? (SkillsService.skillCount === 0 ? qsTr("The library is empty. Adopt what your agents already have, in Settings.") : qsTr("No skill matches these filters."))
-                    : qsTr("Install skills-manager-cli to read the library.")
+                text: SkillsService.skillCount === 0 ? qsTr("The library is empty. Adopt what your agents already have, in Settings.") : qsTr("No skill matches these filters.")
                 color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.label.medium
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: !SkillsService.available
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    width: Math.min(parent.width, 440)
+                    spacing: Tokens.spacing.medium
+
+                    MaterialIcon {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: "extension_off"
+                        color: Colours.palette.m3onSurfaceVariant
+                        fontStyle: Tokens.font.icon.extraLarge
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: qsTr("skills-manager-cli is not installed")
+                        color: Colours.palette.m3onSurface
+                        font: Tokens.font.title.small
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        text: qsTr("The library lives in that tool. This plugin can fetch it, and asks before it downloads anything.")
+                        color: Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.label.medium
+                    }
+
+                    StyledRect {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: installCommand.implicitWidth + Tokens.padding.large * 2
+                        implicitHeight: installCommand.implicitHeight + Tokens.padding.small * 2
+                        radius: Tokens.rounding.small
+                        color: Qt.alpha(Colours.palette.m3onSurface, 0.06)
+                        border.width: 1
+                        border.color: Colours.signalStyle.hairline
+
+                        StyledText {
+                            id: installCommand
+
+                            anchors.centerIn: parent
+                            text: "aphotic plugin install skills"
+                            color: Colours.palette.m3primary
+                            font: Tokens.font.mono.medium
+                        }
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        text: qsTr("Installed it another way? Put it on PATH, then press Reload.")
+                        color: Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.label.small
+                    }
+                }
             }
         }
 

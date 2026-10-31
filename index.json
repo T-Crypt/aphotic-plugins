@@ -74,7 +74,7 @@
       "name": "agent-memory",
       "display_name": "Agent Memory",
       "description": "A durable memory folded from local agent session events: per-project tool stats, recurring failure signatures, notes, resolve/reopen issues, and an injectable context digest.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "ai",
       "capabilities": [
         "ui-surface",
@@ -615,7 +615,7 @@
       "name": "skills",
       "display_name": "Skill Manager",
       "description": "One library of agent skills, deployed to Claude Code, Codex, OpenCode and any other agent, backed by the skills-manager CLI.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "category": "ai",
       "capabilities": [
         "ui-surface",
