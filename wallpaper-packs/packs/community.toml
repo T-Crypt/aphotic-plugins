@@ -1,0 +1,943 @@
+[pack]
+id = "community"
+label = "Community collection"
+base_url = "https://raw.githubusercontent.com/D3Ext/aesthetic-wallpapers/e34f05935c5b768f4c016b0893924d18ec1dba61/images/"
+note = "Picked by palette match and by eye. Credit belongs to the original artists; the collection names none per image."
+
+[[wallpaper]]
+theme = "nordic"
+path = "rocket.png"
+sha256 = "2744c46ddc288923958c76e7c2013ac3c3e9ec7575363948ed2723dac6754bbd"
+width = 2200
+height = 1375
+
+[[wallpaper]]
+theme = "nordic"
+path = "astronaut-nord.png"
+sha256 = "e7fa42b5a5829255f47d0bbf3accb0dbcc6d2273bc9b4ad1667cd98e1b5b076b"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic.png"
+sha256 = "4ed47556be11c3073aa280659bd7ba59d6bafcf31a471ec3429a3cf71b954a61"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord_minimal_girl.png"
+sha256 = "8115e75a90665154e24dd657ef4236f63dd9b79bbe27233a22cb806b22299145"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "wallhaven-rrpvd7.png"
+sha256 = "03ca4bded43c07a84415e80baf0734f5f3d63ef9bd8524e53e194ece06a5f4ad"
+width = 8000
+height = 4500
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord_dots.png"
+sha256 = "317267fab53e237dc99492c856294d93587d8da1bed7e3dee3287dded40b08bb"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "various-arch-1-4k.png"
+sha256 = "5ab0f51a9473574e688a193aa677a4c897ea0008d7f03fc17b04c6ec6d04519d"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "various-arch-2-4k.png"
+sha256 = "60d9f0f473b5b1a3a442d371ef423c9e3f8432dc13d8dc1c89b294a0734d5dfa"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "anime-eye-nord.png"
+sha256 = "cc9ce76c636eed5bb834a09c5240e7c5ab37ca13c613337f0284608a0c72c1c8"
+width = 4208
+height = 2392
+
+[[wallpaper]]
+theme = "nordic"
+path = "arch-nord-dark.png"
+sha256 = "0cbdbc59ea0bfae3ee93f21588c9d1484f13de1b554f79b70107dadafa045acb"
+width = 2992
+height = 1680
+
+[[wallpaper]]
+theme = "nordic"
+path = "arch-nord-light.png"
+sha256 = "70ed50c58d9622b805b6fd6066cb75b4d5426c14b6eccf96519090f033fbecf2"
+width = 2992
+height = 1680
+
+[[wallpaper]]
+theme = "nordic"
+path = "holy-arch-nordic.png"
+sha256 = "0dacd01015625457539897c944316d157e80acbab5f116088ad2300c7c09236a"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "minimal_nord_guy.png"
+sha256 = "43bdd4a9759388e322f923f0561b115161cac19d727c4a66c40fed587a0e47cd"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord-shards.jpg"
+sha256 = "91e203fe917689debbc4caad61fac80a40edf536e37ceefb3640795479bcc817"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord-street.png"
+sha256 = "1a8510f2cc44d16ed67fc56c408cca4505f8d6d2723000f52afa8ab11a79cbb9"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord_dark_city.png"
+sha256 = "cc58d4ec006f549bae4deb242d96a74f7e5fce1c1c6872915353246bd3d7957a"
+width = 5579
+height = 2956
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord_mask.png"
+sha256 = "4c252ed1b821a2c37428bea6cae174c3b8709b285852ea74391acf4b4c23346d"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "nordic"
+path = "nord_minimal_cat.png"
+sha256 = "cc2bf11c32d2dc7b6242f5f671f77de3fb5d7d177a0012da03851299b0507468"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "neon-shacks-nord.png"
+sha256 = "858d0b26656a0950d2f96bd435db0a23cd129e0e03fe60ad6e8dc1cc695a4ba6"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "camp_day.png"
+sha256 = "9d9de4481ed3b8131388e88fd46dc066ae1c2d28bc270cc881132d87592d72c8"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "nordic"
+path = "cat.jpg"
+sha256 = "e1c224e03adcd10fc2352c098931953dde27a5e57e76d22898e34646b4da5aea"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "nordic"
+path = "cron.png"
+sha256 = "1568a6941957cbeebe0b433b11a93561b8b74ee62aa1476008f6476502ae770f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "wallhaven-76d5xv.png"
+sha256 = "c6c61ef3559dc40e16f7fd9206dd56a133d88861885794eb9c187161beb7e53c"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "moon.png"
+sha256 = "4ca7c1c7eadefc27f642248a329abec79e860dcadc8956e2e65100225d18bb38"
+width = 2560
+height = 1500
+
+[[wallpaper]]
+theme = "nordic"
+path = "Nepal_5160x2160.png"
+sha256 = "d28dbe077fb203ef8f0b27cd0be56a99a5fde7d68a9371ae0fb5e93aadd219c3"
+width = 5160
+height = 2160
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "dark_pixelart.png"
+sha256 = "efb83b289706c0a56a2b58a08aad6e6b87c6b7e73b56733ed0d3a57694ba7da2"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "you-got-this.jpg"
+sha256 = "6c37aaece89a80cd7c82fc455cec4d4938c29f04b7e4ce4bfa933366eb9b098a"
+width = 5120
+height = 3173
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox_room.png"
+sha256 = "3ee1baa0a6742feff767bc293e6ae5113cdcf872e27f38c3f053b33459492aab"
+width = 1920
+height = 1081
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "wall-gruv.png"
+sha256 = "ee73fe8dfbf4f2b5b6ef4a8ef1d3f35579f8d015a01316bec6c7dee81ee9d926"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "trees.png"
+sha256 = "09d6be3e3326026f32bfacb0f95068e45c004277a1a69227c209071a90c7338b"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox_retrocity.png"
+sha256 = "b07aff0455a146fcebd20543ef713b7d29461bcffd1b60f7fcce3a50d7feaaf5"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "plant.png"
+sha256 = "082b894e75fe8db3782a9cd0f73fa346fe6c1512a957ed170f63e6827a7b7e4e"
+width = 1890
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox_forest-4.png"
+sha256 = "9a7f42c9bd3918f52c27d3bfb04da6092049b39706ba7fbc61280fac1017010e"
+width = 1920
+height = 1077
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "japan2.jpg"
+sha256 = "0c700c6a11c8425d2b565fd482be1c1eef55174979568f543ead0f7c5b7bb455"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "awesome.png"
+sha256 = "5047cfa83cce6859ba251e2b0b84e38ac7fce1be94b98cebfc9623140e426b2c"
+width = 2048
+height = 1280
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "fedora_snake.png"
+sha256 = "5dd6f53dd634282478b727c09059bba6af91003d36c9946bd7467672f45bdb97"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "yh.png"
+sha256 = "d8cf1f1dd23921496eef05b9059cc0a805674138254b8ecfaf569d4355d1c518"
+width = 3440
+height = 1440
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "pixelart-colors.png"
+sha256 = "1f568fb89a3b8425a12d596f793202593384e31da819b96e110eef85e76dd309"
+width = 2400
+height = 1350
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "beige_tree.png"
+sha256 = "3a1f7a7e909be3695821888e3cc3024ed874780610c001e2abf40582a6ddbbef"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "routine.jpg"
+sha256 = "9935a5adc0f7252a0e5b5aefcaaae8339c3daa3258e29ba46c978b4da24612d4"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "home127-light.jpg"
+sha256 = "2cc1485e13d991cdb91555cd1cd19d39fd57b2ccebb2395d7b185f5695edc5ad"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "home127-dark.jpg"
+sha256 = "c224c98e6936086c29a9f75a547507fa578da405bf4bec6696b8b25f8e3f00c5"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "astronaut-rocket.jpg"
+sha256 = "195cc52b946b17f0aec702109efafeda6d2f8c5c4f425c9544b7360dee90eead"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "abandoned.jpg"
+sha256 = "7fc43d08e26cfd14e9f2e40e367be24c0a69496ed1182f2162fa047a012cd536"
+width = 3500
+height = 1969
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "autumn_leaves.jpg"
+sha256 = "0da59926d3f630f30ac98d3179268ecb7b16f0058caa1af1406f58433de1d97a"
+width = 6000
+height = 4000
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "van.png"
+sha256 = "a7f2bf583435fe4b49a33a63a983150e135ec2b35f70e130677a68d68eb3a105"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "sunset_city.png"
+sha256 = "980e2d359d3046f4bfff2f4ff7ddddedef4a6994135ba9691a510452a82ae9c8"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "shougan_castle.png"
+sha256 = "99706aafd4d3462bef439fc09586c95a7f686eb5c77ed8abdb821bbd89ac89fb"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "cat_anime-girl.png"
+sha256 = "7a086a092ded2deee2f03cda2adcec30f8245d3051fc118d38fdbae231567cd6"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "pastel-city.png"
+sha256 = "ccc6efae6d32ea553dfb33c13e358a841fb4c8f9714965c448e6c9bedc460d3d"
+width = 12000
+height = 6000
+
+[[wallpaper]]
+theme = "rosepine"
+path = "lofi_cat.png"
+sha256 = "e92af7c1fb0a7b8fd8a8b3db915510bc003d10c8a4b75109ca186e510287a79d"
+width = 5039
+height = 2835
+
+[[wallpaper]]
+theme = "rosepine"
+path = "acrylic.jpg"
+sha256 = "5df64a66b2317b367ef49f59a48ab1da56929a0ee6ec15b3ada0b8248fc6a37f"
+width = 6144
+height = 3456
+
+[[wallpaper]]
+theme = "rosepine"
+path = "void-magenta-pink.png"
+sha256 = "1b857cd1308f6df375d009a17046ccd06d04f1e7c2eed833b2170e8760f45cf4"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "tux-magenta-pink.png"
+sha256 = "c02bc40335722358c2acc1b0d2dd9f1d8468af0aadd1ac4499919bc4ea6558df"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "wide_shiny_waves.png"
+sha256 = "7dc1a931e955629e4ea46299ddd11b72e4170f6d8ec87a76120dbabbfd9c45d4"
+width = 3440
+height = 1440
+
+[[wallpaper]]
+theme = "rosepine"
+path = "purple-girl.png"
+sha256 = "ed952e98580eb2232c5e24652c4da90e568717145f7db11b6753f6532626aef1"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "sushi_dark.png"
+sha256 = "0f2be4512cfb68549f6336559b5ff1aea09303133cfcc1f99a02534c8a346822"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "purple_plane_landscape.png"
+sha256 = "e953709f8c8ca075af7dbc0676dc100e73a417a55e4ec6e0c91b43092f5a0b57"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "falltree.jpg"
+sha256 = "5fd05d173a15ab2feb0309fca3b1dff5d2a3de3d60f4bb5ccd0d6450e0486b61"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "rosepine"
+path = "purple-bomb.png"
+sha256 = "e67a7a8e916542f4a24ed627f85a2295793150c954b50488cf13cd467ceef44f"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "rosepine"
+path = "gradient-pb.png"
+sha256 = "800b0deb7eb89187e238fa12f7f6c1e13adbce52f3b9b3f00769a08554ba28df"
+width = 6016
+height = 3384
+
+[[wallpaper]]
+theme = "rosepine"
+path = "pixiv_73483903.png"
+sha256 = "e601e46379aa19e910f7b64c443329ea5768d3178700a4d140a81a2aadb05c00"
+width = 2600
+height = 1046
+
+[[wallpaper]]
+theme = "rosepine"
+path = "catpuccin_landscape.png"
+sha256 = "b4ba78cc2c9802b6001d42b44a65ba7524cdb66fe634738f7b861bd4cba34162"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "pixel-city.png"
+sha256 = "6f0172d2063ed396bde74535ffbb5dc90a401756c83acad22f5d30d7dc3f0bc1"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "dark_forest.png"
+sha256 = "687de5016d97c4fbdf71c8e4c1d1ba1f657747b322e249b69cd09c3503eeeedb"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "mountains.png"
+sha256 = "b130c92323e10122d6db5a850d83c4feb37c73e477df3c1e5d3c6763f368e583"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "light-ring.jpg"
+sha256 = "051830214aab41abadf616fde20220b4db69f5241815b7f895086d4176266a1c"
+width = 5640
+height = 2400
+
+[[wallpaper]]
+theme = "lofi"
+path = "em-rofi.webp"
+sha256 = "52937462a4e02fa000fea2fb5291667faec9a009e0f0a0c5cc7d98dd62c66fe7"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "planet_with_sunrise.png"
+sha256 = "4b1b133d302ff2292d79c46b4a6d71f6f42dc58e60102ac97fd1ceafb0743475"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "wallhaven-lmxwdl.jpg"
+sha256 = "772f5c91c11fafd7132e5d1df5bb7888ece803e2de7a039f7bf98a400a377cd3"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "pond_shed.png"
+sha256 = "84b24d2612e4c8b6908f26c75c0c0adc333d71e71052358a3cd1b23ecc03c87c"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "staircase.jpg"
+sha256 = "7544ab023bc5ce45ebd976f9fe43e44b97f007ae82c9c3eb07c0aa705182c9c3"
+width = 5586
+height = 3724
+
+[[wallpaper]]
+theme = "lofi"
+path = "wide_nebula.png"
+sha256 = "7e4c779bf3993201563e6ce8184d293a7dc134f43994a73afb4464c0c9b0686e"
+width = 3840
+height = 1199
+
+[[wallpaper]]
+theme = "lofi"
+path = "minimal_landscape.jpg"
+sha256 = "d76309c14225a1d1fd4e608d79f2ef48f9696c4494bd15c245cea707b0a70b2b"
+width = 7698
+height = 4330
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi-cafe_gray.jpg"
+sha256 = "7fbde6653f5ce7a8a43f5567b9e07f1c70bca2d8bddad80fbc7f633d7b84833b"
+width = 2334
+height = 1312
+
+[[wallpaper]]
+theme = "lofi"
+path = "anime_skyline.png"
+sha256 = "4ee161ed49f40cf4bcdeabd90adf2979d7b3e17abacbdbe449572a87f0575abd"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "fishing_stars.jpg"
+sha256 = "08cf421d1fcbe374ce683516f27d668c8ec21eb82e2886bcd70f1c0c69d8747f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "lets_go_home.png"
+sha256 = "72bf772f674441153e634b6db2de01232047fdc13d324429ee3067a34147511b"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "japan.png"
+sha256 = "7828b63fbce57eab1fc84de4c1041e03cc944b5d89a781ec74fe3b486141eaff"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "cute-town-dark.png"
+sha256 = "d001875303255ba9166cea946a2953188b9af2c3ba59d23c0353ab48692a48f2"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "forest.png"
+sha256 = "9ee4d7b1053cf86492ec93a39e3fee871cbae8a14f837934ebeea456ef97a9da"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "saturn-rings.jpg"
+sha256 = "f6b2088250edd67b932ed1c3e233118928b0d24ef411b36ca4621ee131764cbf"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "landscape2.jpg"
+sha256 = "9b12813d9b4b5efcb145ee37693407f85ca4e981e7d993ba44aaa45e81b067ef"
+width = 6600
+height = 3600
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "rm-rf.jpg"
+sha256 = "0ae69554d6ac0bed65b3a6c684eba13642788dd26bb8968a783755548091cfae"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "towashi.jpg"
+sha256 = "0bdccc48ffda323baf246bf68a85b00e19580f2d3c841e7703747e578a90527b"
+width = 2500
+height = 1406
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "3squares.png"
+sha256 = "5679ebb91e3e02d0be9a0b3370c233714fa51bc1fafe10ccb1e81d4954e95f3a"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "zorin-black-4k.png"
+sha256 = "0c1e264ec51afe57dc1bb79530ddaaf9559a83ea27185d408d0325312d34d61c"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "minimal-purple.jpg"
+sha256 = "100f14ade4157b79c56f41a632e6092c98304153011103c97af30095d0236d72"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "colorful-planets.jpg"
+sha256 = "6f806bef31ecb48403b8c37a162e9ce3fc7d5cb0ef070eedb3c8850563721924"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "alfa.png"
+sha256 = "ed38268228342f202afb8538e4e8378b8afc789bb570aa6259d9129299ca0f85"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "wide_tokyonight_lines.png"
+sha256 = "ecac1e80546304079fe2b9453f14517831fe967d61812c2d1bc7579015617ee6"
+width = 5120
+height = 2160
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "pastel-car.png"
+sha256 = "190236bc9ea069b8cac324864017be985548311546b3d1e94133b7fe2b33816a"
+width = 7680
+height = 4320
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "fire-skull.jpg"
+sha256 = "25fb991734066cb145dea0406cde4ef0ad7229a37b1003a626c114b7e6e3bab0"
+width = 2732
+height = 1536
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "arch-peace.png"
+sha256 = "418618ada9e02a4c2c815f4ccd3730bf673a14cdb9c677ea3e9841393791746d"
+width = 4444
+height = 2500
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "platforms.png"
+sha256 = "55616a4ed2822e76ec74510a772616d86041fc4245fec68323b875f85600eae7"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "neosamurai.webp"
+sha256 = "2d4a001faa91bff4afe5d8a0592699bab523edcae213b772b8864fb0de666661"
+width = 2400
+height = 1600
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "wide_lines.png"
+sha256 = "dfffdd3bf933bc4fde52c065bf18a46a218a633e825c1c28acd96aad156595b8"
+width = 5120
+height = 2160
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "wide_tokyonight_skyline.jpg"
+sha256 = "419f2748652410ad75d378b35439abeeab12dccada32517fc26ceb1adfcdb0d9"
+width = 3840
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "nord_purple_waves.png"
+sha256 = "8156134b5d0c683787bf354b774fa11291f868935999eb3edf051fc436df2e9f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "anime-pond.png"
+sha256 = "74777bba42dd7420e1e5742dc531684fca0e359d5d4135c4841909fd45ec6818"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "robot.jpg"
+sha256 = "7d2aeb4e303630db9d6905d283b08d0c16f6e25cd77c66cc0dcc679f61183141"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "neocity.png"
+sha256 = "f68427e2edfa84be645dbf90c601df4aa3cb36e077e8aceb65f77af376075e22"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "wallhaven-q21vkl.jpg"
+sha256 = "51b9ae95d54168fdc42af1e08b4910ec1d20f69bac5cbf7f34c2e8610cc50946"
+width = 2800
+height = 1575
+
+[[wallpaper]]
+theme = "latte"
+path = "wide_alien_planet.jpeg"
+sha256 = "561073b501617bcb1db134c18899782305e8779007ff459e3f077b98c1321228"
+width = 4608
+height = 1920
+
+[[wallpaper]]
+theme = "latte"
+path = "oled-mountains.jpg"
+sha256 = "0a8a17d82585f2562ddcc93cfa87cef5ccc29e481680142d8d21a9cd0ce337d8"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "smooth_blue.png"
+sha256 = "e2e284126c8cd37a70019530e3911d8e61d1d5932d701247eff5f39416dfe3f8"
+width = 6016
+height = 3387
+
+[[wallpaper]]
+theme = "latte"
+path = "smooth_pink.png"
+sha256 = "fcaee6254a7f97afa265244db2444c6e4891aabaa5abfa828b4b10cab1468127"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "catpuccin_w.png"
+sha256 = "017f69d82f05e1962ef7b61a3fb33c9770bd13d278f461aeb112fe9e5cb90d16"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "wallhaven-z8pdqo.jpg"
+sha256 = "462363bdbe88d66ae3dfb2256193343d369189c80fc9fae4b02dea30ecb29e5b"
+width = 2560
+height = 1600
+
+[[wallpaper]]
+theme = "latte"
+path = "tree-house.png"
+sha256 = "ddc0731b6e9f6193cb198e38b05944a31dd0fa386404352c1f045258c3556ea4"
+width = 2912
+height = 1632
+
+[[wallpaper]]
+theme = "latte"
+path = "ultrawide_island.png"
+sha256 = "c53233ef23bd1bd4c2b2f8e8c474bd26077dd4ac8e96e093cdfae3d7b9fca849"
+width = 3440
+height = 1440
+
+[[wallpaper]]
+theme = "latte"
+path = "train_and_lake.png"
+sha256 = "4549f97d23c72a94395c842cf3bfa10e7d86c01e76dee7962842bb78d70c0913"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "a_cartoon_of_a_house_on_a_cliff.png"
+sha256 = "2ef375d9465c1c2b917d25832fa15855c8502ea5972f9d8ca6c39c65c8326e73"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "glasses.png"
+sha256 = "3137e4aefc97bcef7292bbcb02ea61c5fb63752639513dbad708f6ebbbdc7dd2"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "minimal_python.png"
+sha256 = "6f0d5f35efed17bdaa6b03756d8fb2f1662a21d530e07318edc6c47b92ca5f7f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "green-sun.jpg"
+sha256 = "fc92b0b2de769ee0cdf18753af8bfe1cb7a0a6eca9d98ac4d40941c8f3f09487"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "void-black3.png"
+sha256 = "c7d0245af4d301eede278fbd93faefeca0bdd3d2d019fb2b13fea116a34a919f"
+width = 1919
+height = 1078
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "void-black-4k.png"
+sha256 = "2631209303669404125e48d1cf910b743780ecc91a790198a4cda536eeda6a30"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hello-worlds.png"
+sha256 = "619166ca2e25d1431e4d0247cdaf0da23b432ca1b50e4345985b780beeeb0551"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "tech.png"
+sha256 = "d929206548cea84ce874b9f789937c2582bb78f3aadcdea0ea96e5dfd921b7a6"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "Fedora1.png"
+sha256 = "350ef9da841bba57cc823907180c156b3aa4ee042acdd11e12d1c62ab3853764"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "windows11"
+path = "minimal_gradient.png"
+sha256 = "5696409829c0966f2c755508245fc846c7f59450350e48e58e6eeca38ee1e0e6"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "windows11"
+path = "wallpaper3-dark.png"
+sha256 = "89f9ac1bc126e97926c0479727ad661a6e04e1c5a321143e9ebe94b6ba05cb39"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "windows11"
+path = "ink_wave.png"
+sha256 = "8eb7a889292dd471099dd8e41169f879d60a3817c8d1050fca1229e6479268c9"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "windows11"
+path = "purple-crystal.png"
+sha256 = "19cf62b0dab60d84b3b7d4bad7fa05567bd3fa9ffe020374332a693850ec4463"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "windows11"
+path = "ocean_with_cloud.png"
+sha256 = "bae72dac5e462cd6680cf7eda24c311a3e83fde7a1afcb59d90d1fa8ba111e49"
+width = 4096
+height = 1825
+
+[[wallpaper]]
+theme = "windows11"
+path = "goldfish.jpg"
+sha256 = "b9bb56de916da1136b29b30aa22b689d18388dfa7b882ecb625aad37f40a4782"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "windows11"
+path = "astronaut-balloons.jpg"
+sha256 = "d03836deec8d7444d1d8c189c2ff0916a3e6f1bb8ec3bc2ea8cd1b5071ad0293"
+width = 2400
+height = 1200
+
+[[wallpaper]]
+theme = "windows11"
+path = "Computerized_Art_3440x1440_7.jpg"
+sha256 = "36731663fa3208336b3529deb3c0a6c079ed8bf895c8c8dadcc0d6c5cccd3753"
+width = 3440
+height = 1440
+
+[[wallpaper]]
+theme = "dracula"
+path = "waves_dracula_flipped.png"
+sha256 = "3788b932998727f9cc17494e7df0e570c71dc2b5c01bd87772a64cad68ef4a38"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "dracula"
+path = "shiny_purple.png"
+sha256 = "cb51b02c1ffa8818b3ae3d549bac38876a6867ba1ef4fe33b7cb4984710a9ad2"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "dracula"
+path = "mushroom-purple.png"
+sha256 = "96127f02df4cf6073ba0289cc7bf75e9e8b7d9caabdf1a8c32fee637b1035eaa"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "dracula"
+path = "neon-circle.jpg"
+sha256 = "096ad2d686316b5389bb4a27c575f26eeab9ebeaebb75f3b02d1a543a9aa529f"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "dracula"
+path = "shiny-colors.png"
+sha256 = "c30f09c5647221f87c150562ea5eae2677fe57d2340357f82cd76d51c658301e"
+width = 1920
+height = 1080
