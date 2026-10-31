@@ -57,7 +57,7 @@ Item {
         radius: Tokens.rounding.large
         color: frame.cfg.background === "glass" ? Qt.alpha(Colours.signalStyle.surface, frame.cfg.opacity) : "transparent"
         border.width: 1
-        border.color: frame.configuring ? Colours.signal : (frame.editing && frame.cfg.background === "none" ? Qt.alpha(Colours.signal, 0.5) : Colours.signalStyle.hairline)
+        border.color: frame.configuring ? Colours.signal : frame.editing ? Qt.alpha(Colours.signal, 0.5) : Qt.alpha(Colours.palette.m3onSurface, 0.1)
 
         // Light along the top edge, inset by the radius: the Signal card's
         // depth cue, never a shadow.
@@ -98,7 +98,7 @@ Item {
         when: content.item !== null
         target: content.item
         property: "store"
-        value: frame.widget.data
+        value: frame.widget.data ?? ({})
     }
 
     Binding {

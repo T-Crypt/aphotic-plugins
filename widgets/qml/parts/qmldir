@@ -13,3 +13,4 @@ Ticker 1.0 Ticker.qml
 MediaControls 1.0 MediaControls.qml
 Art 1.0 Art.qml
 RingStat 1.0 RingStat.qml
+EmptyState 1.0 EmptyState.qml

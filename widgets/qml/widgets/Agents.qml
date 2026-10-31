@@ -23,12 +23,21 @@ WidgetBase {
         return AgentRoles.entries.find(e => e.id === id)?.label ?? id;
     }
 
+    EmptyState {
+        anchors.fill: parent
+        visible: root.sessions.length === 0
+        icon: "smart_toy"
+        text: qsTr("No agents running")
+        hint: qsTr("Sessions show up here while they run")
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 4
 
         RowLayout {
             Layout.fillWidth: true
+            visible: root.sessions.length > 0
 
             MaterialIcon {
                 text: AgentEvents.anyWaiting ? "notifications_active" : "smart_toy"
@@ -38,9 +47,9 @@ WidgetBase {
 
             WText {
                 Layout.fillWidth: true
-                text: root.sessions.length === 0 ? qsTr("No agents running") : qsTr("%n agent(s)", "", root.sessions.length)
+                text: qsTr("%n agent(s)", "", root.sessions.length)
                 color: root.muted
-                font.pixelSize: 12
+                font.pixelSize: root.px(0.07)
             }
         }
 

@@ -29,16 +29,19 @@ WidgetBase {
     }
 
     ColumnLayout {
-        anchors.fill: parent
-        spacing: 4
+        anchors.centerIn: parent
+        width: parent.width
+        spacing: Math.max(4, root.u * 0.05)
 
         WText {
+            Layout.alignment: Qt.AlignHCenter
             text: root.fmt(root.elapsed)
             font.family: "JetBrainsMono Nerd Font Mono"
             font.pixelSize: Math.min(root.height * 0.3, root.width * 0.16)
         }
 
         RowLayout {
+            Layout.alignment: Qt.AlignHCenter
             spacing: 8
 
             IconButton {
@@ -82,6 +85,7 @@ WidgetBase {
                 required property var modelData
                 required property int index
 
+                Layout.alignment: Qt.AlignHCenter
                 text: `${root.laps.length - index}  ${root.fmt(modelData)}`
                 color: root.muted
                 font.family: "JetBrainsMono Nerd Font Mono"
