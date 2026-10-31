@@ -43,7 +43,7 @@ WidgetBase {
             Layout.fillWidth: true
 
             MaterialIcon {
-                text: root.engines.length > 0 ? "neurology" : "memory_off"
+                text: root.engines.length > 0 ? "neurology" : "developer_board_off"
                 color: root.engines.length > 0 ? root.accent : root.muted
                 font.pixelSize: 18
             }
