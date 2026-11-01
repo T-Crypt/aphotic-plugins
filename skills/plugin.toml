@@ -2,7 +2,7 @@
 name = "skills"
 display_name = "Skill Manager"
 description = "One library of agent skills, deployed to Claude Code, Codex, OpenCode and any other agent, backed by the skills-manager CLI."
-version = "0.1.0"
+version = "0.1.1"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface", "action", "cli", "keybind"]

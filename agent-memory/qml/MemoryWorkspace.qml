@@ -144,6 +144,7 @@ Item {
         signal activated()
 
         implicitHeight: 26
+        implicitWidth: buttonLabel.implicitWidth + Tokens.padding.large * 2
         radius: Tokens.rounding.full
         color: Qt.alpha(button.accent, 0.16)
         border.width: 1
@@ -155,6 +156,8 @@ Item {
         }
 
         StyledText {
+            id: buttonLabel
+
             anchors.centerIn: parent
             text: button.label
             color: button.accent
@@ -234,13 +237,15 @@ Item {
         property bool writing: false
 
         width: ListView.view.width
-        implicitHeight: issueRow.writing ? 112 : 74
+        implicitHeight: Math.max(issueRow.writing ? 112 : 74, issueLayout.implicitHeight + Tokens.padding.small * 2)
         radius: Tokens.rounding.small
         color: root.insetColour
         border.width: 1
         border.color: root.hairline
 
         RowLayout {
+            id: issueLayout
+
             anchors.fill: parent
             anchors.margins: Tokens.padding.small
             spacing: Tokens.spacing.small
@@ -632,12 +637,16 @@ Item {
 
             StyledRect {
                 implicitHeight: 24
+                implicitWidth: statusLabel.implicitWidth + Tokens.padding.medium * 2
+                Layout.leftMargin: Tokens.spacing.small
                 radius: Tokens.rounding.full
                 color: Qt.alpha(MemoryService.busy ? root.statusWarn : root.statusPass, 0.16)
                 border.width: 1
                 border.color: Qt.alpha(MemoryService.busy ? root.statusWarn : root.statusPass, 0.42)
 
                 StyledText {
+                    id: statusLabel
+
                     anchors.centerIn: parent
                     text: MemoryService.busy ? qsTr("FOLDING") : qsTr("READY")
                     color: MemoryService.busy ? root.statusWarn : root.statusPass
@@ -768,7 +777,7 @@ Item {
 
                     StyledText {
                         text: root.activeEntry
-                            ? `sessions=${root.activeEntry.sessions} turns=${root.activeEntry.turns} calls=${root.activeEntry.calls} failures=${root.activeEntry.failures}`
+                            ? qsTr("%1 sessions · %2 turns · %3 calls · %4 failures").arg(root.activeEntry.sessions).arg(root.activeEntry.turns).arg(root.activeEntry.calls).arg(root.activeEntry.failures)
                             : ""
                         color: root.textMuted
                         elide: Text.ElideRight
@@ -784,28 +793,50 @@ Item {
                     }
                 }
 
-                TabBar {
-                    id: tabs
-
+                RowLayout {
                     Layout.fillWidth: true
-                    currentIndex: root.tab
-                    onCurrentIndexChanged: root.tab = currentIndex
+                    spacing: Tokens.spacing.small
 
-                    TabButton {
-                        text: qsTr("Issues") + ` (${root.issueRows.length})`
-                        font: Tokens.font.label.medium
+                    Repeater {
+                        model: [
+                            qsTr("Issues") + ` (${root.issueRows.length})`,
+                            qsTr("Lessons") + ` (${root.lessonRows.length})`,
+                            qsTr("Notes") + ` (${root.noteRows.length})`,
+                            qsTr("Tools") + ` (${root.toolRows.length})`
+                        ]
+
+                        StyledRect {
+                            id: tabPill
+
+                            required property string modelData
+                            required property int index
+                            readonly property bool current: root.tab === tabPill.index
+
+                            implicitHeight: 30
+                            implicitWidth: tabLabel.implicitWidth + Tokens.padding.large * 2
+                            radius: Tokens.rounding.full
+                            color: tabPill.current ? Qt.alpha(root.accentNote, 0.18) : "transparent"
+                            border.width: 1
+                            border.color: tabPill.current ? Qt.alpha(root.accentNote, 0.5) : root.hairline
+
+                            StateLayer {
+                                color: root.accentNote
+                                onClicked: root.tab = tabPill.index
+                            }
+
+                            StyledText {
+                                id: tabLabel
+
+                                anchors.centerIn: parent
+                                text: tabPill.modelData
+                                color: tabPill.current ? root.accentNote : root.textMuted
+                                font: Tokens.font.label.medium
+                            }
+                        }
                     }
-                    TabButton {
-                        text: qsTr("Lessons") + ` (${root.lessonRows.length})`
-                        font: Tokens.font.label.medium
-                    }
-                    TabButton {
-                        text: qsTr("Notes") + ` (${root.noteRows.length})`
-                        font: Tokens.font.label.medium
-                    }
-                    TabButton {
-                        text: qsTr("Tools") + ` (${root.toolRows.length})`
-                        font: Tokens.font.label.medium
+
+                    Item {
+                        Layout.fillWidth: true
                     }
                 }
 
@@ -1053,18 +1084,20 @@ Item {
                     border.color: root.hairline
 
                     Flickable {
+                        id: digestFlick
+
                         anchors.fill: parent
                         anchors.margins: Tokens.padding.small
                         clip: true
                         contentHeight: digestText.implicitHeight
-                        contentWidth: digestText.implicitWidth
+                        contentWidth: digestFlick.width
 
                         ScrollBar.vertical: ScrollBar {}
 
                         TextEdit {
                             id: digestText
 
-                            width: Math.max(parent.width, implicitWidth)
+                            width: digestFlick.width
                             text: MemoryService.contextText.length > 0 ? MemoryService.contextText : qsTr("The digest is written by the first build.")
                             readOnly: true
                             selectByMouse: true

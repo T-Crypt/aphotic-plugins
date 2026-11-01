@@ -2,7 +2,7 @@
 name = "agent-memory"
 display_name = "Agent Memory"
 description = "A durable memory folded from local agent session events: per-project tool stats, recurring failure signatures, notes, resolve/reopen issues, and an injectable context digest."
-version = "1.0.0"
+version = "1.0.1"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface", "cli"]
