@@ -1,0 +1,40 @@
+[plugin]
+name = "android-dev"
+display_name = "Android Development"
+description = "Turn this machine into an Android development box, with a toolchain doctor, one command that installs a pinned SDK pack against a checksum, a device list, and one command to build, install and launch the app in the current directory."
+version = "0.1.0"
+author = "T-Crypt"
+category = "dev"
+capabilities = ["cli"]
+
+# java is the only binary whose package carries a different name
+# (jdk17-openjdk), which is what the parallel `packages` list is for, the
+# same override ios-dev documents. The SDK itself is deliberately absent
+# from this table. Declaring sdkmanager or adb here would send core down
+# its `yay -S <binary-name>` path, and no package by those names holds
+# them in the shape this plugin wants. They belong to
+# `aphotic android setup`, which downloads them against a pinned sha256
+# into the plugin's own SDK root.
+[requires]
+binaries = ["java", "unzip"]
+packages = ["jdk17-openjdk", "unzip"]
+
+[owns]
+# No shell setting is read or written, so removal leaves nothing behind in
+# settings.json. setup writes the SDK, and it lives under the plugin's
+# install directory on purpose so removal takes it with it. adb writes its
+# own transport key on first use, outside every path here, which is why it
+# is declared rather than silently made.
+config_keys = []
+external_config = [
+  "~/.local/share/aphotic/plugins/android-dev/sdk/ (the SDK, installed by `aphotic android setup`)",
+  "~/.android/ (the adb transport key, created by adb on its first use)"
+]
+
+# Top-level rather than a subcommand, because a subcommand only resolves
+# when core ships a command file of that name, and no core file ever names
+# a plugin.
+[cli]
+command = "android"
+script = "cli/android.sh"
+summary = "Android development: doctor, setup, devices, run, status, paths"
