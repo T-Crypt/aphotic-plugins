@@ -17,7 +17,10 @@ WidgetBase {
         if (root.named.length > 0)
             return root.named.map(id => DesktopEntries.byId(id) ?? DesktopEntries.heuristicLookup(id)).filter(e => e);
         const counts = LauncherUsage.counts;
-        return DesktopEntries.applications.values.filter(e => (counts[e.id] ?? 0) > 0).sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).slice(0, 8);
+        const used = DesktopEntries.applications.values.filter(e => (counts[e.id] ?? 0) > 0).sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).slice(0, 8);
+        // Before the launcher has any history, start from the terminal,
+        // browser and file manager every install ships.
+        return used.length > 0 ? used : ["kitty", "firefox", "thunar"].map(id => DesktopEntries.byId(id)).filter(e => e);
     }
     readonly property real cell: Math.min(root.height - (root.config.labels ? 16 : 0), root.width / Math.max(1, root.entries.length))
 
@@ -77,10 +80,11 @@ WidgetBase {
         }
     }
 
-    WText {
-        anchors.centerIn: parent
+    EmptyState {
+        anchors.fill: parent
         visible: root.entries.length === 0
-        text: qsTr("Name some apps in settings")
-        color: root.muted
+        icon: "apps"
+        text: qsTr("No apps to launch")
+        hint: qsTr("Add app ids in this widget's settings")
     }
 }

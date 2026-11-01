@@ -52,7 +52,7 @@ WidgetBase {
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 2
+                spacing: Math.max(2, root.u * 0.02)
 
                 RowLayout {
                     Layout.fillWidth: true
@@ -61,13 +61,13 @@ WidgetBase {
                         Layout.fillWidth: true
                         text: row.modelData.label
                         color: root.muted
-                        font.pixelSize: Math.min(13, root.height / root.rows.length * 0.3)
+                        font.pixelSize: Math.max(11, Math.min(root.height / root.rows.length * 0.34, root.width * 0.06))
                     }
 
                     WText {
                         text: `${Math.floor(row.modelData.value * 100)}%`
                         font.family: "JetBrainsMono Nerd Font Mono"
-                        font.pixelSize: Math.min(13, root.height / root.rows.length * 0.3)
+                        font.pixelSize: Math.max(11, Math.min(root.height / root.rows.length * 0.34, root.width * 0.06))
                     }
                 }
 
@@ -75,7 +75,7 @@ WidgetBase {
                     Layout.fillWidth: true
                     value: row.modelData.value
                     colour: root.accent
-                    thickness: 3
+                    thickness: Math.max(3, root.u * 0.025)
                 }
             }
         }

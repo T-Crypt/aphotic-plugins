@@ -47,14 +47,12 @@ WidgetBase {
         }
     }
 
-    WText {
-        anchors.centerIn: parent
+    EmptyState {
+        anchors.fill: parent
         visible: root.source === ""
-        width: parent.width - 20
-        wrapMode: Text.Wrap
-        horizontalAlignment: Text.AlignHCenter
-        text: qsTr("Set an image or a folder in this widget's settings")
-        color: root.muted
+        icon: "photo_library"
+        text: qsTr("No photo yet")
+        hint: qsTr("Pick an image or a folder in this widget's settings")
     }
 
     MouseArea {

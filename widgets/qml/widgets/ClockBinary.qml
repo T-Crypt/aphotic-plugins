@@ -38,7 +38,6 @@ WidgetBase {
                     required property int index
 
                     spacing: root.dot * 0.25
-                    anchors.bottom: parent.bottom
 
                     Repeater {
                         model: 4
@@ -51,9 +50,7 @@ WidgetBase {
                             height: root.dot
                             radius: width / 2
                             opacity: bit < root.heights[col.index] ? 1 : 0
-                            color: (root.digits[col.index] >> bit) & 1 ? root.accent : "transparent"
-                            border.width: 1
-                            border.color: (root.digits[col.index] >> bit) & 1 ? root.accent : root.faint
+                            color: (root.digits[col.index] >> bit) & 1 ? root.accent : Qt.alpha(root.ink, 0.12)
                         }
                     }
 

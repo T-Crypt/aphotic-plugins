@@ -27,8 +27,17 @@ WidgetBase {
         return `${Math.floor(t / 60)}:${root.pad(t % 60)}`;
     }
 
+    EmptyState {
+        anchors.fill: parent
+        visible: !root.player
+        icon: "music_note"
+        text: qsTr("Nothing playing")
+        hint: qsTr("Start music or a video and it shows here")
+    }
+
     RowLayout {
         anchors.fill: parent
+        visible: !!root.player
         spacing: root.px(0.1)
 
         Art {

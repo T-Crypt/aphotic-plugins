@@ -13,12 +13,21 @@ WidgetBase {
     readonly property var adapter: Bluetooth.defaultAdapter
     readonly property var devices: (root.adapter?.devices?.values ?? []).filter(d => d.connected)
 
+    EmptyState {
+        anchors.fill: parent
+        visible: root.devices.length === 0
+        icon: root.adapter?.enabled ? "bluetooth" : "bluetooth_disabled"
+        text: !root.adapter ? qsTr("No Bluetooth adapter") : !root.adapter.enabled ? qsTr("Bluetooth is off") : qsTr("Nothing connected")
+        hint: root.adapter?.enabled ? qsTr("Connected devices show here with their battery") : ""
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 6
 
         RowLayout {
             Layout.fillWidth: true
+            visible: root.devices.length > 0
 
             MaterialIcon {
                 text: root.adapter?.enabled ? "bluetooth" : "bluetooth_disabled"
@@ -28,9 +37,9 @@ WidgetBase {
 
             WText {
                 Layout.fillWidth: true
-                text: !root.adapter ? qsTr("No Bluetooth adapter") : !root.adapter.enabled ? qsTr("Bluetooth is off") : root.devices.length === 0 ? qsTr("Nothing connected") : qsTr("%n connected", "", root.devices.length)
+                text: qsTr("%n connected", "", root.devices.length)
                 color: root.muted
-                font.pixelSize: 12
+                font.pixelSize: root.px(0.08)
             }
         }
 

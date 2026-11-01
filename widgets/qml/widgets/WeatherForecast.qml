@@ -51,10 +51,13 @@ WidgetBase {
             }
         }
 
-        WText {
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             visible: root.days.length === 0
+            icon: "cloud_off"
             text: qsTr("No forecast yet")
-            color: root.muted
+            hint: qsTr("Appears once the weather service answers")
         }
     }
 }
