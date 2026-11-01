@@ -128,6 +128,16 @@
       }
     },
     {
+      "name": "android-dev",
+      "display_name": "Android Development",
+      "description": "Turn this machine into an Android development box, with a toolchain doctor, one command that installs a pinned SDK pack against a checksum, a device list, and one command to build, install and launch the app in the current directory.",
+      "version": "0.1.0",
+      "category": "dev",
+      "capabilities": [
+        "cli"
+      ]
+    },
+    {
       "name": "claude-hooks",
       "display_name": "Claude Code Agent Hooks",
       "description": "Wires Claude Code into Aphotic's agent-hook contract for live per-session tracking in the bar/dashboard, and claims the statusLine slot to read quota windows.",

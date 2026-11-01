@@ -1,0 +1,364 @@
+#!/usr/bin/env bash
+# android-dev/bin/androidctl -- the engine behind `aphotic android`.
+#
+# One pack file decides what the SDK should hold, so the doctor, setup
+# and status cannot disagree about what is installed. The CLI owns the
+# usage text and the exit codes, and the front door in cli/ is one line.
+#
+# Two rules from ios-dev carry over whole. Nothing here ever runs sudo,
+# and nothing installs without a terminal in front of a human.
+
+set -euo pipefail
+
+# shellcheck source=/dev/null
+. "$(cd "${BASH_SOURCE[0]%/*}" && pwd)/lib.sh"
+
+usage() {
+    cat <<EOF
+usage: androidctl <command>
+
+  doctor     report every prerequisite and how to fix what is missing
+  setup      download and verify the SDK pack, then install it
+  devices    list the devices adb can see
+  run [dir]  build a Gradle app, install it and start it
+  status     print the SDK state in one line
+  paths      print every path this plugin uses
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# doctor
+# ---------------------------------------------------------------------------
+
+cmd_doctor() {
+    local ready=1
+
+    # A pack that will not load takes every other answer with it, since
+    # the pack and cmdline-tools checks read what it declares.
+    if ! _android_load_pack; then
+        echo "[missing] pack    setup cannot run without a readable pack.toml"
+        return 1
+    fi
+
+    local id ok detail width=0
+    for id in "${_ANDROID_CHECK_IDS[@]}"; do
+        [[ "${#id}" -gt "$width" ]] && width="${#id}"
+    done
+
+    for id in "${_ANDROID_CHECK_IDS[@]}"; do
+        if _android_check_ok "$id"; then
+            ok="ok"
+        else
+            ok="missing"
+            ready=0
+        fi
+        detail="$(_android_check_detail "$id")"
+        if [[ -n "$detail" ]]; then
+            printf '[%-7s] %-*s  %s\n' "$ok" "$width" "$id" "$detail"
+        else
+            printf '[%-7s] %s\n' "$ok" "$id"
+        fi
+        [[ "$ok" == "ok" ]] || printf '  %*s  fix: %s\n' "$width" "" "$(_android_check_fix "$id")"
+    done
+
+    echo
+    if [[ "$ready" == "1" ]]; then
+        echo "The pack is complete. Plug a device in and run android devices."
+    else
+        echo "Something is missing. Run android setup."
+    fi
+    return "$((1 - ready))"
+}
+
+# ---------------------------------------------------------------------------
+# setup
+# ---------------------------------------------------------------------------
+
+# Downloads to a scratch dir, verifies against the pack, unpacks into the
+# SDK root only after the checksum matched, and deletes the zip whatever
+# happened. The zip lives in TMPDIR because the SDK root does not exist
+# yet, and an unverified download has no business sitting in it.
+_android_install_cmdline_tools() {
+    if [[ -x "$_ANDROID_SDKMANAGER" ]]; then
+        local rev
+        rev="$(awk -F= '/^Pkg.Revision/{print $2; exit}' "${_ANDROID_CMDLINE_HOME}/source.properties" 2>/dev/null || true)"
+        echo "  ok      cmdline-tools ${rev:-already installed}"
+        return 0
+    fi
+
+    echo "  command-line tools ${ANDROID_PACK_VERSION} will be downloaded and"
+    echo "  verified against the pack checksum, then unpacked to"
+    echo "  ${_ANDROID_CMDLINE_HOME}"
+
+    local tmp zip rc=0
+    tmp="$(mktemp -d)"
+    zip="${tmp}/commandlinetools.zip"
+
+    echo "  downloading ${ANDROID_PACK_URL}"
+    if ! curl -fsSL --retry 2 --connect-timeout 20 -o "$zip" "$ANDROID_PACK_URL"; then
+        echo "  the download failed. Nothing was written." >&2
+        rc=1
+    elif [[ "$(sha256sum "$zip" | cut -d' ' -f1)" != "$ANDROID_PACK_SHA256" ]]; then
+        echo "  the download did not match the pack checksum, so it was not installed."
+        echo "    expected ${ANDROID_PACK_SHA256}"
+        echo "    got      $(sha256sum "$zip" | cut -d' ' -f1)"
+        echo "  The zip was deleted. Report this if the pack file is current." >&2
+        rc=1
+    # The parent is created only here, so a refused or failed download
+    # leaves no half an SDK behind.
+    elif ! { mkdir -p "${_ANDROID_CMDLINE_HOME%/*}" &&
+        unzip -q "$zip" -d "${_ANDROID_CMDLINE_HOME%/*}"; }; then
+        echo "  the archive did not unpack. The partial tree was deleted." >&2
+        rm -rf "${_ANDROID_CMDLINE_HOME:?}" "${_ANDROID_CMDLINE_HOME%/*}/cmdline-tools"
+        rc=1
+    else
+        echo "  checksum verified"
+        # The zip holds a folder named cmdline-tools, and the SDK expects
+        # the newest unpack under the name latest. A latest left over
+        # from a dead install has already failed the -x probe above, so
+        # it goes first rather than swallowing this mv into a nested
+        # directory.
+        rm -rf "${_ANDROID_CMDLINE_HOME:?}"
+        mv "${_ANDROID_CMDLINE_HOME%/*}/cmdline-tools" "$_ANDROID_CMDLINE_HOME"
+        echo "  installed cmdline-tools ${ANDROID_PACK_VERSION} into ${_ANDROID_CMDLINE_HOME}"
+    fi
+
+    # The zip lived here whether it was verified, refused or unreadable.
+    rm -rf "$tmp"
+    return "$rc"
+}
+
+_android_install_pack() {
+    # Installed one id at a time so a line names the package that failed,
+    # and only the missing ids are passed. sdkmanager is idempotent, but
+    # its output on a package it already has reads like a fresh install.
+    local missing id
+    missing="$(_android_missing_packages)"
+    [[ -n "$missing" ]] || {
+        echo "  ok      every pack package is already installed"
+        return 0
+    }
+
+    echo "  ${_ANDROID_SDKMANAGER} --sdk_root=${_ANDROID_SDK_ROOT} ${ANDROID_PACK_PACKAGES}"
+    # Spaces in an id would be a broken pack, not a filename.
+    for id in $missing; do
+        if ! "$_ANDROID_SDKMANAGER" --sdk_root="$_ANDROID_SDK_ROOT" "$id"; then
+            echo "  ${id} failed to install. sdkmanager reported the error above." >&2
+            return 1
+        fi
+    done
+}
+
+cmd_setup() {
+    _android_load_pack || return 1
+
+    local missing
+    missing="$(_android_missing_packages)"
+    if [[ -x "$_ANDROID_SDKMANAGER" && -z "$missing" ]]; then
+        echo "Everything in the pack is installed. Nothing was changed."
+        echo "  sdk root  ${_ANDROID_SDK_ROOT}"
+        return 0
+    fi
+
+    local rc=0
+    command -v java >/dev/null 2>&1 || {
+        echo "setup needs a Java 17 or newer, and java is not on PATH." >&2
+        echo "  fix: install jdk17-openjdk, then run this again" >&2
+        return 1
+    }
+    command -v unzip >/dev/null 2>&1 || {
+        echo "setup needs unzip, and it is not on PATH." >&2
+        echo "  fix: install the unzip package, then run this again" >&2
+        return 1
+    }
+
+    _android_install_cmdline_tools || return 1
+
+    if [[ -t 0 ]]; then
+        echo
+        echo "== Licenses"
+        echo "  sdkmanager --licenses will show you the SDK terms now."
+        "$_ANDROID_SDKMANAGER" --sdk_root="$_ANDROID_SDK_ROOT" --licenses </dev/tty || {
+            echo "  the licenses were not accepted, so the pack was not installed." >&2
+            return 1
+        }
+    else
+        echo
+        echo "Stopping before the pack. The SDK licenses have to be read and"
+        echo "answered by a person, and this run has no terminal. Run this:"
+        echo
+        echo "  ${_ANDROID_SDKMANAGER} --sdk_root=${_ANDROID_SDK_ROOT} --licenses"
+        echo
+        echo "  ...in a terminal, accept what it shows, then run setup again."
+        return 0
+    fi
+
+    echo
+    echo "== Pack packages"
+    _android_install_pack
+    rc=$?
+    if [[ "$rc" == "0" ]]; then
+        echo
+        echo "Done. Check it with android doctor."
+    fi
+    return "$rc"
+}
+
+# ---------------------------------------------------------------------------
+# devices
+# ---------------------------------------------------------------------------
+
+cmd_devices() {
+    if [[ ! -x "$_ANDROID_ADB" ]]; then
+        echo "adb is not installed, so no device can be seen."
+        echo "  fix: aphotic android setup"
+        return 1
+    fi
+
+    local out rc=0
+    out="$("$_ANDROID_ADB" devices -l 2>&1)" || rc=$?
+    if [[ "$rc" != "0" ]]; then
+        printf '%s\n' "$out"
+        echo "adb reported the error above."
+        return 1
+    fi
+
+    # adb puts one line per device under its header, with model among the
+    # trailing key:value fields. Anything before the header is daemon
+    # chatter, and anything after it without the header present is an
+    # error adb reported on the list itself.
+    local line serial state model seen=0
+    while IFS= read -r line; do
+        [[ "$line" == "List of devices attached"* ]] && continue
+        [[ -z "$line" ]] && continue
+        seen=1
+        serial="$(awk '{print $1; exit}' <<<"$line")"
+        state="$(awk '{print $2; exit}' <<<"$line")"
+        model="$(awk '{for (i = 1; i <= NF; i++) if ($i ~ /^model:/) {print substr($i, 7); exit}}' <<<"$line")"
+        printf '  %s  %s  %s\n' "$serial" "$state" "${model:--}"
+    done <<<"$(printf '%s\n' "$out" | sed -n '/List of devices attached/,$p')"
+
+    if [[ "$seen" == "0" ]]; then
+        if ! grep -q "List of devices attached" <<<"$out"; then
+            printf '%s\n' "$out"
+            return 1
+        fi
+        echo "No device connected."
+        echo "A device listed as unauthorized needs the trust prompt accepted on its screen."
+    fi
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# run
+# ---------------------------------------------------------------------------
+
+# applicationId from the Groovy form (applicationId "x") or the Kotlin
+# assignment form (applicationId = "x"). The quotes are required so a
+# stray token like the = of the assignment form can never be read back
+# as an application id.
+_android_application_id() {
+    sed -nE "s/^[[:space:]]*applicationId[[:space:]]*(=[[:space:]]*)?[\"']([^\"']*)[\"'].*/\2/p" "$1" | head -n1
+}
+
+cmd_run() {
+    local dir="${1:-$PWD}"
+    if [[ ! -d "$dir" ]]; then
+        echo "androidctl run: ${dir} is not a directory" >&2
+        return 2
+    fi
+    if [[ ! -e "${dir}/gradlew" ]]; then
+        echo "No ./gradlew in ${dir}, so this is not a Gradle Android project." >&2
+        echo "Run it from the project root." >&2
+        return 1
+    fi
+    if [[ ! -x "${dir}/gradlew" ]]; then
+        echo "${dir}/gradlew is not executable, so it cannot run." >&2
+        echo "A fresh clone loses the bit, so a chmod +x gradlew puts it back." >&2
+        return 1
+    fi
+
+    local gradle_rc=0
+    (
+        cd "$dir"
+        ANDROID_SDK_ROOT="$_ANDROID_SDK_ROOT" ./gradlew installDebug
+    ) || gradle_rc=$?
+    if [[ "$gradle_rc" != "0" ]]; then
+        echo "gradle exited ${gradle_rc}, so nothing was launched." >&2
+        return "$gradle_rc"
+    fi
+
+    local app_build="${dir}/app/build.gradle"
+    [[ -f "$app_build" ]] || app_build="${dir}/app/build.gradle.kts"
+    local app_id=""
+    [[ -f "$app_build" ]] && app_id="$(_android_application_id "$app_build")"
+    if [[ -z "$app_id" ]]; then
+        echo "Installed. No applicationId found in app/build.gradle(.kts), so the app was not started."
+        return 0
+    fi
+
+    if [[ ! -x "$_ANDROID_ADB" ]]; then
+        echo "Installed. adb is missing, so the app was not started." >&2
+        return 1
+    fi
+    "$_ANDROID_ADB" shell monkey -p "$app_id" -c android.intent.category.LAUNCHER 1
+}
+
+# ---------------------------------------------------------------------------
+# status and paths
+# ---------------------------------------------------------------------------
+
+cmd_status() {
+    local present="no" complete="no" devices="?" line
+
+    if [[ -d "$_ANDROID_SDK_ROOT" ]]; then
+        present="yes"
+    fi
+    if _android_load_pack 2>/dev/null && [[ "$present" == "yes" ]] &&
+        [[ -x "$_ANDROID_SDKMANAGER" ]] && [[ -z "$(_android_missing_packages)" ]]; then
+        complete="yes"
+    fi
+    if [[ -x "$_ANDROID_ADB" ]]; then
+        line="$("$_ANDROID_ADB" devices 2>/dev/null | sed '1d' | grep -c '[^[:space:]]' || true)"
+        devices="${line:-0}"
+    fi
+
+    echo "sdk root: ${present}    pack complete: ${complete}    devices: ${devices}"
+    if [[ "$complete" != "yes" ]]; then
+        echo "run android doctor for the details"
+    fi
+}
+
+cmd_paths() {
+    local pack_file="${ANDROID_DEV_PACK_FILE:-$_ANDROID_PACK_DEFAULT}"
+    cat <<EOF
+sdk root      ${_ANDROID_SDK_ROOT}
+cmdline root  ${_ANDROID_CMDLINE_HOME}
+config dir    ${_ANDROID_CONFIG_DIR}
+pack file     ${pack_file}
+EOF
+}
+
+# ---------------------------------------------------------------------------
+
+main() {
+    local cmd="${1:-}"
+    [[ -n "$cmd" ]] && shift
+
+    case "$cmd" in
+        doctor) cmd_doctor "$@" ;;
+        setup) cmd_setup "$@" ;;
+        devices) cmd_devices "$@" ;;
+        run) cmd_run "$@" ;;
+        status) cmd_status "$@" ;;
+        paths) cmd_paths "$@" ;;
+        "" | -h | --help | help) usage ;;
+        *)
+            echo "androidctl: unknown command ${cmd}" >&2
+            usage >&2
+            return 2
+            ;;
+    esac
+}
+
+main "$@"

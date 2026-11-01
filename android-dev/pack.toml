@@ -1,0 +1,21 @@
+# The Android SDK parts `aphotic android setup` installs, by sdkmanager
+# package id.
+#
+# The build number and checksum were read off Google's SDK repository on
+# 2026-11-01. repository2-3.xml names the linux zip for
+# `cmdline-tools;latest` (cmdline-tools 23.0), and the sha256 below is the
+# one this repo's setup run computed over the downloaded zip. The manifest
+# publishes no sha256 of its own, so the zip's sha1 (e025545c62a8e64c7559
+# 119566a569fb1dec5f60) was confirmed against it instead. Update all three
+# fields together. The doctor's cmdline-tools detail reads whatever is on
+# disk, so a replaced zip fails the checksum rather than the version.
+[cmdline_tools]
+version = "16111833"
+url = "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip"
+sha256 = "0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8"
+
+# The newest stable release of each at that time. sdkmanager also lists
+# rc, beta and canary ids, and none of those belong in a pack a doctor
+# promises is complete.
+[pack]
+packages = ["platform-tools", "build-tools;37.0.0", "platforms;android-37.2", "emulator"]
