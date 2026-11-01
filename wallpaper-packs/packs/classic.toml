@@ -1,0 +1,607 @@
+[pack]
+id = "classic"
+label = "Aphotic classic"
+base_url = "https://raw.githubusercontent.com/T-Crypt/aphotic-hypr/eedd3c5afa6fdcb8101dfbccdd5909b123016a4a/Configs/awww/"
+note = "The wallpapers Aphotic shipped in its theme folders before they moved to packs."
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/atoms.png"
+sha256 = "6a05547adf36cde6fcdcd554ae17678570cbe4660076a9d08158e589f49c602d"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/coding.png"
+sha256 = "1b145dc50c3c80a4430370b0ad1bfa3be61dfe0cfcdef207a8e49f97310c816f"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/dragon.png"
+sha256 = "02887865df9e44c43175a52782650bfeb954d17f9b6131f1230798808e5e49b0"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/great-wave-of-kanagawa-gruvbox.png"
+sha256 = "650b55c554d72254e2e8fbfb5cacbe9c573305ae5d76e0d1738acb4653dbcdbc"
+width = 2559
+height = 1439
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruv-limits.png"
+sha256 = "91392400448f72ea88bb2d4f48b5456dacdb10b99f5cba20c7134c7ebe701e85"
+width = 4330
+height = 2436
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruv-understand.png"
+sha256 = "0111fc2553d6a972fa06bce25d766554572c19637ca3904bb99ced044210168e"
+width = 4332
+height = 2436
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-angeljumbo-clouds.png"
+sha256 = "a75cca9ce5693738838aa0d152abfa481e6bdd7742d194990cf72880859f255d"
+width = 4000
+height = 2200
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-angeljumbo-wallpaper.png"
+sha256 = "3a31fd2fda25af6c74ce9d0463e0457baaff0b94fdf1fa2f7550243c40409aae"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-vctrblck-chinese-hills.jpg"
+sha256 = "a5375be4f7e88e7401ff71ab3bf741bd10d234b0892326ccd585799f4d07cec0"
+width = 1919
+height = 972
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-vctrblck-road.jpg"
+sha256 = "8037a4a29c601c8a2f14ee0d4e109c2d37e6e86b0d0631d89bb149fff56cde86"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-vctrblck-staircase.jpg"
+sha256 = "f6ad65055a18df2331d35563c210b725c96a63e481fba1bb773bdb19181e4e93"
+width = 6000
+height = 4000
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/gruvbox-vctrblck-sushi.jpg"
+sha256 = "3690a1c743f091ded1183970e34aaa5e0154894aaf05412f8889cea69c802520"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "gruvbox"
+path = "gruvbox/tetris_gruvbox_brighter.png"
+sha256 = "d0a72bb6f7bd6ac3651b47809b781f3f6ccaea2eb2b346202e9d0cd4f8a9da38"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/anon.jpg"
+sha256 = "aaef099a655af28e979bc59708401021547129737b20c32a73103154d6ee8e9a"
+width = 2560
+height = 1600
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/hacker.png"
+sha256 = "bb52a1f5889b08de7db40104c5341abf49535d63044fe647def2d39f4234ac16"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/htb-cryotech-2880x1800-cryotech-1.png"
+sha256 = "c8e1e7861247ee2b82844c575e8d722069d96eebcbfe45988b2c523fa605e7d7"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/htb-cryotech-2880x1800-cryotech-2.png"
+sha256 = "26c1a3236ba78446875e7f23efb7cff39e4d74bc3135f418d0d5a3b2ec72fc1c"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/htb-cryotech-2880x1800-cryotech-3.png"
+sha256 = "cadc2ed1eb7abcf680ccd4d6ff68d673e28bd86eb7734696098b01472426e03c"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/htb-cryotech-2880x1800-cryotech-4.png"
+sha256 = "24854ca44316cd7e84530324b76cf2daafb03a9a81dc153942ca77609e4c9b40"
+width = 2880
+height = 1800
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/htb-haltman-cli-wallpaper-013.png"
+sha256 = "51f97214d71ce566c5a33d1f8ea1781162565f67dd0596765c2bcd0f01aea6ff"
+width = 2048
+height = 1152
+
+[[wallpaper]]
+theme = "hackthebox"
+path = "hackthebox/medusa.png"
+sha256 = "c2bad888dc07babc19faef64f82cc422bebc771a257881c2208360257fd0dd82"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-harilvfs-nord-lake.png"
+sha256 = "c59478fbe3ca82f58202e44a055bb67eb48165db067dd6fe96161ce28af49d0b"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-harilvfs-wall.jpg"
+sha256 = "70be677925a986fec035b097b25e2dfe80c54f20b1b23ed023f3d1d6e58c9dbd"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-iambluie-chainsaw-angel-lake.jpg"
+sha256 = "1a11d0f840b82b5694c81500746a1d38998b1793ed3503e4067742473188f21b"
+width = 4400
+height = 2300
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-iambluie-jormungandr.jpg"
+sha256 = "2e8c11634eedbb749331eb172ae86ba48e3fe891cde676114ff792d04776d5e4"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-rishav12s-clouds-realism.jpg"
+sha256 = "582ccc4d8bee97f36fd305d30b7c8f9272e52d2bbce3c5b14570b47d42de1bc0"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-rishav12s-shrine.jpg"
+sha256 = "51b9ae95d54168fdc42af1e08b4910ec1d20f69bac5cbf7f34c2e8610cc50946"
+width = 2800
+height = 1575
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-rishav12s-yosemite.png"
+sha256 = "e918c9e958522b1dc4a8591b83c391df050f0cf86bd53062611de7613ec50d6a"
+width = 2880
+height = 1600
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-zhichaoh-mandelbrot-side-teal.png"
+sha256 = "6a55d73d38b8e448c11ff1a5bdbdb34efd192205633a48334135d2c7bb156cc4"
+width = 4096
+height = 2304
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/catppuccin-zhichaoh-rainbow-cat.png"
+sha256 = "58ffa443b9a08e979e91ab4310f48ffd77837396628429be07182a8306032045"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/old-computer.png"
+sha256 = "36899e30eed21646acba04565827cb0dbd5dcbd2e85c5b4a64883d99bd5cfd13"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/swirls.jpg"
+sha256 = "9f149d415b78da7667679e34b2fdcc9b2f31f1320115d7bc6988b46d4ec4dd6a"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/voxel-city.jpg"
+sha256 = "28287032bb225f65e43dcabf1ac6afec70d316f690f3790fa62b4e34ceb884bd"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "latte"
+path = "latte/voyager-15.jpg"
+sha256 = "f863aa68c87cb4082fab0cc48a8eee005d35df3f17b235d215ca726f34fe998f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cafe.jpg"
+sha256 = "534edc91ae935e5efa6c4423511c39e5d052137ec91c96dfc3a46e93babe05b6"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozypixels-foggy-city.jpg"
+sha256 = "6fd0d8122ff10e9253c8c8d80f4ce760a6eef04792313fae0949570927a2d0ec"
+width = 5640
+height = 2400
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozypixels-river-city.jpg"
+sha256 = "60af8f0f085d0d21de759a50b81cb54685cb459fd390d0e95e0127da59d88f21"
+width = 4800
+height = 2400
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozypixels-samurai.jpg"
+sha256 = "7dec0f45283ef101d4968c819b6035bc790a2435dfff5a09e1701b05c07bbacd"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozypixels-trolley.jpg"
+sha256 = "0e20942caf03871b201b52f76361b89cb32f0eeb2c67ab2f86c131ffc4e17d65"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozywalls-cat-leaves.png"
+sha256 = "91e8142bad98b48ec6dcffe922a7167451a5a8de12d7fe3138e98e6e83f124a1"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-cozywalls-sakura-japan-countryside.png"
+sha256 = "f809ee885ed5130993cc1b415910121e46a55d22fd6eafd304006b63e4d98ff8"
+width = 2800
+height = 1575
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-donut.jpg"
+sha256 = "b7504e41a83e371e64c67bbeff4148e8826849659025df37c73519801e7e7ab4"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-girl.jpg"
+sha256 = "b5485a221fa808dcd7bff02a56366d6466888d43f8d47ac008758e8abf274e1f"
+width = 1920
+height = 1277
+
+[[wallpaper]]
+theme = "lofi"
+path = "lofi/lofi-staycalm.png"
+sha256 = "fc6f3ee8e958db48730756ed6846f824befffcef029c58da0bd6df61758a451f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/aurora.jpg"
+sha256 = "51bfb3bfef7f0a6f2c5400286c10a97faec315bb4862dc54ab6dfa6bfcef1386"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-ahmosys-nordic-139.png"
+sha256 = "37879f8834aa31affa8e6d11e1caf03172f9d9b1b0d15902c1b853a90a1d2608"
+width = 2559
+height = 1439
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-ahmosys-nordic-179.png"
+sha256 = "14c63fc0ddbf89bab7125d1413a10beca18d4313a5e3ec9847d57920d150efa8"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-ahmosys-nordic-194.png"
+sha256 = "4ed47556be11c3073aa280659bd7ba59d6bafcf31a471ec3429a3cf71b954a61"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-ahmosys-nordic-215.png"
+sha256 = "0f1632aef15c5ded09ccb8140b61b9ed37ee2116243794532dd44e07fb512b36"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-christitus-50.png"
+sha256 = "448053cae261fb1cc3480cab3319788a4df3c7c2558b8c7487289868f5d2519f"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-dxnst-daftpunkdiscovery.png"
+sha256 = "9863b5c111726d66855a260dcbdc5025a8961eba9651ad55840a84034f1f7c68"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-dxnst-gnu-freedo.png"
+sha256 = "e83990575bea5a0b95ceff6ae03d231f609b23e7bf37f6deae55ceda559030b2"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-dxnst-katebushhoundsoflove.png"
+sha256 = "e4b78ce38146c131428cda8b06888b4c89c1edc58ae45e717198ed9b6a2026b4"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "nordic"
+path = "nordic/nord-dxnst-truvada.png"
+sha256 = "25094db581d4c8b8a5da9626d80486e0eb7935872dad43e7e27f9223d4f39216"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-official-topo-1887.jpg"
+sha256 = "8ed99db2299d9990e0c4e940ffa60ff3fdeffd08c2f2d03dd2070143375c031a"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-official-windows.jpg"
+sha256 = "682d9eb782d47c7828d699108e211c80c03fb29027b7501d94e8b6cfc34a41c7"
+width = 6000
+height = 4000
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-1.jpg"
+sha256 = "d64601f480e174f6058b569e4538ee0135a50fa97d1cacdcdeb0631a11552780"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-anna-scarfiello-pxf5sydvuxq.jpg"
+sha256 = "97f349d1e7b8a75077f30a815837a9dddab0ecf772bc5b3b7bcb2eeff5855642"
+width = 4580
+height = 3053
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-camera-2.jpg"
+sha256 = "06321b488f7a63b77b04ac4ea865aa7b6125fc94956dedc1271416a30816ab08"
+width = 3066
+height = 1724
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-flowers.jpg"
+sha256 = "379af673789535db759be73c14ca4b6c9a312c9e21a03656f8435d414860c73b"
+width = 3707
+height = 2734
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-forest.jpg"
+sha256 = "78c8d60465e982d815698794106f079fa1640b236161af5e5bc0228470113501"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-gruv-wallhaven-l3y2p2.png"
+sha256 = "494900d4b71826e26f555fd1a087aef5ca4f82128283d113def63392a814d099"
+width = 7147
+height = 4196
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-gruvbox-image44.png"
+sha256 = "9de97d654e86425ea12e83d9a3983faab7ea40b85e6f7d1154197e7718880f38"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-komeiji-koishi.png"
+sha256 = "098fbf143de53602da960e3cd98dfafb6d17f1ee3b443702ce9087e7a12fa813"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-ruins-2.png"
+sha256 = "95109e7ae3a15c5e948c1e644171e857f3f33103d045952d309ccf3da2e1a741"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-sunset.jpg"
+sha256 = "78ba26d2d348784b216e27b1885fa250ecd2cf76be3fa2fb6609bf569eb35903"
+width = 4000
+height = 2992
+
+[[wallpaper]]
+theme = "rosepine"
+path = "rosepine/rosepine-p4rfait-village.jpg"
+sha256 = "3fa9ddd74500b8ecf1d7bc4e7f7ebd7738d7a20efdc722797887d64260d792eb"
+width = 1920
+height = 1080
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-aid-original.png"
+sha256 = "0bd267020c62f5b03bcc5df9278b1813494a232e845e43725c45ac3ea16ad7b2"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-cosmicneotokyo.jpg"
+sha256 = "23ea2656ad76c6fa06b7637edb94df7cc684ae1b8bd0c378072f0213274837ea"
+width = 5376
+height = 3072
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-crosses-original.png"
+sha256 = "68d24637c68f2b60afd7510ddeb8027439357a65804485dad9e2d437af73ff25"
+width = 2560
+height = 1440
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-game-original.png"
+sha256 = "7e6a58abd1b419126279efda58b31dee611f878acab99ff133d653bc8c59b1d2"
+width = 5000
+height = 2560
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-geisha-colors.jpg"
+sha256 = "387add48ab7e873f3448a4a596f70d4de84c287e059bdb8251d2e4c4e523309c"
+width = 3200
+height = 2000
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-stamina-original.png"
+sha256 = "1b98cb614424b70cdb76d847e6043920b41c4d9a03522af3b7ca334cb315d27f"
+width = 7680
+height = 4320
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-sushi-original.png"
+sha256 = "896f98af7dc4b60457064587734b1f5e0edd810a57782e62f7cceef9d2193e86"
+width = 3440
+height = 1440
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-atraxsrc-tokyonight-original.png"
+sha256 = "56622c1c259005e8221cd43c06d4009addc36b972f47769573fb061c821e9c42"
+width = 5120
+height = 2880
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-official-lockscreen-00-3840x2160-1.png"
+sha256 = "b3112974e0822baca43f0d01af37ec9c574b08b9bee4b1744b5f0750b346377a"
+width = 3840
+height = 2160
+
+[[wallpaper]]
+theme = "tokyonight"
+path = "tokyonight/tokyonight-official-neon-sign-00-1920x1080.jpg"
+sha256 = "1547c5ab67b9a778ced36fc1389eb93f3f24dedbe08e9db2ec9b587237f4982f"
+width = 1920
+height = 1081
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-abdughafur-win11.10.jpg"
+sha256 = "923836595dfbc7b2cf48663ea0016ec051ff2d0763b1417027e9e9d125b6550f"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-abdughafur-win11.24.jpg"
+sha256 = "bf0520497c3987bda800ae73c64f76a09efac9c86133945e7c0997d99a121f3e"
+width = 2736
+height = 1539
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-abdughafur-win11.5.jpg"
+sha256 = "433d253458c754ddd0d85c0b648569ae8bf8e42d9a47cae178b8125fa85ca734"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-abdughafur-win11.9.jpg"
+sha256 = "885793edb838c1a313fb171b5e954635ef52b5249ff463a8903f870937d4552d"
+width = 3841
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-uiassets-img104.jpg"
+sha256 = "a639f4ae6850380f668c5514bb551df40578b4a1526e6bfdf123126a31a727fe"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-uiassets-img20.jpg"
+sha256 = "6610e4c12b5ccaa2906e7584339786378d921cbaf7c4b3bc5bd585e3f955b685"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-uiassets-img23.jpg"
+sha256 = "38795e3adab04932e79a87bdd33ec5724a16106cbcb6e8b0aafba7916f4396bb"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-uiassets-img25.jpg"
+sha256 = "9f56f69ee6d80fcd612e8ff43f23ed9744114868575a873f840191ddbdd48289"
+width = 3840
+height = 2400
+
+[[wallpaper]]
+theme = "windows11"
+path = "windows11/win11-uiassets-img32.jpg"
+sha256 = "2b8a86eea1db88b953e20a10b9209344c42771a3a9e6436c0da96a7838a124d9"
+width = 3841
+height = 2400

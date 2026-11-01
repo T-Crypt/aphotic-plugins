@@ -1,0 +1,14 @@
+[plugin]
+name = "wallpaper-packs"
+display_name = "Wallpaper Packs"
+description = "Theme-matched wallpaper collections, fetched on request with `aphotic wallpaper fetch` and checked against each file's sha256."
+version = "1.0.0"
+author = "T-Crypt"
+category = "theming"
+capabilities = ["wallpaper-pack"]
+
+[requires]
+binaries = ["python3"]
+
+[wallpapers]
+packs = ["packs/classic.toml", "packs/community.toml"]

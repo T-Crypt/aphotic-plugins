@@ -699,6 +699,16 @@
       }
     },
     {
+      "name": "wallpaper-packs",
+      "display_name": "Wallpaper Packs",
+      "description": "Theme-matched wallpaper collections, fetched on request with `aphotic wallpaper fetch` and checked against each file's sha256.",
+      "version": "1.0.0",
+      "category": "theming",
+      "capabilities": [
+        "wallpaper-pack"
+      ]
+    },
+    {
       "name": "widgets",
       "display_name": "Desktop Widgets",
       "description": "Transparent Signal-style widgets on the desktop: clocks, calendars, media, system meters, weather, timers, notes and more. Drag, resize and configure each one; the desktop between them still takes clicks.",
