@@ -115,7 +115,7 @@ ColumnLayout {
         spacing: Tokens.spacing.small
 
         MaterialIcon {
-            text: root.inUse ? "memory" : "memory_off"
+            text: root.inUse ? "memory" : "developer_board_off"
             color: root.inUse ? Colours.palette.m3primaryOnSurface : Colours.palette.m3onSurfaceVariant
             fontStyle: Tokens.font.icon.large
             fill: root.inUse ? 1 : 0
@@ -235,7 +235,7 @@ ColumnLayout {
         spacing: Tokens.spacing.small
 
         MaterialIcon {
-            text: root.reachable ? "memory" : root.configured ? "cloud_off" : "memory_off"
+            text: root.reachable ? "memory" : root.configured ? "cloud_off" : "developer_board_off"
             color: root.reachable ? Colours.palette.m3primaryOnSurface : root.attention ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant
             fontStyle: Tokens.font.icon.large
             fill: root.reachable ? 1 : 0

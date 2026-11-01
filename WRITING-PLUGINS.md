@@ -138,6 +138,13 @@ Declaring `keybind` on a shell with no host for it does not block the install:
 the plugin is reported as partially hosted and that one part stays dark until
 Aphotic is updated.
 
+Check every icon name against the font. A name the font lacks renders as
+its literal text on screen:
+
+```sh
+python3 tools/check_icon_names.py
+```
+
 Then rebuild the catalogue:
 
 ```sh
