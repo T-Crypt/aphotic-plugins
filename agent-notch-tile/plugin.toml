@@ -2,7 +2,7 @@
 name = "agent-notch-tile"
 display_name = "Agent Notch Tile"
 description = "Notch tile for AI coding harnesses: a steady header for the session in focus with its model, tool, time, tokens and cost, a chip per live session that brings its window forward, waiting-for-input rows, quota bars, and the local provider's GPU VRAM claim."
-version = "1.3.0"
+version = "1.4.0"
 author = "T-Crypt"
 category = "ai"
 capabilities = ["ui-surface"]

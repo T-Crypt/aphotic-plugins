@@ -15,16 +15,16 @@ Singleton {
     id: root
 
     readonly property var sessions: root._sessions
-    readonly property var graphSessions: root._sessions.concat(root.llamaSwapSessions)
+    readonly property var graphSessions: root._sessions.concat(root.engineSessions)
     readonly property var events: root._events
     readonly property int liveSessionCount: root._sessions.filter(s => s.status !== "ended").length
-    readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0) + root.llamaSwapSessions.length
+    readonly property int nodeCount: root._sessions.reduce((n, s) => n + s.nodes.length, 0) + root.engineSessions.length
 
     property bool surfaceVisible: false
     readonly property bool shouldSimulate: root.surfaceVisible && root.nodeCount > 0 && !root.gamingActive
 
     readonly property bool wantsFeed: root.surfaceVisible && !root.gamingActive
-    readonly property bool wantsStats: root.surfaceVisible && !root.gamingActive && AgentProviders.llamaSwapLoadedModels.length > 0
+    readonly property bool wantsStats: root.surfaceVisible && !root.gamingActive && LocalInference.activeModels.some(m => m.owner === "llama-swap")
 
     // A gaming session is the desktop's foreground claimant, and this graph
     // is a background observer of work the user is not looking at while a
@@ -68,7 +68,7 @@ Singleton {
     readonly property int replayStepEvents: root.tier === "full" ? 1 : root.tier === "standard" ? 2 : 6
     readonly property bool anyRunning: root._sessions.some(s => s.status === "running")
 
-    readonly property bool _gpuContended: AgentProviders.ollamaLoadedModels.length > 0 || AgentProviders.llamaSwapLoadedModels.length > 0
+    readonly property bool _gpuContended: LocalInference.activeModels.length > 0
 
     readonly property string _detectedTier: {
         const name = SystemUsage.gpuName.toLowerCase();
@@ -81,26 +81,29 @@ Singleton {
         return "standard";
     }
 
-    readonly property var llamaSwapSessions: AgentProviders.llamaSwapLoadedModels.map(name => {
-        const generating = LlamaSwapStats.generating
-            && LlamaSwapStats.model.toLowerCase() === String(name).toLowerCase();
+    // One node per model a local engine has loaded, from every backend
+    // core tracks. Only llama-swap reports which model is generating.
+    readonly property var engineSessions: LocalInference.activeModels.map(m => {
+        const id = `provider:${m.owner}:${m.name}`;
+        const generating = m.owner === "llama-swap" && LlamaSwapStats.generating
+            && LlamaSwapStats.model.toLowerCase() === m.name.toLowerCase();
         return {
-            id: `provider:llama-swap:${name}`,
+            id: id,
             status: generating ? "running" : "idle",
-            harness: "llama-swap",
-            model: name,
+            harness: m.owner,
+            model: m.name,
             modelInfo: {
-                label: AgentRoles.modelDisplayName(name, "llama-swap"),
-                provider: "llama-swap",
+                label: AgentRoles.modelDisplayName(m.name, m.owner),
+                provider: m.owner,
                 locality: "local",
                 quant: "",
-                raw: name
+                raw: m.name
             },
             cwd: "",
             startedAt: 0,
             updatedAt: 0,
             endedAt: 0,
-            hue: root._hueForSession(`provider:llama-swap:${name}`),
+            hue: root._hueForSession(id),
             nodes: [],
             agentParents: ({})
         };
@@ -325,7 +328,7 @@ Singleton {
         return {
             id: record.sessionId,
             status: "idle",
-            harness: record.harness ?? "claude",
+            harness: record.harness || "unknown",
             model: record.model ?? "",
             modelInfo: root.parseModelInfo(record.model ?? ""),
             cwd: record.cwd ?? "",
