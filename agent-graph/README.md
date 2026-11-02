@@ -2,12 +2,13 @@
 
 Live tool-call graph and run replay for
 [Aphotic-Hypr](https://github.com/T-Crypt/aphotic-hypr)'s AI harnesses —
-watch Claude Code / Codex sessions unfold as a node graph in the
+watch every wired harness's sessions unfold as a node graph in the
 Dashboard, then scrub back through a recorded run.
 
-Loaded llama-swap models also appear as provider nodes when no local
-harness session uses them. This keeps models serving network clients
-visible and marks the active model as generating while the graph is open.
+Models a local engine has loaded (llama-swap, Ollama, LM Studio,
+llama.cpp) also appear as provider nodes. This keeps models serving
+network clients visible. llama-swap also marks the model that is
+generating while the graph is open.
 
 ## Requires
 

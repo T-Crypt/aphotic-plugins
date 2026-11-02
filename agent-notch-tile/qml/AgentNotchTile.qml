@@ -34,6 +34,10 @@ ColumnLayout {
     readonly property var pinned: AgentEvents.liveSessions.find(s => s.id === root.pinnedId) ?? null
     readonly property var session: root.pinned ?? AgentEvents.activeSession
     readonly property string sessionHarness: root.session?.harness ?? ""
+    // Harnesses open in a terminal with no live turn. Empty on a core
+    // older than the process-count sample.
+    readonly property var openIdle: AgentProviders.openIdle ?? []
+    readonly property var openHarness: root.session ? null : (root.openIdle[0] ?? null)
     readonly property int waitingCount: AgentEvents.waitingSessions.length
 
     function labelFor(harnessId: string): string {
@@ -42,7 +46,7 @@ ColumnLayout {
         return AgentRoles.entries.find(e => e.id === harnessId)?.label ?? harnessId;
     }
 
-    readonly property string harnessLabel: root.labelFor(root.sessionHarness)
+    readonly property string harnessLabel: root.openHarness ? (root.openHarness.label || root.openHarness.id) : root.labelFor(root.sessionHarness)
 
     // Every live session, in the order it started, so a chip never moves
     // because another session reported something.
@@ -60,7 +64,7 @@ ColumnLayout {
             return Colours.signal;
         if (status === "running" || status === "compacting")
             return Colours.palette.m3primary;
-        return Colours.palette.m3outline;
+        return Colours.palette.m3outlineVariant;
     }
 
     function selectSession(session: var): void {
@@ -89,6 +93,8 @@ ColumnLayout {
     }
 
     readonly property string phaseLabel: {
+        if (root.openHarness)
+            return root.openIdle.length > 1 ? qsTr("open, idle (+%1)").arg(root.openIdle.length - 1) : qsTr("open, idle");
         switch (root.session?.status ?? "") {
         case "running":
             return qsTr("running");
@@ -109,8 +115,9 @@ ColumnLayout {
     // provider id: `usageOf` answers for any of them and returns zeros
     // for one with no transcripts on disk, which hides the row below
     // rather than showing a false zero.
-    readonly property var usage: AgentProviders.usageOf(root.sessionHarness)
+    readonly property var usage: AgentProviders.usageOf(root.sessionHarness || (root.openHarness?.id ?? ""))
     readonly property bool hasUsage: root.usage.availability === "available" && root.usage.todayTokens > 0
+    readonly property real todayCost: root.usage.todayCost ?? 0
     readonly property string topModel: root.usage.tokensByModel?.[0]?.model ?? ""
 
     // Quota windows, and whether they still describe now. The record is
@@ -326,7 +333,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: Tokens.spacing.extraSmall
         spacing: Tokens.spacing.extraSmall
-        visible: root.switcher.length > 1
+        visible: root.switcher.length + root.openIdle.length > 1
 
         Repeater {
             model: root.switcher
@@ -382,6 +389,55 @@ ColumnLayout {
                         text: qsTr("+%1").arg((chip.modelData.subagents ?? []).length)
                         color: Colours.palette.m3onSurfaceVariant
                         font: Tokens.font.mono.small
+                    }
+                }
+            }
+        }
+
+        // An open harness with no live turn has no session to pin and no
+        // cwd to focus by, so its chip only says it is there.
+        Repeater {
+            model: root.switcher.length > 0 || root.openIdle.length > 1 ? root.openIdle : []
+
+            StyledRect {
+                id: idleChip
+
+                required property var modelData
+
+                implicitWidth: idleRow.implicitWidth + Tokens.padding.small * 2
+                implicitHeight: 26
+                radius: Tokens.rounding.full
+                color: "transparent"
+                border.width: 1
+                border.color: Colours.signalStyle.hairline
+
+                RowLayout {
+                    id: idleRow
+
+                    anchors.centerIn: parent
+                    spacing: Tokens.spacing.extraSmall
+
+                    StyledRect {
+                        implicitWidth: 6
+                        implicitHeight: 6
+                        radius: 3
+                        color: "transparent"
+                        border.width: 1
+                        border.color: Colours.palette.m3outlineVariant
+                    }
+
+                    MaterialIcon {
+                        text: idleChip.modelData.icon || "terminal"
+                        color: Colours.palette.m3onSurfaceVariant
+                        fontStyle: Tokens.font.icon.small
+                    }
+
+                    StyledText {
+                        text: qsTr("%1 · open").arg(idleChip.modelData.label || idleChip.modelData.id)
+                        color: Colours.palette.m3onSurfaceVariant
+                        font: Tokens.font.label.small
+                        elide: Text.ElideRight
+                        Layout.maximumWidth: 120
                     }
                 }
             }
@@ -517,6 +573,13 @@ ColumnLayout {
 
         StyledText {
             text: qsTr("%1 tokens").arg(root.formatTokens(root.usage.todayTokens))
+            color: Colours.palette.m3onSurface
+            font: Tokens.font.mono.small
+        }
+
+        StyledText {
+            visible: root.todayCost > 0
+            text: root.usage.currency && root.usage.currency !== "USD" ? qsTr("%1 %2").arg(root.todayCost.toFixed(2)).arg(root.usage.currency) : qsTr("$%1").arg(root.todayCost.toFixed(root.todayCost < 1 ? 3 : 2))
             color: Colours.palette.m3onSurface
             font: Tokens.font.mono.small
         }

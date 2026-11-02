@@ -6,11 +6,13 @@ Docks a tile into Aphotic's notch showing, at a glance:
   and is waiting on you badges the collapsed notch, so you get it without
   opening anything.
 - **Active harness and phase** — one line: which harness is working and
-  whether it is running, idle, or waiting.
+  whether it is running, compacting, idle, or waiting. A harness open in
+  a terminal with no live turn reads "open, idle" rather than no session.
 - **The rest of the stack** — one compact row per other live harness:
   which agents a machine runs at once, each with its phase, last tool
   and subagent count. A machine running only Pi or only OMP reads the
   same tile as one running Claude Code.
+- **Today** — tokens, and cost when the harness reports one.
 - **Live subagents** — how many are running under the active session. A
   count, not a roster.
 - **Quota bars** — the windows the harness reports about itself, each
